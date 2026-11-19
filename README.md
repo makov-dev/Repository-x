@@ -13,38 +13,25 @@ Open `index.html` in a browser (double-click, or `python3 -m http.server` and
 visit `http://localhost:8000`). Everything renders to a 320x180 canvas scaled
 3x, `image-rendering: pixelated`, all art drawn procedurally in code.
 
-## Controls
+## Controls — mouse or touch, no overlays
 
-| Key | Action |
-| --- | --- |
-| Arrows / WASD | Move |
-| Z / Enter | Confirm, talk, interact, use stairs |
-| X / Esc | Back / cancel |
-| M | Dungeon map (when delving) |
-| F5 | Quicksave (auto-saves in city and on camps too) |
-| Enter | Confirm on title / death screens |
+The whole game is played **directly on the screen** — nothing else matters up
+your view. No virtual pad; the canvas is the only control surface.
 
-### Gamepad
+- **Click / tap the map** → the hero walks there (pathfinding handles walls;
+  in the city, tapping a building walks you to it and takes you inside).
+- **Click / tap dialog text** → advance it.
+- **Click / tap a menu option** → pick it (**tap / X back** corner = cancel).
+- **Click / tap a combat action** (Strike / Guard / Flee…) → do it.
+- In a delve: on-screen chips **DESCEND / ASCEND / CLIMB OUT**, **MENU**,
+  **MAP**; **SAV** quicksave and **FS** fullscreen live in the top-right corner.
+- Title and death screens: tap / click or **Enter**.
+- **Right-click** = cancel/back (mouse).
 
-Plug in a controller (Bluetooth or USB-OTG on Android work): stick or D-pad to
-move (with hold-to-repeat), **A** = Z, **B** = X, **START** = Enter, **SELECT**
-= Esc, **Y** = map, **X (square)** = quicksave.
-
-### Phone / touch
-
-Open `index.html` in a mobile browser — on touch devices a virtual pad appears
-under the canvas: D-pad (hold to walk), big **Z**, **X**, **⏎**, **MAP**,
-**SAV** quicksave, and **FS** for fullscreen (recommended, landscape). The
-canvas scales to the screen; saves live in browser localStorage, so keep using
-the same browser to continue a run.
-
-Everything on the game screen itself is tappable too — you never need the D-pad:
-**tap the map to walk there** (pathfinding handles walls; in the city, tapping a
-building walks you to it and takes you inside), tap dialog text to advance it,
-tap a menu option to pick it, tap a combat action (Strike/Guard/Flee…) to do
-it, and use the on-screen chips in a delve — **DESCEND / ASCEND / CLIMB OUT**,
-**MENU**, **MAP**. The title and death screens tap through as well. Tapping
-Z/X or moving the D-pad cancels an auto-walk in progress.
+Keyboard and gamepad still work for those who want them: arrows/WASD move,
+Z/Enter confirm, X/Esc back, M map, F5 quicksave; gamepad A=Z, B=X,
+START=Enter, SELECT=Esc, Y=map. Tapping Z/X or pressing a movement key cancels
+an auto-walk in progress.
 
 ## The loop
 
