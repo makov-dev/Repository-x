@@ -33,6 +33,7 @@ your view. No virtual pad; the canvas is the only control surface.
 - In combat the rolling dice themselves are tappable.
 - In a delve: on-screen chips **DESCEND / ASCEND / CLIMB OUT**, **MENU**,
   **MAP**; **SAV** quicksave and **FS** fullscreen live in the top-right corner.
+- **SND** chip (top-right, next to SAV/FS) toggles all sound.
 - Title and death screens: tap / click or **Enter**.
 - **Right-click** = cancel/back (mouse).
 
@@ -110,6 +111,13 @@ an auto-walk in progress.
    die still shaves damage off. Guard and the flask don't gamble — they
    just work. Below a quarter of your HP the **Last Stand** kicks in and
    every die crawls, slow enough to catch.
+
+   **Sound & fury.** The game hums with procedural square-wave grit:
+   dice tick while they spin, a **chime when you catch a six**, a sting
+   for crits, thuds for hits, blood-flash on wounds, coin-jingle on
+   payout, a heartbeat during the Last Stand. Crits throw gold sparks;
+   relics throw violet ones. Every flash, shake, and shout can be
+   silenced with the SND chip.
 
    **After the fight:** killed foes are carved into your bestiary — first
    meetings show only a description and "vitals unknown"; survive a kill

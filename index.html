@@ -110,6 +110,7 @@ function chip(label,x,y,w,fn,en){
 CVS.addEventListener("pointerdown", e=>{
   const r=CVS.getBoundingClientRect();
   const gx=(e.clientX-r.left)*W/r.width, gy=(e.clientY-r.top)*H/r.height;
+  updSndUnlock();
   for (let i=uiHits.length-1;i>=0;i--){
     const h=uiHits[i];
     if (gx>=h.x && gx<h.x+h.w && gy>=h.y && gy<h.y+h.h){ e.preventDefault(); h.fn(gx,gy); break; }
@@ -118,8 +119,9 @@ CVS.addEventListener("pointerdown", e=>{
 let hintMsg=null, hintT=0;
 function showHint(m){ hintMsg=m; hintT=130; }
 function cornerChips(){
-  chip("SAV", W-70, 2, 32, ()=>{ if (game) saveGame(); showHint("Chalked into the walls. (saved)"); });
-  chip("FS", W-34, 2, 32, toggleFS);
+  chip(sndOn? "SND":"MUTE", W-142, 2, 32, toggleSnd);
+  chip("SAV", W-106, 2, 32, ()=>{ if (game) saveGame(); showHint("Chalked into the walls. (saved)"); });
+  chip("FS", W-70, 2, 32, toggleFS);
 }
 CVS.addEventListener("contextmenu", e=>{ e.preventDefault(); pressed["x"]=true; });
 /* ----- tap-to-walk (tap a tile, hero walks there) ----- */
@@ -1167,7 +1169,8 @@ function triggerEvent(ev){
           got.push(it.n);
           const r=lootRarity(it.v);
           addFloat(it.n+" - "+r.t, r.col, W/2+(irnd(96)-48), 76);
-          if (r.t==="RELIC"){ kicker(8); setBanner(["A RELIC FROM THE DARK","The "+it.n+". Word of it will reach the market."]); }
+          sfx("loot"); sparkBurst(W/2, 76, r.col, 10, 1.1);
+          if (r.t==="RELIC"){ kicker(8); setBanner(["A RELIC FROM THE DARK","The "+it.n+". Word of it will reach the market."]); sparkBurst(W/2, 76, "#c99df5", 30, 1.8); }
         }
       }
       if (got.length) say(["Wedged in the dark: "+got.join(", ")+"."]);
@@ -1434,6 +1437,7 @@ function hurt(n, msg){
 function die(cause){
   const p=game.player;
   game.combat=null;
+  sfx("lose");
   const age=Math.floor(game.week/52);
   const ep=[ "You die at "+age+". "+cause ];
   if (p.child && p.child.weeks>=728){
@@ -1493,6 +1497,9 @@ function rollDiceFrame(){
   if (!d) return false;
   if (tap("z")){ if (!d.st1) d.st1=true; else d.st2=true; }
   if (tap("x")){ if (!d.st2) d.st2=true; else d.st1=true; }
+  if (worldTick%4===0) sfx("tick");
+  if (d.st1 && !d._c1){ d._c1=true; sfx(d.v1===6? "six":"click"); }
+  if (d.st2 && !d._c2){ d._c2=true; sfx(d.v2===6? "six":"click"); }
   if (!d.st1) d.v1=1+Math.floor(worldTick/d.s1)%6;
   if (!d.st2) d.v2=1+Math.floor(worldTick/(d.st1?7:d.s2))%6;
   if (d.st1&&d.st2){ const f=d.onDone; if (gDice) gDice=null; else c.dice=null; f(d.v1,d.v2); }
@@ -1539,6 +1546,7 @@ function resolvePlayerAction(a,v1,v2){
       e.hp-=dmg;
       clog("RIPOSTE. Your steel answers before it finishes. (-"+dmg+")");
       addFloat("RIPOSTE -"+dmg, PAL.coin, W/2, 95); kicker();
+      sfx("crit"); sparkBurst(W/2, 90, "#e0b95a", 26, 1.6);
       if (e.hp<=0){ c.critKill=true; winCombat(); return; }
     } else {
     let dmg=Math.max(1, playerAtk()-irnd(2));
@@ -1548,11 +1556,12 @@ function resolvePlayerAction(a,v1,v2){
       e.hp-=dmg;
       clog("TWIN SIXES. You strike like a verdict. (-"+dmg+")");
       addFloat("CRIT -"+dmg, PAL.coin, W/2, 95); kicker();
+      sfx("crit"); sparkBurst(W/2, 90, "#e0b95a", 26, 1.6); setFlash("rgba(201,162,74,", 6);
       if (e.hp<=0){ c.critKill=true; winCombat(); return; }
     } else {
       e.hp-=dmg;
       clog("You carve "+e.n+" for "+dmg+".");
-      addFloat("-"+dmg, PAL.bloodHi, W/2, 95);
+      addFloat("-"+dmg, PAL.bloodHi, W/2, 95); sfx("hit");
       if (e.hp<=0){ winCombat(); return; }
     }
     }
@@ -1563,11 +1572,12 @@ function resolvePlayerAction(a,v1,v2){
       e.hp-=dmg;
       if (crown) c.critKill=true;
       addFloat((crown? "CRIT -":"-")+dmg, crown? PAL.coin:PAL.bloodHi, W/2, 95);
-      if (crown) kicker();
+      if (crown){ kicker(); sfx("crit"); sparkBurst(W/2, 90, "#e0b95a", 26, 1.6); } else sfx("hit");
       clog(crown? "TWIN SIXES - a deep, mean, senseless cut. (-"+dmg+")"
                 : "A deep, mean cut. "+e.n+" shrieks like a kettle. (-"+dmg+")");
     } else {
-      clog(fumble? "Both dice spit ones. You overreach badly." : "You overreach. The dark takes its fee.");
+      sfx("lose");
+    clog(fumble? "Both dice spit ones. You overreach badly." : "You overreach. The dark takes its fee.");
       combatEnemyTurn();
       return;
     }
@@ -1612,6 +1622,7 @@ function resolveDefense(raw,v1,v2,swarm){
     clog("BOTH DICE CROWN. It consumes the space where you stood.");
     if (hasManeuver("riposte")){ c.riposte=true; clog("Riposte armed. Your next strike answers everything."); }
     addFloat("DODGE", PAL.coin, W/2, 100);
+    sfx("dodge"); sparkBurst(W/2, 96, "#cfc6b4", 14, 1.2);
   } else {
     let dmg=Math.max(1, raw-playerDef()-(c.guard?2:0));
     if (sixes===1){
@@ -1620,6 +1631,7 @@ function resolveDefense(raw,v1,v2,swarm){
     }
     p.hp-=dmg;
     addFloat("-"+dmg, PAL.bloodHi, W/2+(irnd(24)-12), 100);
+    sfx("hurt"); setFlash("rgba(110,34,48,", Math.min(8, 4+dmg));
     if (dmg>=6) kicker();
     clog(swarm? "(-"+dmg+")" : e.n+(e.human? " cuts you." : " breaks against you and through.")+" (-"+dmg+")");
   }
@@ -1654,6 +1666,7 @@ function winCombat(){
   if (p.streak>=2){ const bonus=p.streak*4; g+=bonus; clog("The dark keeps score. Streak x"+p.streak+" (+"+bonus+"g)"); addFloat("STREAK x"+p.streak, PAL.coin, W/2, 78); }
   p.gold+=g;
   addFloat("+"+fmt(g), PAL.coin, W/2+16, 92);
+  sfx("coin"); sparkBurst(W/2, 88, "#e0b95a", 14, 1.1);
   const l=rollLoot(tilt, Math.random()<0.4?2:1);
   const got=[];
   for (const it of l){
@@ -1661,7 +1674,8 @@ function winCombat(){
       got.push(it.n);
       const r=lootRarity(it.v);
       addFloat(it.n+" - "+r.t, r.col, W/2+(irnd(96)-48), 68);
-      if (r.t==="RELIC"){ kicker(8); setBanner(["A RELIC FROM THE DARK","The "+it.n+". Word of it will reach the market."]); }
+      sfx("loot"); sparkBurst(W/2, 70, r.col, 10, 1.1);
+      if (r.t==="RELIC"){ kicker(8); setBanner(["A RELIC FROM THE DARK","The "+it.n+". Word of it will reach the market."]); sparkBurst(W/2, 70, "#c99df5", 30, 1.8); }
     }
   }
   clog("It stops. The dark settles like sediment.");
@@ -1677,14 +1691,62 @@ function endCombat(){
   game.state= og==="base"? "base":"dungeon";
 }
 
-/* ----- juice: floats, shake, banners, off-combat dice ----- */
+/* ----- juice: floats, shake, banners, sparks, flashes, sound ----- */
 let floats=[], shakeT=0, bannerMsg=null, bannerT=0, gDice=null, drips=[];
+let sparks=[], flashCol=null, flashT=0;
+let sndOn=true, AC=null;
+function ac(){
+  if (!AC){ try { AC = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){ AC=null; } }
+  if (AC && AC.state==="suspended"){ try { AC.resume(); } catch(e){} }
+  return AC;
+}
+function beep(freq, dur, type, vol, slide){
+  if (!sndOn) return;
+  const a=ac(); if (!a) return;
+  try {
+    const o=a.createOscillator(), g=a.createGain();
+    o.type=type||"square"; o.frequency.value=freq;
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, a.currentTime+dur);
+    g.gain.setValueAtTime(vol||0.04, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime+dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime+dur);
+  } catch(e){}
+}
+function sfx(name){
+  if (!sndOn) return;
+  switch(name){
+    case "tick":   beep(620+irnd(360), 0.03, "square", 0.015); break;
+    case "click":  beep(880, 0.03, "square", 0.02); break;
+    case "six":    beep(1318, 0.09, "square", 0.05); setTimeout(()=>beep(1760, 0.12, "square", 0.04), 60); break;
+    case "crit":   beep(880, 0.08, "square", 0.06); setTimeout(()=>beep(1318, 0.1, "square", 0.06), 70); setTimeout(()=>beep(1760, 0.16, "square", 0.06), 150); break;
+    case "hit":    beep(150, 0.09, "sawtooth", 0.05, 80); break;
+    case "hurt":   beep(120, 0.13, "sawtooth", 0.07, 55); break;
+    case "dodge":  beep(520, 0.07, "triangle", 0.05, 900); break;
+    case "coin":   beep(1046, 0.05, "square", 0.04); setTimeout(()=>beep(1568, 0.09, "square", 0.04), 55); break;
+    case "loot":   beep(660, 0.06, "triangle", 0.05); setTimeout(()=>beep(990, 0.1, "triangle", 0.05), 60); break;
+    case "lose":   beep(220, 0.22, "sawtooth", 0.06, 100); break;
+    case "banner": beep(784, 0.08, "triangle", 0.04); setTimeout(()=>beep(1046, 0.12, "triangle", 0.04), 80); break;
+    case "heart":  beep(65, 0.1, "sine", 0.10); break;
+  }
+}
+function toggleSnd(){ sndOn=!sndOn; if (sndOn) sfx("click"); }
+function setFlash(col, n){ flashCol=col; flashT=n; }
+function sparkBurst(x,y,col,n,sp){
+  sp=sp||1;
+  for (let i=0;i<n;i++){
+    if (sparks.length>80) sparks.shift();
+    const a=Math.random()*6.283, v=(0.3+Math.random()*1.2)*sp;
+    sparks.push({ x:x, y:y, vx:Math.cos(a)*v, vy:Math.sin(a)*v-0.3, t:0, col:col });
+  }
+}
+function updSndUnlock(){ if (sndOn) ac(); }
 function addFloat(s,col,x,y){
   if (floats.length>14) floats.shift();
   floats.push({ s:s, col:col||"#e8e0cf", x:(x==null? W/2-20+(irnd(40)-10):x), y:(y==null? 90:y), t:0 });
 }
 function kicker(n){ shakeT=Math.max(shakeT, n||6); }
-function setBanner(lines){ bannerMsg=lines; bannerT=190; }
+function setBanner(lines){ bannerMsg=lines; bannerT=190; sfx("banner"); }
 function lootRarity(v){
   return v>=70? {t:"RELIC", col:"#c99df5"} : v>=45? {t:"RARE", col:"#e0b95a"}
        : v>=25? {t:"PRIZED", col:"#9dc08f"} : {t:"common", col:"#9a9184"};
@@ -1760,6 +1822,7 @@ function bonesGame(stake){
           p.gold+=win; p.gambleWins++;
           setBanner(["THE LAMP ROARS","Twin sixes. "+fmt(win)+" and the room loves you."]);
           addFloat("+"+fmt(win), PAL.coin, W/2, 74);
+          sparkBurst(W/2, 74, "#e0b95a", 30, 1.6);
         } else if (sixes===1){
           p.gold+=stake;
           say(["One crowned die. The stickman pays your stake back, grudging.",
@@ -1767,6 +1830,7 @@ function bonesGame(stake){
         } else {
           say(["The dice spit nothing. He sweeps the coins away without looking at them.",
                "\"The dark takes its fee up here too.\""], ()=>openTavern());
+          sfx("lose");
         }
         checkTitles();
         saveGame();
@@ -2226,12 +2290,31 @@ function drawGambleBoard(){
 function drawJuice(){
   for (const f of floats){ f.t++; f.y-=0.4; }
   floats=floats.filter(f=>f.t<90);
+  for (const sp2 of sparks){ sp2.t++; sp2.x+=sp2.vx; sp2.y+=sp2.vy; sp2.vy+=0.04; }
+  sparks=sparks.filter(sp2=>sp2.t<42);
+  if (flashT>0) flashT--;
   if (shakeT>0) shakeT--;
   if (bannerT>0) bannerT--;
+  if (flashT>0 && flashCol){
+    ctx.fillStyle=flashCol+(0.16*flashT/8).toFixed(3)+")";
+    ctx.fillRect(0,0,W,H);
+  }
+  if (game && game.player && game.player.hp<=game.player.maxhp*0.25 &&
+      (game.state==="combat"||game.state==="dungeon")){
+    const pa=(0.05+0.045*Math.sin(worldTick/8)).toFixed(3);
+    ctx.fillStyle="rgba(110,34,48,"+pa+")";
+    ctx.fillRect(0,0,W,H);
+  }
   ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
   for (const f of floats){
     ctx.globalAlpha=clamp(1-f.t/90,0,1);
     txt(f.s, clamp(f.x,2,308), clamp(f.y,2,172), f.col);
+  }
+  ctx.globalAlpha=1;
+  for (const sp2 of sparks){
+    ctx.globalAlpha=clamp(1-sp2.t/42,0,1);
+    ctx.fillStyle=sp2.col;
+    ctx.fillRect(Math.floor(sp2.x),Math.floor(sp2.y),sp2.t<20?2:1,sp2.t<20?2:1);
   }
   ctx.globalAlpha=1;
   if (bannerT>0 && bannerMsg){
@@ -2443,7 +2526,10 @@ function leaveDungeon(){
 function updateCombat(){
   const c=game.combat;
   if (!c) return;
-  if (c.dice){ rollDiceFrame(); return; }
+  if (c.dice){
+    if (game.player.hp<=game.player.maxhp*0.25 && worldTick%26===0) sfx("heart");
+    rollDiceFrame(); return;
+  }
   if (c.turn==="player"){
     const acts=quickActs();
     if (tap("arrowup")||tap("w")) c.choice=(c.choice+acts.length-1)%acts.length;
@@ -2566,7 +2652,7 @@ window.__openings={
   curFloor, hurt, die, continueAsChild, saveGame, loadGame,
   earnTitle, checkTitles, foeKnown, hasManeuver, quickActs, actLabel, bonesGame, addr,
   openChurch, maybeMugged, openTavern,
-  MANEUVERS, BUILDINGS, OPENINGS,
+  MANEUVERS, BUILDINGS, OPENINGS, sfx, toggleSnd,
   get gDice(){ return gDice; }, get bannerMsg(){ return bannerMsg; }
 };
 </script>
