@@ -22,6 +22,9 @@ swinging lantern, chimney smoke, and the arched Gate of Openings.
 The whole game is played **directly on the screen** — nothing else matters up
 your view. No virtual pad; the canvas is the only control surface.
 
+- Walking rich (70g+ on you, or 80g+ in loot) can attract **muggers of
+  your own trade**: pay a tithe, show steel, run, or fight — street
+  fights end back in the street.
 - **Click / tap the map** → the hero walks there (pathfinding handles walls;
   in the city, tapping a building walks you to it and takes you inside).
 - **Click / tap dialog text** → advance it.
@@ -57,6 +60,11 @@ an auto-walk in progress.
      to whom, who died.
    - **Housing Office** — buy the Leaning Tenement (250g), then upgrade it:
      leakproofing, warm hearth, nursery, deep cellar, reinforced door.
+   - **Church of Cinders** — pray for free (sincerity optional; results
+     vary by Will), light a candle for the dead (+2 HP), renew vows —
+     and **pay for funerals**. When city-folk die the news says who
+     wasn't buried; thirty gold at the Church closes their graves and
+     heals a wound of your own, or hardens you (+1 Will).
    - **Training Yard** — pay sweat and stamina to grind STR/AGI/WIT/WLL.
    - **Gate of Openings** — choose which crack in the world to crawl into.
 
@@ -81,6 +89,13 @@ an auto-walk in progress.
      panel with scratched hints, a basin that trades blood for barrows.
    - **Corpses of delvers** (loot them, or bury them — one of them stands up)
      and old shrines that ask nothing and offer plenty.
+
+   Each Opening has its own light: the Cessgate swims sewer-green, the
+   Ossuary breathes dry gold, the Cathedral stains everything violet.
+   Bones, rubble, cracks and wet patches mark the floors; loot and
+   shrines pulse faintly; dust drifts, water drips, your lamp flickers
+   as you move. Robbery works both ways — walk the streets rich and
+   other adventurers will look at you like arithmetic.
 
 4. **Combat.** Turn-based: Strike, Cut Deep (risky), Guard, Bandage/Ration,
    Flee (AGI check). Damage from weapon dice + STR; wounds are applied when

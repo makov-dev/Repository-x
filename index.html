@@ -177,9 +177,9 @@ const PAL = {
 
 /* ---------------- data: world ---------------- */
 const OPENINGS = [
-  { name:"The Weeping Cessgate", tier:1, desc:"Storm-drains beneath the tannery quarter. Things grow fat in the dark water." },
-  { name:"Ossuary of the Gilded Ward", tier:2, desc:"An old burial district the city built over. The gold stayed with the dead." },
-  { name:"The Cathedral Under Roots", tier:3, desc:"A temple older than Vharn. The roots drink something that is not water." }
+  { name:"The Weeping Cessgate", tier:1, desc:"Storm-drains beneath the tannery quarter. Things grow fat in the dark water.", tint:[80,120,105] },
+  { name:"Ossuary of the Gilded Ward", tier:2, desc:"An old burial district the city built over. The gold stayed with the dead.", tint:[150,120,70] },
+  { name:"The Cathedral Under Roots", tier:3, desc:"A temple older than Vharn. The roots drink something that is not water.", tint:[110,85,150] }
 ];
 
 const LOOT = [
@@ -410,6 +410,7 @@ function loadGame(){
       game=snap.game; closeUI();
       if (!game.flags) game.flags={news:[]};
       if (!game.flags.news) game.flags.news=[];
+      if (!game.flags.unburied) game.flags.unburied=[];
       const Pl=game.player;
       if (!Array.isArray(Pl.titles)) Pl.titles=[];
       if (!Array.isArray(Pl.maneuvers)) Pl.maneuvers=[];
@@ -434,6 +435,7 @@ const BUILDINGS = [
   { id:"clinic",  x:36, y:3,  w:10, h:6, label:"FLESH-SETTER",   roof:"#4d655a" },
   { id:"tavern",  x:5,  y:13, w:12, h:7, label:"THE FLAYED LAMP",roof:"#664041" },
   { id:"office",  x:27, y:12, w:9,  h:5, label:"HOUSING OFFICE", roof:"#556483" },
+  { id:"church",  x:48, y:3,  w:9,  h:6, label:"CHURCH OF CINDERS", roof:"#4f5562" },
   { id:"yard",    x:36, y:13, w:10, h:7, label:"TRAINING YARD",  roof:"#42523d", yard:true },
   { id:"gate",    x:50, y:13, w:6,  h:9, label:"GATE OF OPENINGS",roof:"#3a2f42", gate:true },
   { id:"home",    x:20, y:23, w:9,  h:6, label:"YOUR HOME",      roof:"#5d4a37", home:true, door:[24,28] }
@@ -469,6 +471,45 @@ function tryBaseMove(dx,dy){
   if (citySolid(nx,ny)) return;
   b.px=nx; b.py=ny;
 }
+/* other adventurers try to rob you when you look worth it */
+function maybeMugged(){
+  const p=game.player;
+  if (game.ui.mode || game.combat || gDice) return;
+  const lastMug=game.flags.lastMug||0;
+  if (game.week-lastMug<8) return;
+  const purse=p.gold, loot=lootValue();
+  const heat=(purse>=70? 1:0)+(loot>=80? 1:0);
+  if (!heat) return;
+  if (Math.random()>0.004*heat) return;
+  game.flags.lastMug=game.week;
+  stopWalk();
+  const who=pick(ADV_NAMES);
+  showText([who+" falls into step beside you, hood up, hands loose. Empty street, wrong hour. Somebody counted your purse at the market.",
+            "\"Coin or blood, "+addr()+". The ward has seen worse either way.\""], ()=>{
+    showMenu(who.toUpperCase()+" - A QUIET STREET", [
+      { t:"Hand over a tithe (20% of coin)", fn:()=>{ const t2=Math.floor(p.gold*0.2); p.gold-=t2;
+          saveGame();
+          say([who+" takes "+fmt(t2)+" with unsettling courtesy and is gone between two raindrops.",
+               "The city taxes its living twice."]); } },
+      { t:"Show steel & nerve (Steel or Will)", fn:()=>{
+          if (p.weapon.d>=5 || check("wll",11)){
+            say(["You just look at them. Something in their face does its own arithmetic.","They drift away like weather."]); }
+          else { const t2=Math.floor(p.gold*0.3); p.gold-=t2;
+            say(["Your bluff fails the arithmetic. Thirty percent, plus interest in bruise."], ()=>{ hurt(2,null); });
+            saveGame(); } } },
+      { t:"Run (Agility)", fn:()=>{
+          if (check("agi",10)){
+            say(["You take the alleys at a dead sprint and leave them holding your reasons."]); }
+          else { const t2=Math.floor(p.gold*0.15); p.gold-=t2;
+            say(["A hand catches your collar. You buy your speed with fifteen percent of your purse."], ()=>{ hurt(1,null); });
+            saveGame(); } } },
+      { t:"Fight", fn:()=>{
+          const fhp=10+Math.floor(game.week/208);
+          startCombat({ n:who+"'s Knife", mhp:fhp, hp:fhp, atk:2+Math.floor(p.gold/160), tr:null,
+            artSeed:irnd(2147483647), human:true }); } }
+    ]);
+  });
+}
 function nearBuilding(b, px, py){
   if (b.home){
     return Math.abs(px-b.door[0])<=1 && Math.abs(py-b.door[1])<=1;
@@ -480,6 +521,7 @@ function enterBuilding(b){
     case "guild": openGuild(); break;
     case "market": openMarket(); break;
     case "clinic": openClinic(); break;
+    case "church": openChurch(); break;
     case "tavern": openTavern(); break;
     case "office": openOffice(); break;
     case "yard": openYard(); break;
@@ -598,6 +640,52 @@ function openClinic(){
         p.gold-=30; p.hp=p.maxhp; say(["It tastes like copper pennies and sleep. You feel whole."]); } },
     { t:"Leave", fn:()=>{} }
   ]);
+}
+
+function openChurch(){
+  const p=game.player;
+  const intro=["The Church of Cinders: beeswax smoke, a bowl of grave-dirt, pews worn smooth by people praying against the same weather.",
+               "Funerals are taken here. So are the almost-dead."];
+  const news=drainNews();
+  say(news.length? intro.concat(news) : intro, ()=>{
+    if (!game.flags.unburied) game.flags.unburied=[];
+    const list=game.flags.unburied;
+    const opts=[
+      { t:"Pray (costs nothing but time)", fn:()=>{
+          p.stam=clamp(p.stam-5,0,maxStam());
+          if (Math.random()<0.2+p.wll*0.02){
+            p.hp=clamp(p.hp+3,0,p.maxhp);
+            say(["You kneel in the dust of a hundred funerals. Nothing answers. But something in you stands easier.","(+3 HP)"], ()=>openChurch()); saveGame(); }
+          else say(["You kneel until your knees ache. The silence is total, honest, and utterly uninterested.","Perhaps this too is practice."], ()=>openChurch()); } },
+      { t:"Light a candle for the dead (3g) - +2 HP", fn:()=>{
+          if (p.gold<3){ say(["You have less than a candle. The sexton pretends not to have heard."], ()=>openChurch()); return; }
+          p.gold-=3; p.hp=clamp(p.hp+2,0,p.maxhp);
+          say(["You light it among the others. Every one of them is someone not forgotten.","Somebody once lit one for you, probably. It didn't take."], ()=>openChurch()); saveGame(); } }
+    ];
+    if (list.length){
+      opts.push({ t:"Pay for "+list.length+" funeral"+(list.length>1?"s":"")+" (30g)",
+        d:"Unburied: "+list.join(", ").slice(0,60),
+        fn:()=>{
+          if (p.gold<30){ say(["The sexton names the price a second time: thirty gold, shovel-work included."], ()=>openChurch()); return; }
+          const names=list.join(", ");
+          p.gold-=30; advanceWeeks(1);
+          game.flags.unburied=[];
+          setBanner(["FUNERAL AT CINDERS","You saw them under: "+names.slice(0,42)+"."]);
+          if (p.wounds.length){ p.wounds.splice(0,1);
+            say(["Bells. Grave-dirt. Somebody's real tears, maybe yours.","Grief-work closes a wound of your own. ("+names+")"], ()=>openChurch()); }
+          else { p.wll=Math.min(10,p.wll+1);
+            say(["Bells. Grave-dirt. The sexton says the dead attend those who attend them.","Will rises to "+p.wll+". ("+names+")"], ()=>openChurch()); }
+          saveGame(); } });
+    } else {
+      opts.push({ t:"Ask about funerals", fn:()=>{
+          say(["\"Only the paid get buried proper,\" the sexton says. \"The rest go to the pits. It is arithmetic, not cruelty. Well - both.\""], ()=>openChurch()); } });
+    }
+    if (p.spouse) opts.push({ t:"Renew your vows with "+p.spouse.name.split(" ")[0], fn:()=>{
+        p.stam=clamp(p.stam+15,0,maxStam());
+        say(["Old words, older dust, both rings warmed by the same candle.","You walk out lighter than the mathematics of it explains."], ()=>openChurch()); saveGame(); } });
+    opts.push({ t:"Leave", fn:()=>{} });
+    showMenu("CHURCH OF CINDERS", opts);
+  });
 }
 
 function openYard(){
@@ -895,9 +983,11 @@ function simulateNPCs(n){
     if (np.marriedTo!==null && Math.random()<0.008*n) np.kids++;
     if (nage>=55 && Math.random()<0.004*n){
       np.dead=true;
+      if (!game.flags.unburied) game.flags.unburied=[];
+      if (game.flags.unburied.length<6) game.flags.unburied.push(np.name);
       if (np===p.spouse){
         p.spouse=null; np.widowed=true;
-        game.flags.news.push(np.name.split(" ")[0]+" died last winter, in her bed, "+nage+" years old. You still sleep on your side.");
+        game.flags.news.push(np.name.split(" ")[0]+" died last winter, in her bed, "+nage+" years old. No bell rang. You still sleep on your side.");
       } else {
         game.flags.news.push(np.name.split(" ")[0]+" died last winter. The Lamp poured one out on the floorboards.");
         if (np===p.partner) p.partner=null;
@@ -1278,9 +1368,18 @@ function meetAdventurer(){
     showText(["A voice from an alcove: \"Toll. Thirty percent. Or we discuss the alternative.\"",
               "Numbers resolve into bodies. You are in the math now."], ()=>{
       showMenu(who.toUpperCase()+"'S BOYS", [
-        { t:"Pay the toll", fn:()=>{ const toll=Math.floor(p.gold*0.3);
+        { t:"Pay the toll", fn:()=>{
+            const heavy=p.gold>=300;
+            let toll=Math.floor(p.gold*(heavy?0.4:0.3));
+            let line=who+" counts your coin with professional boredom. \"Lovely doing business.\"";
+            if (heavy) line=who+" weighs your purse a moment longer than needed. \"You looked heavy.\"";
+            const lo2=p.inv.filter(i=>i.kind==="loot");
+            if (p.gold<40 && lo2.length){
+              const it=lo2[lo2.length-1]; toll=0; p.inv.splice(p.inv.indexOf(it),1);
+              line=who+" shrugs at your near-empty purse and takes the "+it.n+" instead. \"In kind, then.\"";
+            }
             p.gold-=toll;
-            say([who+" counts your coin with professional boredom. \"Lovely doing business.\""]); saveGame(); } },
+            say([line]); saveGame(); } },
         { t:"Talk them down (Wits)", fn:()=>{
             if (check("wit",11)) say(["You convince them you are cursed - inhabited by something with opinions. Nobody wants that cargo."]);
             else say(["They laugh. Then they beat the toll out of you, and a little extra."], ()=>{
@@ -1370,7 +1469,8 @@ function startCombat(enemy){
   const p=game.player;
   if (!p.bestiary[enemy.n]) p.bestiary[enemy.n]={ met:game.week, killed:false };
   const lore=BESTIARY_DESC[enemy.n] || (enemy.human? "A delver with a knife and an argument. Vharn breeds them faster than grief does." : "Something the city never bothered to name twice.");
-  game.combat={ e:enemy, log:["The "+enemy.n+" comes out of the dark.", lore], turn:"player", choice:0, guard:false, won:false, critKill:false, riposte:false };
+  const origin= game.state==="base"? "base":"dungeon";
+  game.combat={ e:enemy, log:["The "+enemy.n+" comes out of the dark.", lore], turn:"player", choice:0, guard:false, won:false, critKill:false, riposte:false, origin:origin };
   if (!foeKnown(enemy.n)) game.combat.log.push("You have never seen its like up close. Survive it, and you will know it.");
   game.state="combat";
 }
@@ -1549,11 +1649,12 @@ function winCombat(){
     if (p.killsByKind[c.e.n]===7) earnTitle(c.e.n+" Slayer");
   }
   if (c.critKill) p.streak++; else p.streak=0;
-  let g=2+irnd(6)+game.dungeon.tierNow*2;
+  const tilt= game.dungeon? game.dungeon.tierNow:1;
+  let g=2+irnd(6)+tilt*2;
   if (p.streak>=2){ const bonus=p.streak*4; g+=bonus; clog("The dark keeps score. Streak x"+p.streak+" (+"+bonus+"g)"); addFloat("STREAK x"+p.streak, PAL.coin, W/2, 78); }
   p.gold+=g;
   addFloat("+"+fmt(g), PAL.coin, W/2+16, 92);
-  const l=rollLoot(game.dungeon.tierNow, Math.random()<0.4?2:1);
+  const l=rollLoot(tilt, Math.random()<0.4?2:1);
   const got=[];
   for (const it of l){
     if (addItem(it.n,it.v,it.kind)){
@@ -1570,10 +1671,14 @@ function winCombat(){
   checkTitles();
   saveGame();
 }
-function endCombat(){ game.combat=null; game.state="dungeon"; }
+function endCombat(){
+  const og=game.combat && game.combat.origin;
+  game.combat=null;
+  game.state= og==="base"? "base":"dungeon";
+}
 
 /* ----- juice: floats, shake, banners, off-combat dice ----- */
-let floats=[], shakeT=0, bannerMsg=null, bannerT=0, gDice=null;
+let floats=[], shakeT=0, bannerMsg=null, bannerT=0, gDice=null, drips=[];
 function addFloat(s,col,x,y){
   if (floats.length>14) floats.shift();
   floats.push({ s:s, col:col||"#e8e0cf", x:(x==null? W/2-20+(irnd(40)-10):x), y:(y==null? 90:y), t:0 });
@@ -1829,6 +1934,15 @@ function drawBuilding(bl, sx, sy){
     ctx.fillStyle="#c7bfae"; ctx.fillRect(sx+Math.floor(w/2)-7,sy+11,14,2);
     ctx.fillRect(sx+Math.floor(w/2)-1,sy+8,3,8);
   }
+  if (bl.id==="church"){
+    const cxp=sx+Math.floor(w/2)+1, cyp=sy+8;
+    ctx.fillStyle="rgba(224,185,90,"+(0.22+0.14*Math.sin(worldTick/25)).toFixed(3)+")";
+    ctx.fillRect(cxp-6,cyp-3,13,16);
+    ctx.fillStyle="#0f0a10"; ctx.fillRect(cxp-5,cyp-2,11,14);
+    ctx.fillStyle="#c7bfae";
+    ctx.fillRect(cxp,cyp,2,11);
+    ctx.fillRect(cxp-3,cyp+3,8,2);
+  }
   if (bl.id==="tavern"){
     const sw=Math.sin(worldTick/22)*1.2;
     const lx=sx+Math.floor(w/2), ly=sy+11;
@@ -1962,12 +2076,30 @@ function drawDungeon(){
       if (c==="#"){ ctx.fillStyle=PAL.wallHi; ctx.fillRect(x*T,y*T,T,2); }
       if (c==="<") drawStairs(x*T,y*T,false);
       if (c===">") drawStairs(x*T,y*T,true);
+      else if (c!=="#"){
+        const hsc=((wx*73856093)^(wy*19349663)^f.seed)>>>0;
+        const m=hsc%19;
+        if (m===0){ ctx.fillStyle="#8f8878"; ctx.fillRect(x*T+2,y*T+5,1,1); ctx.fillRect(x*T+4,y*T+4,1,1); ctx.fillRect(x*T+5,y*T+3,1,1); }
+        else if (m===1){ ctx.fillStyle="#4b4349"; ctx.fillRect(x*T+1,y*T+2,2,1); ctx.fillRect(x*T+3,y*T+3,1,1); }
+        else if (m===2){ ctx.fillStyle="#0d0a10"; ctx.fillRect(x*T+1,y*T+3,3,1); ctx.fillRect(x*T+3,y*T+4,1,1); }
+        else if (m===3){
+          ctx.fillStyle="#101a22"; ctx.fillRect(x*T+1,y*T+1,5,2);
+          if ((worldTick+wx*3+wy*7)%240<10){ ctx.fillStyle="#5a7a8a"; ctx.fillRect(x*T+2,y*T+1,2,1); }
+        }
+        else if (m===4){ ctx.fillStyle="#3a2f18"; ctx.fillRect(x*T+6,y*T+6,1,1); }
+        else if (m===5){ ctx.fillStyle="#241d26"; ctx.fillRect(x*T+5,y*T+2,1,5); ctx.fillRect(x*T+2,y*T+5,1,2); }
+      }
       const ev=f.events.find(e=>e.x===wx&&e.y===wy&&!e.done);
       if (ev){
         if (ev.type==="loot"){ ctx.fillStyle=PAL.gold; ctx.fillRect(x*T+3,y*T+3,2,2); }
         else if (ev.type==="corpse"){ ctx.fillStyle=PAL.boneDim; ctx.fillRect(x*T+2,y*T+3,4,1); ctx.fillRect(x*T+3,y*T+4,3,1); }
         else if (ev.type==="shrine"){ ctx.fillStyle=PAL.bone; ctx.fillRect(x*T+2,y*T+2,1,3); ctx.fillRect(x*T+4,y*T+2,1,3); ctx.fillStyle=PAL.gold; ctx.fillRect(x*T+3,y*T+3,1,1); }
         else if (ev.type==="puzzle"){ ctx.fillStyle="#6b5d7a"; ctx.fillRect(x*T+1,y*T+1,5,5); ctx.fillStyle="#0a0810"; ctx.fillRect(x*T+2,y*T+2,3,3); }
+        if (ev.type==="loot"||ev.type==="shrine"||ev.type==="puzzle"){
+          const pul=(0.10+0.08*Math.sin(worldTick/9+wx*1.7+wy*2.3)).toFixed(3);
+          ctx.fillStyle= ev.type==="loot"? "rgba(224,185,90,"+pul+")" : "rgba(150,140,190,"+pul+")";
+          ctx.fillRect(x*T-1,y*T-1,T+2,T+2);
+        }
         else if (ev.type==="obstacle"){
           if (ev.kind==="rubble"){ ctx.fillStyle="#4b4349"; ctx.fillRect(x*T+1,y*T+2,3,3); ctx.fillRect(x*T+4,y*T+4,3,2); }
           else if (ev.kind==="spikes"){ ctx.fillStyle=PAL.boneDim; ctx.fillRect(x*T+1,y*T+4,1,3); ctx.fillRect(x*T+4,y*T+3,1,4); }
@@ -1978,10 +2110,25 @@ function drawDungeon(){
       ctx.globalAlpha=1;
     }
   }
+  const tint=d.opening.tint||[100,95,115];
+  ctx.fillStyle="rgba("+tint[0]+","+tint[1]+","+tint[2]+",0.07)"; ctx.fillRect(0,0,W,H);
   drawHero((d.px-camX)*T,(d.py-camY)*T,false);
-  const g=ctx.createRadialGradient(W/2,H/2-10,60,W/2,H/2,190);
+  const flick=Math.sin(worldTick/13)*4+Math.sin(worldTick/7)*3;
+  const g=ctx.createRadialGradient(W/2,H/2-10,60+flick,W/2,H/2,190+flick*2);
   g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(2,1,4,0.8)");
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="rgba(200,190,170,0.10)";
+  for (let i=0;i<12;i++){
+    const mx=(i*89.7+worldTick*0.18+i*i*13)%W;
+    const my=(i*53.3+worldTick*0.09+14*Math.sin((worldTick/47)+i))%178;
+    ctx.fillRect(Math.floor(mx),Math.floor(my),1,1);
+  }
+  if (worldTick%53===0 && drips.length<6) drips.push({ x:20+((worldTick*97)%280), y:10+((worldTick*31)%40), t:0, sp:1+((worldTick*7)%2) });
+  for (let i=drips.length-1;i>=0;i--){
+    const dr=drips[i]; dr.t++; dr.y+=dr.sp;
+    if (dr.y>168){ drips.splice(i,1); continue; }
+    ctx.fillStyle="rgba(150,180,205,0.4)"; ctx.fillRect(dr.x,Math.floor(dr.y),1,3);
+  }
   const p=game.player;
   box(0,0,196,38,"rgba(6,4,9,0.9)");
   txt(d.opening.name.slice(0,34)+" d"+d.depth+" (dgr "+d.tierNow+")",3,3,PAL.gold);
@@ -2109,7 +2256,7 @@ function drawDie(x,y,v,stopped){
 }
 function renderCombat(){
   const c=game.combat, e=c.e;
-  drawDungeon();
+  if (game.dungeon) drawDungeon(); else drawBase();
   box(90,8,140,88,"rgba(6,4,9,0.9)",PAL.rust);
   ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
   if (e.human) drawHumanFoe(156,36);
@@ -2199,7 +2346,7 @@ function updateTitle(){
 function updateBase(){
   if (uiBlocked()){ updateUI(); return; }
   const mv=dirTap();
-  if (mv){ stopWalk(); tryBaseMove(mv[0],mv[1]); return; }
+  if (mv){ stopWalk(); tryBaseMove(mv[0],mv[1]); maybeMugged(); return; }
   if (walkPath && walkPath.length){
     if (yesTap()||noTap()){ stopWalk(); return; }
     if (++walkTick>=5){
@@ -2418,7 +2565,8 @@ window.__openings={
   openHome, openMarket, updateUI, closeUI, frame, press:(k)=>{ pressed[k.toLowerCase()]=true; },
   curFloor, hurt, die, continueAsChild, saveGame, loadGame,
   earnTitle, checkTitles, foeKnown, hasManeuver, quickActs, actLabel, bonesGame, addr,
-  MANEUVERS,
+  openChurch, maybeMugged, openTavern,
+  MANEUVERS, BUILDINGS, OPENINGS,
   get gDice(){ return gDice; }, get bannerMsg(){ return bannerMsg; }
 };
 </script>
