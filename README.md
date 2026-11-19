@@ -11,7 +11,11 @@ patient. You shouldn't be.
 
 Open `index.html` in a browser (double-click, or `python3 -m http.server` and
 visit `http://localhost:8000`). Everything renders to a 320x180 canvas scaled
-3x, `image-rendering: pixelated`, all art drawn procedurally in code.
+3x, `image-rendering: pixelated`, all art drawn procedurally in code. On touch
+devices the game auto-enters fullscreen when you begin (the **FS** chip in the
+top-right corner toggles it manually). City buildings are drawn as pixel-art
+façades: lit windows, doors, striped awnings, guild banners, the tavern's
+swinging lantern, chimney smoke, and the arched Gate of Openings.
 
 ## Controls — mouse or touch, no overlays
 

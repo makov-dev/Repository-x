@@ -1517,6 +1517,85 @@ function drawHumanFoe(x,y){
 }
 
 /* ----- base render ----- */
+let worldTick=0;
+function drawBuilding(bl, sx, sy){
+  const w=bl.w*T, h=bl.h*T;
+  const rnd=mulberry(bl.x*131+bl.y*17);
+  ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
+  const tw=ctx.measureText(bl.label).width;
+  txt(bl.label, sx+w/2-tw/2, sy-9, "#efe7d4");
+  if (bl.gate){
+    ctx.fillStyle="rgba(6,4,9,0.75)"; ctx.fillRect(sx+2,sy,w-4,h);
+    ctx.fillStyle="#3a2f42";
+    ctx.fillRect(sx,sy,7,h); ctx.fillRect(sx+w-7,sy,7,h);
+    ctx.fillStyle="#574866";
+    ctx.fillRect(sx,sy,7,2); ctx.fillRect(sx+w-7,sy,7,2);
+    ctx.fillRect(sx-2,sy-2,w+4,5);
+    ctx.fillStyle="#241d26"; ctx.fillRect(sx-2,sy+3,w+4,2);
+    const ph=(Math.floor(worldTick/9)%23);
+    ctx.fillStyle= ph<7? PAL.gold : "#8a6f2e";
+    ctx.fillRect(sx+8+ph, sy+10+((ph*5)%22), 2, 2);
+    ctx.fillStyle="rgba(200,150,63,0.16)";
+    ctx.fillRect(sx+7,sy+8,w-14,h-8);
+    return;
+  }
+  ctx.fillStyle="#2e2530"; ctx.fillRect(sx,sy,w,h);
+  ctx.fillStyle="#261e29";
+  for (let x=sx+3;x<sx+w-3;x+=6) ctx.fillRect(x,sy+9,1,h-11);
+  ctx.fillStyle=bl.roof; ctx.fillRect(sx,sy,w,10);
+  ctx.fillStyle="rgba(255,255,255,0.09)"; ctx.fillRect(sx,sy,w,1);
+  ctx.fillStyle="rgba(0,0,0,0.4)"; ctx.fillRect(sx,sy+9,w,1);
+  if (bl.id==="market"||bl.id==="tavern"){
+    for (let x=sx,i=0;x<sx+w-2;x+=6,i++){
+      ctx.fillStyle= i%2? "#4a3226" : "#8f8878";
+      ctx.fillRect(x,sy+10,3,3);
+    }
+  }
+  const cols=Math.max(1,Math.floor((w-12)/14));
+  const rows=Math.max(1,Math.floor((h-20)/15));
+  for (let r=0;r<rows;r++) for (let c=0;c<cols;c++){
+    const wx0=sx+7+c*14, wy0=sy+15+r*15;
+    if (wx0+5>sx+w-5 || wy0+7>sy+h-9) continue;
+    const lit=rnd()<0.55;
+    ctx.fillStyle="rgba(0,0,0,0.55)"; ctx.fillRect(wx0-1,wy0-1,6,8);
+    ctx.fillStyle= lit? "#d8a93f" : "#120d15";
+    ctx.fillRect(wx0,wy0,4,6);
+    if (lit){ ctx.fillStyle="#f7e08a"; ctx.fillRect(wx0+1,wy0+1,1,1); }
+    ctx.fillStyle="rgba(0,0,0,0.45)"; ctx.fillRect(wx0-1,wy0+3,6,1);
+  }
+  if (bl.id==="guild"){
+    for (let i=0;i<2;i++){
+      const bxp=sx+9+i*(w-24);
+      ctx.fillStyle="#4d3f57"; ctx.fillRect(bxp,sy+11,3,13);
+      ctx.fillStyle="#6e5c7a"; ctx.fillRect(bxp,sy+11,3,3);
+    }
+  }
+  if (bl.id==="clinic"){
+    ctx.fillStyle="#c7bfae"; ctx.fillRect(sx+Math.floor(w/2)-7,sy+11,14,2);
+    ctx.fillRect(sx+Math.floor(w/2)-1,sy+8,3,8);
+  }
+  if (bl.id==="tavern"){
+    const sw=Math.sin(worldTick/22)*1.2;
+    const lx=sx+Math.floor(w/2), ly=sy+11;
+    ctx.fillStyle="#241d26"; ctx.fillRect(lx,ly,1,4);
+    ctx.fillStyle= Math.floor(worldTick/26)%2? PAL.gold:"#8a6f2e";
+    ctx.fillRect(lx-1+Math.round(sw),ly+4,3,3);
+  }
+  const dxc=sx+Math.floor(w/2)-2;
+  ctx.fillStyle="#100a10"; ctx.fillRect(dxc-1,sy+h-8,7,8);
+  ctx.fillStyle= bl.home? "#4e3520" : "#2f221a";
+  ctx.fillRect(dxc,sy+h-7,5,7);
+  ctx.fillStyle="#c9a24a"; ctx.fillRect(dxc+4,sy+h-4,1,1);
+  const chx=sx+4, chy=sy-5;
+  ctx.fillStyle="#1d1720"; ctx.fillRect(chx,chy,4,6);
+  for (let i=0;i<3;i++){
+    const ph=(Math.floor(worldTick/14)+i*6)%16;
+    if (ph<10){
+      ctx.fillStyle="rgba(200,190,180,"+(0.28-ph*0.024).toFixed(3)+")";
+      ctx.fillRect(chx+1+((ph+i)%3)-1, chy-2-ph, 2, 2);
+    }
+  }
+}
 function drawBase(){
   ctx.fillStyle="#171219"; ctx.fillRect(0,0,W,H);
   if (!cityGrid) cityGrid=buildCity();
@@ -1545,21 +1624,7 @@ function drawBase(){
     if (bl.home && !game.player.house) continue;
     const sx=(bl.x-camX)*T, sy=(bl.y-camY)*T;
     if (sx>W||sy>H||sx<-200||sy<-80) continue;
-    if (bl.gate){
-      ctx.fillStyle="#efe7d4";
-      const tw=ctx.measureText(bl.label).width;
-      ctx.fillText(bl.label, sx+T*bl.w/2-tw/2, sy-8);
-      continue;
-    }
-    ctx.fillStyle=bl.roof; ctx.fillRect(sx+1,sy+1,(bl.w-2)*T,(bl.h-2)*T);
-    ctx.fillStyle="rgba(0,0,0,0.35)"; ctx.fillRect(sx+1,sy+1,(bl.w-2)*T,2);
-    if (bl.home){
-      ctx.fillStyle="#2c1e14"; ctx.fillRect(sx+4*T,sy+(bl.h-1)*T+1,6,6);
-    }
-    ctx.fillStyle="#efe7d4";
-    ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
-    const tw2=ctx.measureText(bl.label).width;
-    ctx.fillText(bl.label, sx+T*bl.w/2-tw2/2, sy+T*bl.h/2-3);
+    drawBuilding(bl, sx, sy);
     if (bl.id==="tavern"||bl.id==="market"){
       const dxp=(bl.x+Math.floor(bl.w/2)-camX)*T, dyp=(bl.y+bl.h-1-camY)*T;
       drawNPC(dxp, dyp-8, bl.id==="tavern"? PAL.bloodHi : PAL.green);
@@ -1817,6 +1882,7 @@ function renderDead(){
 let mapOpen=false;
 function updateTitle(){
   if (yesTap()){ newGame(); cityGrid=buildCity(); game.state="base";
+    if (("ontouchstart" in window) || (window.matchMedia && window.matchMedia("(pointer:coarse)").matches)) toggleFS();
     say(["Vharn does not greet you. Vharn does not notice you.",
          "You are one more body that owns a knife and an appetite. Unless you become more."]); }
 }
@@ -1996,6 +2062,7 @@ function updateUI(){
 /* ---------------- main loop ---------------- */
 function frame(){
   uiHits=[];
+  worldTick++;
   pollGamepad();
   if (!game) updateTitle();
   else {
