@@ -579,7 +579,10 @@ function sellMenu(){
   const p=game.player;
   const opts=p.inv.filter(i=>i.kind==="loot").map(i=>({
     t:i.n+" x"+i.qty+" - "+fmt(i.v*i.qty),
-    fn:()=>{ const val=i.v*i.qty; p.gold+=val; p.inv.splice(p.inv.indexOf(i),1);
+    fn:()=>{ const val=i.v*i.qty, rar=lootRarity(i.v); p.gold+=val; p.inv.splice(p.inv.indexOf(i),1);
+      coinCascade(2+Math.min(5,Math.floor(val/25))); setFlash("rgba(201,162,74,", 3+Math.min(5,Math.floor(val/20)));
+      sparkBurst(W/2, 92, rar.col, rar.t==="RELIC"? 30: rar.t==="RARE"? 18: 8, 1.4);
+      if (rar.t==="RELIC") setBanner(["A RELIC LEAVES YOUR HANDS","\"Better lights than these, but coin will do.\""]);
       addFloat("+"+fmt(val), PAL.coin, W/2, 92); checkTitles();
       say(["The broker bites the "+i.n+" thoughtlessly, then pays "+fmt(val)+"."], ()=>openMarket()); }
   }));
@@ -587,6 +590,7 @@ function sellMenu(){
   const all=lootValue();
   opts.push({ t:"SELL EVERYTHING ("+fmt(all)+")", fn:()=>{
     p.gold+=all; p.inv=p.inv.filter(i=>i.kind!=="loot");
+    coinCascade(7); setFlash("rgba(201,162,74,", 8); sparkBurst(W/2, 92, PAL.coin, 22, 1.6);
     addFloat("+"+fmt(all), PAL.coin, W/2, 92); checkTitles();
     say(["The broker sweeps your pack onto the scale, pays "+fmt(all)+", and does not ask where any of it came from."], ()=>openMarket());
   } });
@@ -673,6 +677,7 @@ function openChurch(){
           p.gold-=30; advanceWeeks(1);
           game.flags.unburied=[];
           setBanner(["FUNERAL AT CINDERS","You saw them under: "+names.slice(0,42)+"."]);
+          sfx("bell"); setTimeout(()=>sfx("bell"), 700);
           if (p.wounds.length){ p.wounds.splice(0,1);
             say(["Bells. Grave-dirt. Somebody's real tears, maybe yours.","Grief-work closes a wound of your own. ("+names+")"], ()=>openChurch()); }
           else { p.wll=Math.min(10,p.wll+1);
@@ -706,8 +711,9 @@ function train(stat, label){
   if (p.stam<25){ say(["You can barely lift your arms. Rest first."]); return; }
   p.gold-=10; p.stam-=25;
   advanceWeeks(2);
-  if (Math.random()<0.55){ p[stat]+=1; say(["Weeks of drills pay off. "+label+" rises to "+p[stat]+"."]); }
-  else say(["You drill until your hands burn. Nothing comes easy today."]);
+  if (Math.random()<0.55){ p[stat]+=1; sfx("gain"); sparkBurst(W/2, 80, "#e0b95a", 10, 1);
+    say(["Weeks of drills pay off. "+label+" rises to "+p[stat]+"."]); }
+  else { sfx("dud"); say(["You drill until your hands burn. Nothing comes easy today."]); }
   saveGame();
 }
 
@@ -743,7 +749,7 @@ function rosterMenu(){
     else if (np.marriedTo!==null) st="wed to "+np.marriedTo+(np.kids? " ("+np.kids+" children)":"");
     else if (np.parentOfYou) st="your parent, still pouring one for your old life";
     else st="unattached";
-    return { t:np.name.split(" ")[0]+" - "+age+"y - "+st, fn:openTavern };
+    return { t:np.name.split(" ")[0]+" - "+age+"y - "+st, fn:()=>{ voiceSfx(np.name); openTavern(); } };
   });
   showMenu("THE ROOM TONIGHT", rows.concat([{t:"Back", fn:openTavern}]));
 }
@@ -783,6 +789,7 @@ function courtWith(){
                : "She has wed "+pt.marriedTo+" while you emptied rooms of their horrors."], ()=>openTavern());
     return;
   }
+  voiceSfx(pt.name);
   showMenu(pt.name+" ("+Math.floor(pt.ageWeeks/52)+"y) - "+affWord(pt.aff), [
     { t:"Talk", fn:()=>partnerTalk(pt) },
     { t:"Give a gift", fn:()=>giftMenu(pt) },
@@ -835,6 +842,7 @@ function proposeCourt(){
   }
   useFromInv("Bone Ring");
   p.spouse=pt; p.partner=null; pt.aff=100; pt.marriedTo="you";
+  sfx("bell"); setTimeout(()=>sfx("bell"), 700); setTimeout(()=>sfx("bell"), 1400);
   earnTitle("Wed Under the Lamp");
   say([pt.name+" turns the ring in the tallow light. Then she closes your hand over it.",
        "\"Wear it till I put it back on you properly. Home. Tonight.\"",
@@ -844,6 +852,7 @@ function proposeCourt(){
 }
 function spouseScene(){
   const p=game.player;
+  voiceSfx(p.spouse.name);
   say(["You sit with "+p.spouse.name+" ("+Math.floor(p.spouse.ageWeeks/52)+"y). For a while, the city is just noise outside your own four walls.",
        "\"Stamina up,\" "+p.spouse.name.split(" ")[0]+" mutters into your shoulder. That is married for 'I love you.'"], ()=>openTavern());
 }
@@ -1346,6 +1355,7 @@ function shrineEvent(ev){
 function meetAdventurer(){
   const p=game.player;
   const who=pick(ADV_NAMES);
+  voiceSfx(who);
   const kind=Math.random();
   if (kind<0.45){
     showText(["A lantern bobs into view: another delver - "+who+", by the gear, someone who has crawled deeper than you."], ()=>{
@@ -1438,6 +1448,7 @@ function die(cause){
   const p=game.player;
   game.combat=null;
   sfx("lose");
+  setTimeout(()=>sfx("bell"), 700); setTimeout(()=>sfx("bell"), 1400); setTimeout(()=>sfx("bell"), 2100);
   const age=Math.floor(game.week/52);
   const ep=[ "You die at "+age+". "+cause ];
   if (p.child && p.child.weeks>=728){
@@ -1476,6 +1487,8 @@ function startCombat(enemy){
   const origin= game.state==="base"? "base":"dungeon";
   game.combat={ e:enemy, log:["The "+enemy.n+" comes out of the dark.", lore], turn:"player", choice:0, guard:false, won:false, critKill:false, riposte:false, origin:origin };
   if (!foeKnown(enemy.n)) game.combat.log.push("You have never seen its like up close. Survive it, and you will know it.");
+  game.combat.intro = foeKnown(enemy.n)? 0 : 46;
+  sfx("growl");
   game.state="combat";
 }
 function clog(s){ const c=game.combat; c.log.push(s); if (c.log.length>4) c.log.shift(); }
@@ -1508,6 +1521,7 @@ function rollDiceFrame(){
 function sixesOf(v1,v2){ return (v1===6?1:0)+(v2===6?1:0); }
 function combatPlayerAction(a){
   const c=game.combat, e=c.e;
+  if (c.intro) c.intro=0;
   if (c.turn!=="player"||game.state!=="combat"||c.dice) return;
   if (a==="repeat"){ if (!game.player.lastAction) return; a=game.player.lastAction; }
   game.player.lastAction=a;
@@ -1546,7 +1560,7 @@ function resolvePlayerAction(a,v1,v2){
       e.hp-=dmg;
       clog("RIPOSTE. Your steel answers before it finishes. (-"+dmg+")");
       addFloat("RIPOSTE -"+dmg, PAL.coin, W/2, 95); kicker();
-      sfx("crit"); sparkBurst(W/2, 90, "#e0b95a", 26, 1.6);
+      critPulse=8; sfx("crit"); sparkBurst(W/2, 90, "#e0b95a", 26, 1.6);
       if (e.hp<=0){ c.critKill=true; winCombat(); return; }
     } else {
     let dmg=Math.max(1, playerAtk()-irnd(2));
@@ -1556,7 +1570,7 @@ function resolvePlayerAction(a,v1,v2){
       e.hp-=dmg;
       clog("TWIN SIXES. You strike like a verdict. (-"+dmg+")");
       addFloat("CRIT -"+dmg, PAL.coin, W/2, 95); kicker();
-      sfx("crit"); sparkBurst(W/2, 90, "#e0b95a", 26, 1.6); setFlash("rgba(201,162,74,", 6);
+      critPulse=8; sfx("crit"); sparkBurst(W/2, 90, "#e0b95a", 26, 1.6); setFlash("rgba(201,162,74,", 6);
       if (e.hp<=0){ c.critKill=true; winCombat(); return; }
     } else {
       e.hp-=dmg;
@@ -1572,7 +1586,7 @@ function resolvePlayerAction(a,v1,v2){
       e.hp-=dmg;
       if (crown) c.critKill=true;
       addFloat((crown? "CRIT -":"-")+dmg, crown? PAL.coin:PAL.bloodHi, W/2, 95);
-      if (crown){ kicker(); sfx("crit"); sparkBurst(W/2, 90, "#e0b95a", 26, 1.6); } else sfx("hit");
+      if (crown){ kicker(); critPulse=8; sfx("crit"); sparkBurst(W/2, 90, "#e0b95a", 26, 1.6); } else sfx("hit");
       clog(crown? "TWIN SIXES - a deep, mean, senseless cut. (-"+dmg+")"
                 : "A deep, mean cut. "+e.n+" shrieks like a kettle. (-"+dmg+")");
     } else {
@@ -1695,6 +1709,7 @@ function endCombat(){
 let floats=[], shakeT=0, bannerMsg=null, bannerT=0, gDice=null, drips=[];
 let sparks=[], flashCol=null, flashT=0;
 let sndOn=true, AC=null;
+let critPulse=0, droneNodes=[], droneOpen=null, rainNodes=null;
 function ac(){
   if (!AC){ try { AC = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){ AC=null; } }
   if (AC && AC.state==="suspended"){ try { AC.resume(); } catch(e){} }
@@ -1728,6 +1743,10 @@ function sfx(name){
     case "lose":   beep(220, 0.22, "sawtooth", 0.06, 100); break;
     case "banner": beep(784, 0.08, "triangle", 0.04); setTimeout(()=>beep(1046, 0.12, "triangle", 0.04), 80); break;
     case "heart":  beep(65, 0.1, "sine", 0.10); break;
+    case "gain":   beep(587, 0.07, "triangle", 0.05); setTimeout(()=>beep(880, 0.11, "triangle", 0.05), 70); break;
+    case "dud":    beep(140, 0.12, "sawtooth", 0.05, 90); break;
+    case "growl":  beep(160, 0.28, "sawtooth", 0.06, 70); break;
+    case "bell":   beep(196, 1.0, "sine", 0.07); break;
   }
 }
 function toggleSnd(){ sndOn=!sndOn; if (sndOn) sfx("click"); }
@@ -1741,6 +1760,96 @@ function sparkBurst(x,y,col,n,sp){
   }
 }
 function updSndUnlock(){ if (sndOn) ac(); }
+function stopDrone(){
+  if (AC && droneNodes.length){
+    for (const n of droneNodes){
+      try {
+        n.g.gain.cancelScheduledValues(AC.currentTime);
+        n.g.gain.setValueAtTime(n.g.gain.value||0.0001, AC.currentTime);
+        n.g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime+0.5);
+        n.s.stop(AC.currentTime+0.6);
+      } catch(e){}
+    }
+  }
+  droneNodes=[]; droneOpen=null;
+}
+function startDrone(name){
+  stopDrone(); droneOpen=name;
+  if (!sndOn) return;
+  const a=ac(); if (!a) return;
+  try {
+    const f= name.indexOf("Cessgate")>=0? 55 : name.indexOf("Ossuary")>=0? 65.41 : 49;
+    for (const v of [["sawtooth",1,0.02],["sine",1.007,0.03]]){
+      const o=a.createOscillator(), g=a.createGain();
+      o.type=v[0]; o.frequency.value=f*v[1];
+      g.gain.setValueAtTime(0.0001, a.currentTime);
+      g.gain.exponentialRampToValueAtTime(v[2], a.currentTime+2.2);
+      const lfo=a.createOscillator(), lg=a.createGain();
+      lfo.type="sine"; lfo.frequency.value=0.11+Math.random()*0.22; lg.gain.value=f*0.015;
+      lfo.connect(lg); lg.connect(o.frequency);
+      let tail=g;
+      if (a.createBiquadFilter){
+        const lp=a.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=420;
+        g.connect(lp); tail=lp;
+      }
+      o.connect(g); tail.connect(a.destination);
+      o.start(); lfo.start();
+      droneNodes.push({s:o,g:g},{s:lfo,g:lg});
+    }
+  } catch(e){ if (droneNodes.length) stopDrone(); }
+}
+function startRain(){
+  if (!sndOn || rainNodes) return;
+  const a=ac(); if (!a || !a.createBuffer) return;
+  try {
+    const len=Math.floor(2*a.sampleRate), buf=a.createBuffer(1,len,a.sampleRate), d=buf.getChannelData(0);
+    for (let i=0;i<len;i++) d[i]=Math.random()*2-1;
+    const s=a.createBufferSource(); s.buffer=buf; s.loop=true;
+    const g=a.createGain();
+    g.gain.setValueAtTime(0.0001, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.012, a.currentTime+1.4);
+    if (a.createBiquadFilter){
+      const lp=a.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=900;
+      s.connect(lp); lp.connect(g);
+    } else s.connect(g);
+    g.connect(a.destination); s.start();
+    rainNodes={s:s,g:g};
+  } catch(e){ rainNodes=null; }
+}
+function stopRain(){
+  if (!rainNodes) return;
+  if (AC){ try {
+    rainNodes.g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime+0.5);
+    rainNodes.s.stop(AC.currentTime+0.7);
+  } catch(e){} }
+  rainNodes=null;
+}
+function updateAmbience(){
+  if (!game || !sndOn){ stopDrone(); stopRain(); return; }
+  if (game.state==="dungeon" || (game.state==="combat" && game.dungeon)){
+    stopRain();
+    const nm=game.dungeon.opening.name;
+    if (droneOpen!==nm) startDrone(nm);
+  } else if (game.state==="base"){
+    stopDrone(); startRain();
+  } else {
+    stopDrone(); stopRain();
+  }
+}
+function voiceSfx(who){
+  if (!sndOn) return;
+  const a=ac(); if (!a) return;
+  const semis=[0,3,5,7,10,12,15,17];
+  let h=0; for (let i=0;i<who.length;i++) h=(h*31+who.charCodeAt(i))>>>0;
+  const base=200+(h%200);
+  for (let i=0;i<3;i++){
+    const st=semis[(h>>>(i*4))%semis.length];
+    setTimeout(()=>beep(base*Math.pow(2,st/12), 0.09, "triangle", 0.028), i*110);
+  }
+}
+function coinCascade(n){
+  for (let i=0;i<n;i++) setTimeout(()=>sfx("coin"), i*90);
+}
 function addFloat(s,col,x,y){
   if (floats.length>14) floats.shift();
   floats.push({ s:s, col:col||"#e8e0cf", x:(x==null? W/2-20+(irnd(40)-10):x), y:(y==null? 90:y), t:0 });
@@ -2102,6 +2211,15 @@ function drawBase(){
       });
     }
   }
+  ctx.strokeStyle="rgba(120,140,165,0.15)";
+  for (let di=0; di<26; di++){
+    const dxr=((di*97 + worldTick*(2+(di%3)))%330)-5, dyr=((worldTick*2.6 + di*31)%195)-6;
+    ctx.beginPath(); ctx.moveTo(dxr,dyr); ctx.lineTo(dxr-1.4,dyr+7); ctx.stroke();
+  }
+  for (let fb=0; fb<3; fb++){
+    const fy=26+fb*52+Math.sin(worldTick/110+fb*2.1)*7;
+    ctx.fillStyle="rgba(150,165,185,0.045)"; ctx.fillRect(0,fy,W,16);
+  }
   const p=game.player;
   box(0,0,148,38,"rgba(8,6,10,0.92)");
   txt(p.name+"  "+Math.floor(game.week/52)+"y  "+fmt(p.gold),3,3,PAL.gold);
@@ -2181,6 +2299,9 @@ function drawDungeon(){
   const g=ctx.createRadialGradient(W/2,H/2-10,60+flick,W/2,H/2,190+flick*2);
   g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(2,1,4,0.8)");
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  const wg=ctx.createRadialGradient(W/2,H/2-16,18,W/2,H/2-16,120);
+  wg.addColorStop(0,"rgba(255,150,44,0.055)"); wg.addColorStop(1,"rgba(255,150,44,0)");
+  ctx.fillStyle=wg; ctx.fillRect(0,0,W,H);
   ctx.fillStyle="rgba(200,190,170,0.10)";
   for (let i=0;i<12;i++){
     const mx=(i*89.7+worldTick*0.18+i*i*13)%W;
@@ -2340,6 +2461,18 @@ function drawDie(x,y,v,stopped){
 function renderCombat(){
   const c=game.combat, e=c.e;
   if (game.dungeon) drawDungeon(); else drawBase();
+  if (c.intro>0){
+    ctx.fillStyle="rgba(4,2,8,0.88)"; ctx.fillRect(0,0,W,H);
+    if (e.human) drawHumanFoe(120,26); else drawAbomination(160,20,e.artSeed,2.1);
+    txt("- SOMETHING NEW -",112,102,"#c99df5");
+    const lore=(c.log[1]||e.n), lw=wrap(String(lore),54);
+    txt(lw[0],6,116,"#a89d90");
+    if (lw[1]) txt(lw[1].slice(0,54),6,126,"#a89d90");
+    txt("tap or Z to steel yourself",96,166,"#7a7183");
+    hit(0,0,W,H,()=>{ c.intro=0; });
+    cornerChips();
+    return;
+  }
   box(90,8,140,88,"rgba(6,4,9,0.9)",PAL.rust);
   ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
   if (e.human) drawHumanFoe(156,36);
@@ -2526,6 +2659,11 @@ function leaveDungeon(){
 function updateCombat(){
   const c=game.combat;
   if (!c) return;
+  if (c.intro>0){
+    if (yesTap()||tap("x")) c.intro=0;
+    else c.intro--;
+    return;
+  }
   if (c.dice){
     if (game.player.hp<=game.player.maxhp*0.25 && worldTick%26===0) sfx("heart");
     rollDiceFrame(); return;
@@ -2608,6 +2746,8 @@ function frame(){
   uiHits=[];
   worldTick++;
   pollGamepad();
+  updateAmbience();
+  if (critPulse>0) critPulse--;
   if (gDice){ rollDiceFrame(); }
   else if (!game) updateTitle();
   else {
@@ -2616,8 +2756,14 @@ function frame(){
     else if (game.state==="combat") updateCombat();
     else if (game.state==="dead"||game.state==="legacy") updateDead();
   }
-  const shk = shakeT>0 && !gDice;
-  if (shk){ ctx.save(); ctx.translate(irnd(3)-1, irnd(3)-1); }
+  const shk = (shakeT>0 || critPulse>0) && !gDice;
+  if (shk){
+    ctx.save(); ctx.translate(irnd(3)-1, irnd(3)-1);
+    if (critPulse>0 && ctx.scale){
+      const ps=1+critPulse/90;
+      ctx.translate(W/2,H/2); ctx.scale(ps,ps); ctx.translate(-W/2,-H/2);
+    }
+  }
   if (!game) renderTitle();
   else {
     if (game.state==="base") drawBase();
@@ -2651,9 +2797,10 @@ window.__openings={
   openHome, openMarket, updateUI, closeUI, frame, press:(k)=>{ pressed[k.toLowerCase()]=true; },
   curFloor, hurt, die, continueAsChild, saveGame, loadGame,
   earnTitle, checkTitles, foeKnown, hasManeuver, quickActs, actLabel, bonesGame, addr,
-  openChurch, maybeMugged, openTavern,
+  openChurch, maybeMugged, openTavern, voiceSfx, coinCascade, updateAmbience,
   MANEUVERS, BUILDINGS, OPENINGS, sfx, toggleSnd,
-  get gDice(){ return gDice; }, get bannerMsg(){ return bannerMsg; }
+  get gDice(){ return gDice; }, get bannerMsg(){ return bannerMsg; },
+  get droneOpen(){ return droneOpen; }
 };
 </script>
 </body>

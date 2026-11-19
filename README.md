@@ -115,9 +115,30 @@ an auto-walk in progress.
    **Sound & fury.** The game hums with procedural square-wave grit:
    dice tick while they spin, a **chime when you catch a six**, a sting
    for crits, thuds for hits, blood-flash on wounds, coin-jingle on
-   payout, a heartbeat during the Last Stand. Crits throw gold sparks;
-   relics throw violet ones. Every flash, shake, and shout can be
-   silenced with the SND chip.
+   payout, a heartbeat during the Last Stand. Crits throw gold sparks
+   and **punch the screen** — the whole world lurches and swells around
+   the blow. Every flash, shake, and shout can be silenced with the
+   SND chip.
+
+   **The openings have voices too.** Each gate sounds like itself: the
+   Cessgate drones a low sewer-note at 55Hz, the Ossuary hums a dry
+   tone that belongs to old bone, the Cathedral under the roots
+   breathes a near-subsonic cathedral pitch — detuned saws and sines,
+   wobbling slowly through a lowpass, fading in as you arrive and away
+   when you climb out. Back in Vharn the street-ambience is a soft
+   looped rain hiss under the lamp haze. New things in the dark get a
+   **cinematic entrance**: screen darkens, the thing drawn large and
+   twice its fight size, its lore written across the dark — *- SOMETHING
+   NEW -* — until you tap to steel yourself. Repeat meetings skip it.
+
+   People have small music as well: every named NPC has a three-note
+   voice motif hashed out of their name, so Sera always sounds a little
+   different from Mila when they speak. Sell loot at the market and
+   the broker's coins **cascade** out one by one — worthier hauls ring
+   longer, relics spark out violet with their banner. Training arcs
+   bright when a stat rises and lands flat and sour when the week
+   buys nothing. Weddings toll the Cinders bell three times; funerals
+   twice; and when you die, three long tolls walk you under.
 
    **After the fight:** killed foes are carved into your bestiary — first
    meetings show only a description and "vitals unknown"; survive a kill
