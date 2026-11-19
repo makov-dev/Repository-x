@@ -1,0 +1,1917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OPENINGS - Delvings of Old Vharn</title>
+<style>
+  html,body{margin:0;padding:0;background:#0a0709;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:monospace;touch-action:manipulation;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:960px;max-width:100vw;height:auto;aspect-ratio:16/9;box-shadow:0 0 60px #000;background:#0d0b10;}
+  #hint{color:#4d4453;font-size:12px;margin-top:8px;letter-spacing:1px;padding:0 8px;text-align:center;}
+  #pad{display:none;justify-content:space-between;align-items:center;width:min(960px,100vw);margin-top:8px;padding:0 14px;box-sizing:border-box;}
+  #pad button{width:54px;height:54px;border-radius:50%;border:2px solid #372c3a;background:#1b151c;color:#c7bfae;font-size:18px;font-family:monospace;touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;padding:0;}
+  #pad button.on{background:#372c3a;color:#e0b95a;}
+  #pad .big{width:66px;height:66px;font-size:22px;}
+  #dpad{display:grid;grid-template-columns:54px 54px 54px;grid-template-rows:54px 54px 54px;gap:2px;}
+  #dpad button[data-k=ArrowUp]{grid-area:1/2;}
+  #dpad button[data-k=ArrowLeft]{grid-area:2/1;}
+  #dpad button[data-k=ArrowRight]{grid-area:2/3;}
+  #dpad button[data-k=ArrowDown]{grid-area:3/2;}
+  #dpad .c{grid-area:2/2;border:none;background:transparent;pointer-events:none;}
+  #abtns{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+</style>
+</head>
+<body>
+<canvas id="cv" width="320" height="180"></canvas>
+<div id="hint">ARROWS/WASD move | Z/ENTER confirm | X/ESC back | M map (dungeon) | F5 quicksave | GAMEPAD: stick/D-pad move | A/z confirm | B/x back | START = enter | Y = map</div>
+<div id="pad">
+  <div id="dpad">
+    <button data-k="ArrowUp">▲</button>
+    <button data-k="ArrowLeft">◀</button>
+    <button class="c"></button>
+    <button data-k="ArrowRight">▶</button>
+    <button data-k="ArrowDown">▼</button>
+  </div>
+  <div id="abtns">
+    <button id="fsbtn">FS</button>
+    <button data-k="F5">SAV</button>
+    <button data-k="m">MAP</button>
+    <button data-k="Enter">⏎</button>
+    <button data-k="x">X</button>
+    <button data-k="z" class="big">Z</button>
+  </div>
+</div>
+<script>
+"use strict";
+/* OPENINGS - a gritty pixel delving life-sim (draft) */
+
+const CVS = document.getElementById("cv");
+const ctx = CVS.getContext("2d");
+ctx.imageSmoothingEnabled = false;
+
+const W = 320, H = 180, T = 8;
+const VW = 40, VH = 22;
+
+/* ---------------- utils ---------------- */
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function irnd(n){ return Math.floor(Math.random()*n); }
+function pick(a){ return a[irnd(a.length)]; }
+function d10(){ return 1+irnd(10); }
+function fmt(n){ return Math.floor(n)+"g"; }
+function cap(s){ return s? s.charAt(0).toUpperCase()+s.slice(1) : s; }
+function mulberry(seed){ let t=seed>>>0; return function(){ t+=0x6D2B79F5; let r=Math.imul(t^(t>>>15),1|t); r^=r+Math.imul(r^(r>>>7),61|r); return ((r^(r>>>14))>>>0)/4294967296; }; }
+
+/* ---------------- input ---------------- */
+const keys = {};
+const pressed = {};
+window.addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  if (["arrowup","arrowdown","arrowleft","arrowright"," "].indexOf(k)>=0) e.preventDefault();
+  if (!keys[k]) pressed[k] = true;
+  keys[k] = true;
+  if (k==="f5"){ e.preventDefault(); if (game) saveGame(); }
+  if (k==="f9"){ e.preventDefault(); loadGame(); }
+});
+window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+function tap(k){ if (pressed[k]) { pressed[k]=false; return true; } return false; }
+function dirTap(){
+  if (tap("arrowup")||tap("w")) return [0,-1];
+  if (tap("arrowdown")||tap("s")) return [0,1];
+  if (tap("arrowleft")||tap("a")) return [-1,0];
+  if (tap("arrowright")||tap("d")) return [1,0];
+  return null;
+}
+function endFrame(){ for (const k in pressed) pressed[k]=false; }
+
+/* ---------------- gamepad ---------------- */
+const gpHold={}, gpPrev={};
+function pollGamepad(){
+  if (typeof navigator==="undefined" || !navigator.getGamepads) return;
+  let pads=null;
+  try { pads=navigator.getGamepads(); } catch(e){ return; }
+  let gp=null;
+  for (const g of pads){ if (g && g.connected){ gp=g; break; } }
+  if (!gp) return;
+  const btn=i=>!!(gp.buttons[i] && gp.buttons[i].pressed);
+  const dx=gp.axes[0]||0, dy=gp.axes[1]||0;
+  const dirs={
+    arrowup:    btn(12) || dy<-0.5,
+    arrowdown:  btn(13) || dy> 0.5,
+    arrowleft:  btn(14) || dx<-0.5,
+    arrowright: btn(15) || dx> 0.5
+  };
+  for (const k in dirs){
+    if (dirs[k]){
+      gpHold[k]=(gpHold[k]||0)+1;
+      if (gpHold[k]===1 || gpHold[k]%8===0) pressed[k]=true;
+    } else gpHold[k]=0;
+  }
+  const acts={ z:btn(0), x:btn(1), enter:btn(9), escape:btn(8), m:btn(3), f5:btn(2) };
+  for (const k in acts){
+    if (acts[k] && !gpPrev[k]) pressed[k]=true;
+    gpPrev[k]=acts[k];
+  }
+}
+function yesTap(){ return tap("z")||tap("enter")||tap(" "); }
+function noTap(){ return tap("x")||tap("escape"); }
+
+/* ---------------- palette ---------------- */
+const PAL = {
+  void:"#0d0b10", wall:"#241d26", wallHi:"#372c3a", floor:"#1b151c", floorHi:"#241c26",
+  blood:"#6e2230", bloodHi:"#8a2f3d", flesh:"#6e2f38", bone:"#c7bfae", boneDim:"#8f8878",
+  gold:"#c9a24a", coin:"#e0b95a", stone:"#3b3540", rust:"#7a4a2e", green:"#3f6a3a",
+  skin:"#b98a6f", ink:"#161018"
+};
+
+/* ---------------- data: world ---------------- */
+const OPENINGS = [
+  { name:"The Weeping Cessgate", tier:1, desc:"Storm-drains beneath the tannery quarter. Things grow fat in the dark water." },
+  { name:"Ossuary of the Gilded Ward", tier:2, desc:"An old burial district the city built over. The gold stayed with the dead." },
+  { name:"The Cathedral Under Roots", tier:3, desc:"A temple older than Vharn. The roots drink something that is not water." }
+];
+
+const LOOT = [
+  { n:"Molar Crown", v:55, w:2 },
+  { n:"Jar of Rendered Fat", v:18, w:4 },
+  { n:"Fingerbone Rosary", v:32, w:3 },
+  { n:"Fossilized Tear", v:40, w:2 },
+  { n:"Cured Vermin Pelt", v:14, w:4 },
+  { n:"Choirbell Fragment", v:70, w:1 },
+  { n:"Wet Ledger Page", v:9, w:5 },
+  { n:"Gilded Femur", v:65, w:2 },
+  { n:"Bileglass Vial", v:28, w:3 },
+  { n:"Tongue of a Saint", v:85, w:1 },
+  { n:"Tangled Gold Wire", v:22, w:3 },
+  { n:"Skin-Map of Vharn", v:75, w:1 }
+];
+
+const RIDDLES = [
+  { q:"A mouth that never eats, a bed that never sleeps. Held, it warms you; dropped, it weeps.", a:["A torch","A heart","A well"], c:0 },
+  { q:"We were many, now one wall. Listen close and hear our call.", a:["Stacked bones","Bells","Roots"], c:0 },
+  { q:"The city drinks me and does not wake. What am I?", a:["Rain","Blood","Coin"], c:0 },
+  { q:"Feed me and I grow fat. Starve me and I sing thin and high.", a:["A fire","A bell","A child"], c:1 },
+  { q:"I follow the lantern but fear the flame. I am gone by morning. Name me.", a:["A rat","A shadow","A rumor"], c:1 }
+];
+
+const HORRORS = {
+  1: [
+    { n:"Grinworm Cluster", hp:9,  atk:2, tr:null },
+    { n:"Milk-Toothed Thing", hp:12, atk:3, tr:null },
+    { n:"Raft of Skin", hp:14, atk:2, tr:"grasp" },
+    { n:"Gutter-Weeping Wretch", hp:11, atk:3, tr:null }
+  ],
+  2: [
+    { n:"Bile Priest of the Ninth Seam", hp:20, atk:4, tr:"weep" },
+    { n:"The Sutured Bride", hp:24, atk:5, tr:"grasp" },
+    { n:"Molar Colossus", hp:30, atk:4, tr:null },
+    { n:"Flayed Choir", hp:18, atk:5, tr:"swarm" }
+  ],
+  3: [
+    { n:"The Hundred-Handed Host", hp:38, atk:6, tr:"grasp" },
+    { n:"Pale Chandelier", hp:34, atk:7, tr:"swarm" },
+    { n:"Wound-Warden of the Deep Ward", hp:44, atk:6, tr:"weep" },
+    { n:"The Long Mother", hp:55, atk:8, tr:null }
+  ]
+};
+
+const ADV_NAMES = ["Halvard","Sessa","Dree","Old Maud","Ketch","Ilbre","Vosk","Brother Ansel","Renta the Squint","Loom"];
+
+const NPC_BASE = [
+  { name:"Mira of the Bonecandle Shop", desc:"Candlemaker. Her wicks are dipped in tallow that is not all from animals.", age:22,
+    talks:[
+      "\"The Tallow Guild holds the notes on my shop. Fourteen more years at the current rate. I counted. On bad weeks, I count twice.\"",
+      "\"A candle for the dead costs a Penny of Cinders. A candle for the living costs more. It is cheaper to die here. Some nights that helps.\"",
+      "\"I came up from the salt farms with a dowry and a debt. The dowry went first. The debt stayed.\"",
+      "\"Down there, keep your hands where the dark can see them.\""
+    ]},
+  { name:"Sergeant Osk", desc:"Discharged wall-sergeant. Ordered the charge at the Ward Nine bread riot, then drank her memory of it. The Lamp pours for her free.", age:24,
+    talks:[
+      "\"I did three things in that riot I will not set down. The Lamp lets me drink free. That is the whole arithmetic.\"",
+      "\"Everyone in Vharn arrived running from something. The ones who say otherwise are still running.\"",
+      "\"If you die down there, I will not mourn pretty. I'll be angry.\"",
+      "\"Guarding is easy. It is the evenings that require discipline.\""
+    ]},
+  { name:"Yeva of the Drowned Ward", desc:"Salvage-diver. Cold hands, warm grin, teeth like river stones. Her brother is under the ferry pier. So is his debt.", age:20,
+    talks:[
+      "\"My brother owed the ferry-folk more than he had. His body settled it. They still send me his notes. Politeness.\"",
+      "\"The Ward taught me to hold my breath and to count money. One of these saved my life.\"",
+      "\"Marry me and you get the grin, the teeth, and the notes. All three, no returns.\"",
+      "\"You smell like the deep city. Not an insult. A warning.\""
+    ]},
+  { name:"Corsvine, late of the Kinder Knives", desc:"Cutpurse lying low in the one city where being hunted is a kind of anonymity.", age:26,
+    talks:[
+      "\"The Kindly Fellows hold my notes from three cities. If they ever find me here, do me the kindness of drowning me first.\"",
+      "\"I could leave Vharn. So could a fish. Neither of us would get far.\"",
+      "\"I stole a wedding ring once. Sold it within the hour. Now look at me. Courting like an honest woman.\"",
+      "\"Trust knives over promises. A knife is honest about its edge.\""
+    ]},
+  { name:"Liss of the Ash Roads", desc:"Walked out of the plague-ash villages because standing still had become the faster way to die.", age:25,
+    talks:[
+      "\"The city does not care who you were. That struck me as mercy, the day I arrived. I ration the mercy nightly.\"",
+      "\"Out there the end was the fields going grey. In here the end has a face, and a queue.\"",
+      "\"I stopped planning for later years ago. Now I plan for Tuesdays.\"",
+      "\"Nobody comes to Vharn because they want it. They come because the alternative stopped arguing.\""
+    ]},
+  { name:"Hesta Wren", desc:"Chandler's widow. Her husband went into the openings eleven months ago. His lamp still burns on her sill.", age:29,
+    talks:[
+      "\"Eleven months. The Guild says past a year the door is considered a grave. The paper for that costs more than the words.\"",
+      "\"I will not ask you to quit the openings. I will ask you to tell me the true count of the days you are gone.\"",
+      "\"The lamp on my sill is not hope. It is bookkeeping. But I keep it fed.\"",
+      "\"Twice-widowed women in Vharn are considered a caution. I consider it experience.\""
+    ]}
+];
+const GENERIC_TALKS = [
+  "\"Marry me someday and I'll still make you wash before bed.\"",
+  "\"Vharn keeps nobody but keeps everybody. Think on that over your soup.\"",
+  "\"The city grinds fine. We are the grit in it.\""
+];
+const NPC_ARRIVAL_NAMES = [
+  "Sela Twomey","Katri of the Second Stair","Ilse Varn","Bren of the Salt Road",
+  "Odile the Quiet","Reyna Marsh","Tam of the Tar Yards","Vess Kell",
+  "Perna of the Ash Gate","Dice Callow","Omma Brand","Wick of Ward Nine"
+];
+const NPC_ARRIVAL_DESCS = [
+  "Drifted in with the autumn carts. Owes the tar-yard four marks and a favor she does not discuss.",
+  "Left the salt farms when the fields went grey. Says 'temporary'. Has said it for three years.",
+  "Took a burden-lash sentence for another person's theft. Walks with the truth of it in her shoulder.",
+  "Ex-clerk of a toll-house that burned. The fire took the ledgers and, with them, who owed what.",
+  "Her caravan never made the pass. She did. She has not explained further.",
+  "Came to be where nobody knows her name. Vharn obliged within a week.",
+  "Owes the Kindly Fellows a sum she rounds down out of pride.",
+  "Stands at the pier most dawns, counting the boats that come back."
+];
+const NPC_SPOUSES = [
+  "a roper from Ward 6","the ferryman of the Cessgate","Brother Ansel","the undertaker's boy",
+  "Sessa the delver","a tallow merchant","the lamplighter","Ketch",
+  "a smuggler off the Tar Docks","the one holding her debt-notes"
+];
+
+const UPGRADES = [
+  { id:"leak",   n:"Leakproofing",    cost:120, d:"Monsoon rains no longer soak your bed. Max stamina +15." },
+  { id:"hearth", n:"Warm Hearth",     cost:180, d:"Your spouse keeps broth on the fire. Resting restores much more." },
+  { id:"nursery",n:"Nursery",         cost:260, d:"A small room with a smooth cradle. Allows children." },
+  { id:"cellar", n:"Deep Cellar",     cost:200, d:"Room for loot below the floorboards. Inventory +8 slots. Spouse salvages coin." },
+  { id:"door",   n:"Reinforced Door", cost:150, d:"Thieves stop using your keyhole as a mailbox." }
+];
+
+/* ---------------- player & game state ---------------- */
+let game = null;
+function newGame(){
+  game = {
+    state:"base",
+    week: Math.floor(17*52),
+    player: {
+      name:"Ash",
+      str:3, agi:3, wit:3, wll:3,
+      hp:22, maxhp:22,
+      stam:100, maxstam:100,
+      gold:40,
+      weapon:{n:"Rusted Knife", d:2},
+      armor:{n:"Padded Rags", a:1},
+      inv:[ {n:"Ration", v:8, qty:3, kind:"food"}, {n:"Bandage", v:10, qty:1, kind:"heal"} ],
+      wounds:[],
+      house:null, upgrades:[],
+      spouse:null, partner:null, tryChild:0, child:null,
+      kills:0, delves:0, deep:0
+    },
+    base:{ px:20, py:15 },
+    dungeon:null,
+    combat:null,
+    ui:{ mode:null, menu:null, dialog:null, onclose:null, oncancel:null },
+    flags:{ news:[] },
+    npcClock:0,
+    npcs: NPC_BASE.map(b=>({ name:b.name, desc:b.desc, age:b.age, ageWeeks:b.age*52, talks:(b.talks||GENERIC_TALKS).slice(),
+      marriedTo:null, dead:false, widowed:false, kids:0, parentOfYou:false, aff:0, met:false }))
+  };
+}
+
+function maxStam(){
+  const p=game.player;
+  return 100 + (p.upgrades.indexOf("leak")>=0?15:0);
+}
+function invCap(){ return 10 + (game.player.upgrades.indexOf("cellar")>=0?8:0); }
+function healPerRest(){
+  const p=game.player;
+  let h=8;
+  if (p.spouse) h+=6;
+  if (p.upgrades.indexOf("hearth")>=0) h+=10;
+  return h;
+}
+
+/* ---------------- UI primitives ---------------- */
+function showText(lines, cb){
+  game.ui.mode="text";
+  game.ui.dialog={ lines:lines, i:0 };
+  game.ui.onclose=cb||null;
+}
+function showMenu(title, opts, oncancel){
+  game.ui.mode="menu";
+  game.ui.menu={ title:title, opts:opts, sel:0 };
+  game.ui.oncancel=oncancel||null;
+}
+function closeUI(){ game.ui.mode=null; game.ui.menu=null; game.ui.dialog=null; game.ui.onclose=null; game.ui.oncancel=null; }
+function uiBlocked(){ return game.ui.mode!==null; }
+function say(lines, cb){ showText(lines, cb); }
+
+/* ---------------- item helpers ---------------- */
+function addItem(n, v, kind, qty){
+  qty = qty||1;
+  const p=game.player;
+  for (const it of p.inv){ if (it.n===n && it.kind===kind){ it.qty+=qty; return true; } }
+  if (p.inv.length>=invCap()){ say(["Your pack is stuffed to bursting. You leave the "+n+" in the dark."]); return false; }
+  p.inv.push({n:n, v:v, kind:kind||"loot", qty:qty});
+  return true;
+}
+function countItem(n){ const p=game.player; let c=0; for (const it of p.inv) if (it.n===n) c+=it.qty; return c; }
+function useFromInv(n, qty){
+  qty=qty||1; const p=game.player;
+  let left=qty;
+  for (let i=p.inv.length-1;i>=0 && left>0;i--){
+    const it=p.inv[i];
+    if (it.n===n){ const take=Math.min(it.qty,left); it.qty-=take; left-=take; if (it.qty<=0) p.inv.splice(i,1); }
+  }
+  return left===0;
+}
+function rollLoot(tier, rolls){
+  const out=[];
+  const pool=LOOT.slice();
+  const total=pool.reduce((s,l)=>s+l.w,0);
+  for (let i=0;i<rolls;i++){
+    let r=Math.random()*total;
+    for (const l of pool){ r-=l.w; if (r<=0){ out.push({n:l.n, v:Math.round(l.v*(0.8+0.4*tier*0.35)), kind:"loot", qty:1}); break; } }
+  }
+  return out;
+}
+
+/* ---------------- save / load ---------------- */
+function saveGame(){
+  try { localStorage.setItem("openings_save", JSON.stringify({game:game}, (k,v)=> v instanceof Set ? {__set:Array.from(v)} : v)); } catch(e){}
+}
+function loadGame(){
+  try {
+    const raw=localStorage.getItem("openings_save");
+    if (!raw) return;
+    const snap=JSON.parse(raw, (k,v)=> v && v.__set ? new Set(v.__set) : v);
+    if (snap && snap.game){
+      game=snap.game; closeUI();
+      if (!game.flags) game.flags={news:[]};
+      if (!game.flags.news) game.flags.news=[];
+      game.state = game.dungeon? "dungeon":"base";
+    }
+  } catch(e){}
+}
+function wipeSave(){ try{ localStorage.removeItem("openings_save"); }catch(e){} }
+
+/* ============================================================
+   BASE CITY
+   ============================================================ */
+const CW=60, CH=36;
+const BUILDINGS = [
+  { id:"guild",   x:5,  y:3,  w:10, h:6, label:"GUILD HALL",     roof:"#5d4a66" },
+  { id:"market",  x:19, y:2,  w:13, h:6, label:"GRAVE-MARKET",   roof:"#71573e" },
+  { id:"clinic",  x:36, y:3,  w:10, h:6, label:"FLESH-SETTER",   roof:"#4d655a" },
+  { id:"tavern",  x:5,  y:13, w:12, h:7, label:"THE FLAYED LAMP",roof:"#664041" },
+  { id:"office",  x:27, y:12, w:9,  h:5, label:"HOUSING OFFICE", roof:"#556483" },
+  { id:"yard",    x:36, y:13, w:10, h:7, label:"TRAINING YARD",  roof:"#42523d", yard:true },
+  { id:"gate",    x:50, y:13, w:6,  h:9, label:"GATE OF OPENINGS",roof:"#3a2f42", gate:true },
+  { id:"home",    x:20, y:23, w:9,  h:6, label:"YOUR HOME",      roof:"#5d4a37", home:true, door:[24,28] }
+];
+
+function buildCity(){
+  const g=[];
+  for (let y=0;y<CH;y++) g.push(new Array(CW).fill("."));
+  for (let y=0;y<CH;y++) for (let x=0;x<CW;x++)
+    if ((x*7+y*13)%31===0) g[y][x]=",";
+  for (let y=19;y<22;y++) for (let x=17;x<27;x++) g[y][x]="o";
+  for (let x=2;x<CW-2;x++) g[20][x]="r";
+  for (let y=2;y<CH-2;y++){ g[y][24]="r"; g[y][17]="r"; g[y][47]="r"; }
+  for (const b of BUILDINGS){
+    if (b.home && !(game && game.player && game.player.house)) continue;
+    for (let y=b.y;y<b.y+b.h;y++) for (let x=b.x;x<b.x+b.w;x++){
+      if (b.gate) g[y][x] = (x===b.x+2 || x===b.x+3) ? "G" : "B";
+      else if (b.yard) g[y][x]="y";
+      else g[y][x]="B";
+    }
+    if (b.home) g[b.door[1]][b.door[0]]="D";
+  }
+  return g;
+}
+let cityGrid = null;
+function citySolid(x,y){
+  if (x<0||y<0||x>=CW||y>=CH) return true;
+  return cityGrid[y][x]==="B";
+}
+function tryBaseMove(dx,dy){
+  const b=game.base;
+  const nx=b.px+dx, ny=b.py+dy;
+  if (citySolid(nx,ny)) return;
+  b.px=nx; b.py=ny;
+}
+function nearBuilding(b, px, py){
+  if (b.home){
+    return Math.abs(px-b.door[0])<=1 && Math.abs(py-b.door[1])<=1;
+  }
+  return (px>=b.x-1 && px<=b.x+b.w && py>=b.y-1 && py<=b.y+b.h);
+}
+function enterBuilding(b){
+  switch (b.id){
+    case "guild": openGuild(); break;
+    case "market": openMarket(); break;
+    case "clinic": openClinic(); break;
+    case "tavern": openTavern(); break;
+    case "office": openOffice(); break;
+    case "yard": openYard(); break;
+    case "gate": openGate(); break;
+    case "home": openHome(); break;
+  }
+}
+
+/* ----- facilities ----- */
+function openGuild(){
+  say(["The Guild Hall smells of wet stone and old blood. A clerk with too few teeth looks up.",
+       "Deeds get sold here, adventurer. Names get carved here too. Usually both at once."], ()=>{
+    showMenu("GUILD HALL", [
+      { t:"Rumors of the Openings (5g)", fn:buyRumor },
+      { t:"Register your name", fn:()=>{ say(["The clerk chalks your name on a slate.","Try to outlive the ink."]); } },
+      { t:"Check the Wall of Names", fn:()=>{
+          const fallen=["Toma","Bren of Ward 9","the Red twins","Quiet Lias","your predecessor"];
+          say(["Chalk names, half scrubbed away: "+fallen.join(", ")+".",
+               "Fresh ones each week. The wardens never scrub the fresh ones."]); } },
+      { t:"Leave", fn:()=>{} }
+    ]);
+  });
+}
+function buyRumor(){
+  const p=game.player;
+  if (p.gold<5){ say(["No coin, no whispers."]); return; }
+  p.gold-=5;
+  const o=pick(OPENINGS);
+  if (Math.random()<0.75){
+    game.flags.guildRumor={ opening:o.name, note:pick([
+      "Merchants pay double for "+pick(LOOT).n+" this season.",
+      "Something below "+o.name+" has learned to knock. Politely. At first.",
+      "A diving crew came back from "+o.name+" short two men. The two men came back a week later.",
+      "Cold air rises from "+o.name+". Colder every year."
+    ])};
+    say(["The clerk leans close.","\""+game.flags.guildRumor.note+"\""]);
+  } else {
+    say(["The clerk blinks slowly. \"Nothing worth your purse. Keep your coin.\""]);
+    p.gold+=5;
+  }
+}
+
+function openMarket(){
+  showMenu("GRAVE-MARKET", [
+    { t:"Sell loot ("+lootValue()+"g on your person)", fn:sellMenu },
+    { t:"Supplies", fn:supplyMenu },
+    { t:"Ironmonger (weapons & armor)", fn:gearMenu },
+    { t:"Leave", fn:()=>{} }
+  ]);
+}
+function lootValue(){ let s=0; for (const it of game.player.inv) if (it.kind==="loot") s+=it.v*it.qty; return s; }
+function sellMenu(){
+  const p=game.player;
+  const opts=p.inv.filter(i=>i.kind==="loot").map(i=>({
+    t:i.n+" x"+i.qty+" - "+fmt(i.v*i.qty),
+    fn:()=>{ const val=i.v*i.qty; p.gold+=val; p.inv.splice(p.inv.indexOf(i),1);
+      say(["The broker bites the "+i.n+" thoughtlessly, then pays "+fmt(val)+"."], ()=>openMarket()); }
+  }));
+  if (!opts.length){ say(["\"Nothing to sell. Dig deeper, come back filthier.\""], ()=>openMarket()); return; }
+  showMenu("SELL", opts.concat([{t:"Back", fn:openMarket}]), openMarket);
+}
+function supplyMenu(){
+  showMenu("SUPPLIES", [
+    { t:"Ration (8g) - eat anywhere, big stamina", fn:()=>tryBuy("Ration",8,"food") },
+    { t:"Bandage (10g) - sew a wound shut", fn:()=>tryBuy("Bandage",10,"heal") },
+    { t:"Rope & Hook (15g) - cross the gaps", fn:()=>tryBuy("Rope & Hook",15,"tool") },
+    { t:"Antitoxin (12g)", fn:()=>tryBuy("Antitoxin",12,"heal") },
+    { t:"Bone Ring (60g) - for a promise", fn:()=>tryBuy("Bone Ring",60,"gift") },
+    { t:"Pale Rose (25g) - grave-flower that lives in the dark", fn:()=>tryBuy("Pale Rose",25,"gift") },
+    { t:"Back", fn:openMarket }
+  ], openMarket);
+}
+function tryBuy(n, cost, kind){
+  const p=game.player;
+  if (p.gold<cost){ say(["Not enough coin. The vendor's eyes go flat."], ()=>supplyMenu()); return; }
+  if (p.inv.length>=invCap() && !countItem(n)){ say(["No room in your pack."], ()=>supplyMenu()); return; }
+  p.gold-=cost; addItem(n, Math.round(cost*0.5), kind);
+  say(["You buy the "+n+"."], ()=>supplyMenu());
+}
+function gearMenu(){
+  const p=game.player;
+  showMenu("IRONMONGER", [
+    { t:"Iron Shard, dmg 4 (45g)", d:"A better edge than hope.", fn:()=>{ if(tryGearBuy(45)){ p.weapon={n:"Iron Shard", d:4}; say(["Cold weight in your fist. Better."], ()=>gearMenu()); } } },
+    { t:"Bone Saw of the surgeons, dmg 6 (80g)", d:"It hums.", fn:()=>{ if(tryGearBuy(80)){ p.weapon={n:"Bone Saw", d:6}; say(["It hums against your hip. Unpleasant. Effective."], ()=>gearMenu()); } } },
+    { t:"Widow's Mail, armor 2 (60g)", d:"The widow sold it gladly.", fn:()=>{ if(tryGearBuy(60)){ p.armor={n:"Widow's Mail", a:2}; say(["Heavier. Warmer, somehow."], ()=>gearMenu()); } } },
+    { t:"Yes-Plate, armor 3 (140g)", d:"It has never said no.", fn:()=>{ if(tryGearBuy(140)){ p.armor={n:"Yes-Plate", a:3}; say(["You can barely hear traffic in it. That is the point."], ()=>gearMenu()); } } },
+    { t:"Back", fn:openMarket }
+  ], openMarket);
+}
+function tryGearBuy(cost){
+  const p=game.player;
+  if (p.gold<cost){ say(["Not enough coin."], ()=>gearMenu()); return false; }
+  p.gold-=cost; return true;
+}
+
+function openClinic(){
+  const p=game.player;
+  const wounds=p.wounds.length;
+  showMenu("FLESH-SETTER", [
+    { t:"Tend wounds ("+(wounds*20)+"g)"+(wounds? " - you have "+wounds:""), fn:()=>{
+        if (!wounds){ say(["\"Nothing wrong with you that the city won't fix later.\""]); return; }
+        const cost=wounds*20;
+        if (p.gold<cost){ say(["\"Twenty a wound. The city owes you nothing.\""]); return; }
+        p.gold-=cost; p.wounds=[];
+        say(["Needles. Wire. A smell like a lit match in a butcher's shop.",
+             "You keep all your blood this time."]); } },
+    { t:"Bloodrest draught (30g) - full HP", fn:()=>{
+        if (p.gold<30){ say(["You are short."]); return; }
+        p.gold-=30; p.hp=p.maxhp; say(["It tastes like copper pennies and sleep. You feel whole."]); } },
+    { t:"Leave", fn:()=>{} }
+  ]);
+}
+
+function openYard(){
+  showMenu("TRAINING YARD", [
+    { t:"Drill Strength (10g, stamina -25)", fn:()=>train("str","Strength") },
+    { t:"Drill Agility (10g, stamina -25)", fn:()=>train("agi","Agility") },
+    { t:"Study maps & riddles (10g, stamina -25)", fn:()=>train("wit","Wits") },
+    { t:"Practice not screaming (10g, stamina -25)", fn:()=>train("wll","Will") },
+    { t:"Leave", fn:()=>{} }
+  ]);
+}
+function train(stat, label){
+  const p=game.player;
+  if (p.gold<10){ say(["The yard master spits. \"Coin first, sweat second.\""]); return; }
+  if (p.stam<25){ say(["You can barely lift your arms. Rest first."]); return; }
+  p.gold-=10; p.stam-=25;
+  advanceWeeks(2);
+  if (Math.random()<0.55){ p[stat]+=1; say(["Weeks of drills pay off. "+label+" rises to "+p[stat]+"."]); }
+  else say(["You drill until your hands burn. Nothing comes easy today."]);
+  saveGame();
+}
+
+function openTavern(){
+  const p=game.player;
+  const intro=["The Flayed Lamp: tallow light, soup with opinions, and every second patron counting someone absent."];
+  const news=drainNews();
+  say(news.length? intro.concat(news) : intro, ()=>{
+    const opts=[
+      { t:"Hot meal (6g) - stamina +40", fn:()=>{
+          if (p.gold<6){ say(["The barkeep slides your empty bowl back, unimpressed."], ()=>openTavern()); return; }
+          p.gold-=6; p.stam=clamp(p.stam+40,0,maxStam());
+          say(["Grease, onions, mystery. You feel like a person again."], ()=>openTavern()); } },
+      { t:"Buy a round, listen to the room (8g)", fn:listenTavern },
+      { t:"Who is here tonight?", fn:rosterMenu }
+    ];
+    if (p.partner) opts.push({ t:"Court "+p.partner.name.split(" ")[0], fn:courtWith });
+    if (p.spouse) opts.push({ t:"Sit with "+p.spouse.name.split(" ")[0], fn:spouseScene });
+    if (!p.partner && !p.spouse) opts.push({ t:"Court - meet someone", fn:courtMeet });
+    opts.push({ t:"Leave", fn:()=>{} });
+    showMenu("THE FLAYED LAMP", opts);
+  });
+}
+function rosterMenu(){
+  const p=game.player;
+  const rows=game.npcs.map(np=>{
+    const age=Math.floor(np.ageWeeks/52);
+    let st;
+    if (np.dead) st="died at "+age;
+    else if (np===p.spouse) st="your spouse";
+    else if (np===p.partner) st="holds your eye ("+affWord(np.aff)+")";
+    else if (np.marriedTo!==null) st="wed to "+np.marriedTo+(np.kids? " ("+np.kids+" children)":"");
+    else if (np.parentOfYou) st="your parent, still pouring one for your old life";
+    else st="unattached";
+    return { t:np.name.split(" ")[0]+" - "+age+"y - "+st, fn:openTavern };
+  });
+  showMenu("THE ROOM TONIGHT", rows.concat([{t:"Back", fn:openTavern}]));
+}
+function listenTavern(){
+  const p=game.player;
+  if (p.gold<8){ say(["You have empty pockets and excellent hearing."], ()=>openTavern()); return; }
+  p.gold-=8;
+  say([pick([
+    "\"The Cessgate worms burrow up through the Ossuary floors these days.\"",
+    "\"Soldiers go down, lovers come back. Choose which you are before you pick a door.\"",
+    "\"You can marry here, or you can die rich. The city accepts both documents.\"",
+    "\"Never eat anything down there that offers itself.\"",
+    "\"The Long Mother is a story. A story with fifty hands, but a story.\""
+  ])], ()=>openTavern());
+}
+function courtMeet(){
+  const p=game.player;
+  if (p.partner || p.spouse){ say(["You've already given your word. The Lamp does not host liars."], ()=>openTavern()); return; }
+  const singles=game.npcs.filter(x=>!x.met && !x.dead && x.marriedTo===null && !x.parentOfYou);
+  if (singles.length){
+    const np=pick(singles); np.met=true;
+    p.partner=np;
+    say(["You drift toward "+np.name+" ("+Math.floor(np.ageWeeks/52)+"y).", np.desc], ()=>courtWith());
+  } else if (!game.npcs.some(x=>!x.met && !x.dead && x.marriedTo===null && !x.parentOfYou)){
+    say(["Nobody here is unattached, and nobody new has drifted in.",
+         "Time passes for everyone while you are underground. That is the arrangement."], ()=>openTavern());
+  } else {
+    say(["The same faces, night after night. Familiar, at least."], ()=>openTavern());
+  }
+}
+function courtWith(){
+  const pt=game.player.partner;
+  if (!pt){ return; }
+  if (pt.dead || pt.marriedTo!==null){
+    game.player.partner=null;
+    say([pt.dead? "She is dead. The lamp in the shop burns for the both of you now."
+               : "She has wed "+pt.marriedTo+" while you emptied rooms of their horrors."], ()=>openTavern());
+    return;
+  }
+  showMenu(pt.name+" ("+Math.floor(pt.ageWeeks/52)+"y) - "+affWord(pt.aff), [
+    { t:"Talk", fn:()=>partnerTalk(pt) },
+    { t:"Give a gift", fn:()=>giftMenu(pt) },
+    { t:"Declare your intent"+(countItem("Bone Ring")? " (a Bone Ring in your pack)":""), fn:proposeCourt },
+    { t:"Back", fn:openTavern }
+  ], openTavern);
+}
+function affWord(a){ return a>=80?"hopeless for you":a>=50?"warms to you":a>=25?"tolerates you":"cold"; }
+function partnerTalk(pt){
+  pt.aff=clamp(pt.aff+4,0,100);
+  const bank=(pt.talks && pt.talks.length)? pt.talks : GENERIC_TALKS;
+  say([pick(bank)], ()=>courtWith());
+}
+function giftMenu(pt){
+  const p=game.player;
+  const opts=p.inv.map(i=>({
+    t:i.n+" x"+i.qty+(i.kind==="gift"?" - true gift":""),
+    fn:()=>{
+      let gain=clamp(Math.round(i.v/10),1,14);
+      if (i.kind==="gift") gain=18;
+      useFromInv(i.n,1); pt.aff=clamp(pt.aff+gain,0,100);
+      say(["You offer the "+i.n+". "+pt.name.split(" ")[0]+" accepts it like it means something.",
+           "Affection +"+gain+"."], ()=>courtWith());
+    }
+  }));
+  if (!opts.length){ say(["Empty hands. Somehow that reads as honesty, in here."], ()=>courtWith()); return; }
+  showMenu("GIFT WHAT?", opts.concat([{t:"Back", fn: ()=>courtWith()}]), ()=>courtWith());
+}
+function proposeCourt(){
+  const pt=game.player.partner, p=game.player;
+  if (!pt) return;
+  if (pt.dead || pt.marriedTo!==null){
+    p.partner=null;
+    say([pt.dead? "You never asked in time. The city took the door before you reached it."
+               : pt.name+" wed "+pt.marriedTo+" while you were down there."], ()=>openTavern());
+    return;
+  }
+  if (!countItem("Bone Ring")){
+    say(["Your intent is plain. Your pockets are not. A Bone Ring from the Grave-Market would stand you in good stead."], ()=>courtWith());
+    return;
+  }
+  if (pt.aff<50){
+    pt.aff=clamp(pt.aff-5,0,100);
+    say([pt.name+" looks at the ring, then at you. \"A ring is not a history. Ask me again when I know you.\""], ()=>courtWith());
+    return;
+  }
+  if (!p.house){
+    say([pt.name+" laughs - not cruelly. \"Marry you to what? A bunk in a guild dorm? Own four walls first.\""], ()=>courtWith());
+    return;
+  }
+  useFromInv("Bone Ring");
+  p.spouse=pt; p.partner=null; pt.aff=100; pt.marriedTo="you";
+  say([pt.name+" turns the ring in the tallow light. Then she closes your hand over it.",
+       "\"Wear it till I put it back on you properly. Home. Tonight.\"",
+       "You are wed. The Lamp cheers out of habit, then sincerity."]);
+  advanceWeeks(2);
+  saveGame();
+}
+function spouseScene(){
+  const p=game.player;
+  say(["You sit with "+p.spouse.name+" ("+Math.floor(p.spouse.ageWeeks/52)+"y). For a while, the city is just noise outside your own four walls.",
+       "\"Stamina up,\" "+p.spouse.name.split(" ")[0]+" mutters into your shoulder. That is married for 'I love you.'"], ()=>openTavern());
+}
+
+/* ----- property & family ----- */
+function openOffice(){
+  const p=game.player;
+  if (!p.house){
+    showMenu("HOUSING OFFICE", [
+      { t:"Buy the Leaning Tenement (250g)", d:"A crooked two-room home in Ward Nine. Good bones. Somewhere.", fn:buyHouse },
+      { t:"Leave", fn:()=>{} }
+    ]);
+  } else {
+    const opts=UPGRADES.filter(u=>p.upgrades.indexOf(u.id)<0).map(u=>({
+      t:u.n+" ("+fmt(u.cost)+")", d:u.d,
+      fn:()=>{ if (p.gold<u.cost){ say(["Short by "+fmt(u.cost-p.gold)+". The clerk shrugs like the weather."], ()=>openOffice()); return; }
+        p.gold-=u.cost; p.upgrades.push(u.id);
+        p.stam=clamp(p.stam,0,maxStam());
+        say(["Work crews come. They hammer. They argue. They leave. "+u.n+": done."], ()=>openOffice());
+        saveGame(); }
+    }));
+    if (p.spouse && !p.child && p.upgrades.indexOf("nursery")>=0 && p.tryChild!==1){
+      opts.push({ t:"Speak of children", fn:()=>{
+        p.tryChild=1; advanceWeeks(4);
+        say(["You and "+p.spouse.name.split(" ")[0]+" decide, quietly, to chance it.",
+             "The city has taken so much. It can stand to give something back."], ()=>openOffice());
+        saveGame(); }});
+    }
+    opts.push({ t:"Leave", fn:()=>{} });
+    showMenu("HOUSING OFFICE - improvements", opts);
+  }
+}
+function buyHouse(){
+  const p=game.player;
+  if (p.gold<250){ say(["The clerk quotes the price again, slower, like you are hard of hearing."], ()=>openOffice()); return; }
+  p.gold-=250; p.house="Leaning Tenement";
+  cityGrid=buildCity();
+  say(["Keys. A deed with a wax stamp. A door that only leans when it rains.",
+       "The Leaning Tenement is yours. When you die, it stays. That is the whole point of it."]);
+  advanceWeeks(2);
+  saveGame();
+}
+
+function openHome(){
+  const p=game.player;
+  if (!p.house){ say(["Wrecked rooms behind a rotted door. Yours someday, maybe. If you live and pay."]); return; }
+  const lines=["Home. The floor slants, the roof holds, the dead stay outside.",
+               p.spouse? p.spouse.name+" has the kettle on." : "No one waits up for you. Yet."];
+  if (p.child) lines.push(p.child.name+" babbles at a dust mote.");
+  say(lines, ()=>{
+    const opts=[
+      { t:"Sleep (7 days, stamina to full)", fn:homeRest },
+      { t:"Eat from the pantry (stamina +25)", fn:()=>{ const q=game.player;
+          if (q.stam>=maxStam()){ say(["You are not hungry. The pantry disagrees and wins later."], ()=>openHome()); return; }
+          q.stam=clamp(q.stam+25,0,maxStam()); say(["Bread of questionable ancestry. It does its job."], ()=>openHome()); } }
+    ];
+    if (p.spouse && p.upgrades.indexOf("nursery")>=0 && !p.child && p.tryChild!==1)
+      opts.push({ t:"Try for a child", fn:tryForChild });
+    if (p.child) opts.push({ t:"Teach "+p.child.name+" ("+cap(childStage(p.child))+")", fn:teachChild });
+    opts.push({ t:"Leave", fn:()=>{} });
+    showMenu("HOME", opts, ()=>{});
+  });
+}
+function tryForChild(){
+  const p=game.player;
+  p.tryChild=1; advanceWeeks(4);
+  say(["You and "+p.spouse.name.split(" ")[0]+" decide, quietly, to chance it."], ()=>openHome());
+  saveGame();
+}
+function childStage(c){ return c.weeks<52?"newborn":c.weeks<156?"toddler":c.weeks<416?"child":"grown tall"; }
+function homeRest(){
+  const p=game.player;
+  advanceWeeks(7);
+  p.stam=maxStam();
+  p.hp=clamp(p.hp+healPerRest(),0,p.maxhp);
+  const msgs=["Days blur into soup and sleep. You heal. You dread the doors again. Good. That is health."];
+  if (p.tryChild===1){
+    p.tryChild=2;
+    p.child={ name:pick(["Wren","Cob","Liss","Mote","Brack","Sable"]), weeks:0, spark:0 };
+    msgs.unshift("A child is born into the leaning house. Wailing. Unreasonable. Alive.",
+                 "You and "+(p.spouse? p.spouse.name.split(" ")[0] : "the midwife")+" name the scrap "+p.child.name+".");
+  }
+  if (p.wounds.length && p.spouse && p.upgrades.indexOf("hearth")>=0){
+    p.wounds.splice(0,1);
+    msgs.unshift("Your spouse sews and scolds. The worst wound closes, badly but truly.");
+  }
+  const news=drainNews();
+  msgs.push(...news);
+  say(msgs, ()=>openHome());
+  saveGame();
+}
+function teachChild(){
+  const c=game.child;
+  if (!c) return;
+  c.spark+=1;
+  say([pick([
+    "You teach "+c.name+" the names of herbs that lie.",
+    "You show "+c.name+" how to bind a rope. The knot bites. Twice. Then it holds.",
+    c.name+" asks what the Openings are. You describe them honestly. No tears. Good."
+  ]), c.name+"'s spark grows. (Spark "+c.spark+")"], ()=>openHome());
+  advanceWeeks(8);
+  saveGame();
+}
+
+/* ----- time ----- */
+function advanceWeeks(n){
+  const p=game.player;
+  const before=Math.floor(game.week/52);
+  game.week+=n;
+  if (p.child) p.child.weeks+=n;
+  const after=Math.floor(game.week/52);
+  if (after>before){
+    if (after>=40){ p.maxhp=Math.max(12,p.maxhp-(after-before)); p.hp=clamp(p.hp,0,p.maxhp); }
+  }
+  if (p.spouse && p.upgrades.indexOf("cellar")>=0 && Math.random()<0.5)
+    p.gold+=4+irnd(8);
+  simulateNPCs(n);
+}
+/* Vharn does not wait for you. NPCs age, wed, multiply, and die. */
+function simulateNPCs(n){
+  const p=game.player;
+  game.flags.news = game.flags.news||[];
+  for (const np of game.npcs){
+    if (np.dead) continue;
+    np.ageWeeks+=n;
+    const nage=Math.floor(np.ageWeeks/52);
+    if (np.marriedTo===null && np.ageWeeks>=52*20 &&
+        np!==p.spouse && Math.random()<0.005*n){
+      np.marriedTo=pick(NPC_SPOUSES);
+      if (np===p.partner){
+        p.partner=null;
+        game.flags.news.push(np.name.split(" ")[0]+" has wed "+np.marriedTo+". You were in the dark. You are always in the dark.");
+      } else game.flags.news.push(np.name.split(" ")[0]+" married "+np.marriedTo+".");
+      continue;
+    }
+    if (np.marriedTo!==null && Math.random()<0.008*n) np.kids++;
+    if (nage>=55 && Math.random()<0.004*n){
+      np.dead=true;
+      if (np===p.spouse){
+        p.spouse=null; np.widowed=true;
+        game.flags.news.push(np.name.split(" ")[0]+" died last winter, in her bed, "+nage+" years old. You still sleep on your side.");
+      } else {
+        game.flags.news.push(np.name.split(" ")[0]+" died last winter. The Lamp poured one out on the floorboards.");
+        if (np===p.partner) p.partner=null;
+      }
+    }
+  }
+  game.npcClock=(game.npcClock||0)+n;
+  while (game.npcClock>=52){
+    game.npcClock-=52;
+    const taken=game.npcs.map(x=>x.name);
+    const names=NPC_ARRIVAL_NAMES.filter(nm=>taken.indexOf(nm)<0);
+    if (names.length && game.npcs.length<12){
+      const nm=pick(names);
+      const age=18+irnd(8);
+      game.npcs.push({ name:nm, desc:pick(NPC_ARRIVAL_DESCS), age:age, ageWeeks:age*52, talks:GENERIC_TALKS.slice(),
+        marriedTo:null, dead:false, widowed:false, kids:0, parentOfYou:false, aff:0, met:false });
+      game.flags.news.push(nm.split(" ")[0]+" drifted into Vharn. Nobody asked her business; that is the custom.");
+    }
+  }
+}
+function drainNews(){
+  const news=(game.flags.news||[]).slice();
+  game.flags.news=[];
+  return news;
+}
+
+/* ----- the gate ----- */
+function openGate(){
+  say(["South of the tanneries, the city is cracked like old bread. The cracks breathe.",
+       "Adventurers call the cracks Openings. The city calls them nothing at all."], ()=>{
+    const opts=OPENINGS.map(o=>({
+      t:o.name+"  (danger "+"|".repeat(o.tier)+")",
+      d:o.desc,
+      fn:()=>launchDelve(o)
+    }));
+    opts.push({ t:"Not today", fn:()=>{} });
+    showMenu("GATE OF OPENINGS - choose a crack in the world", opts);
+  });
+}
+
+/* ============================================================
+   DUNGEONS
+   ============================================================ */
+function launchDelve(opening){
+  const d={ opening:opening, depth:1, floors:[], px:0, py:0, steps:0 };
+  game.dungeon=d;
+  game.state="dungeon";
+  game.player.delves++;
+  genFloor(d);
+  say(["You descend into "+opening.name+".",
+       "The city noise dies in about nine steps. Something else starts."]);
+}
+function genFloor(d){
+  const rg=mulberry(irnd(2147483647));
+  const w=44,h=34;
+  const grid=[];
+  for (let y=0;y<h;y++) grid.push(new Array(w).fill("#"));
+  const rooms=[];
+  const nRooms=9+irnd(3);
+  for (let i=0;i<nRooms*4 && rooms.length<nRooms;i++){
+    const rw=4+irnd(6), rh=4+irnd(4);
+    const rx=2+irnd(w-rw-4), ry=2+irnd(h-rh-4);
+    const room={x:rx,y:ry,w:rw,h:rh,cx:rx+(rw>>1),cy:ry+(rh>>1)};
+    if (rooms.some(r=>Math.abs(r.cx-room.cx)<9 && Math.abs(r.cy-room.cy)<8)) continue;
+    rooms.push(room);
+    for (let y=room.y;y<room.y+room.h;y++) for (let x=room.x;x<room.x+room.w;x++) grid[y][x]=".";
+  }
+  rooms.sort((a,b)=>(a.cx+a.cy)-(b.cx+b.cy));
+  const carve=(x,y)=>{ grid[y][x]="."; };
+  for (let i=1;i<rooms.length;i++){
+    const a=rooms[i-1], b=rooms[i];
+    let x=a.cx,y=a.cy;
+    while (x!==b.cx){ carve(x,y); x+=Math.sign(b.cx-x); }
+    while (y!==b.cy){ carve(x,y); y+=Math.sign(b.cy-y); }
+    carve(x,y);
+  }
+  if (rooms.length>4){
+    const a=rooms[0], b=rooms[rooms.length-1];
+    let x=a.cx,y=a.cy;
+    while (x!==b.cx){ carve(x,y); x+=Math.sign(b.cx-x); }
+    while (y!==b.cy){ carve(x,y); y+=Math.sign(b.cy-y); }
+  }
+  const floor={ w:w,h:h,grid:grid,rooms:rooms, seen:new Set(), events:[], visitedRooms:new Set() };
+  const evs=floor.events;
+  const start=rooms[0];
+  floor.grid[start.cy][start.cx]="<";
+  const far=rooms[rooms.length-1];
+  floor.grid[far.cy][far.cx]=">";
+  const freeTiles=[];
+  for (const r of rooms){
+    for (let y=r.y;y<r.y+r.h;y++) for (let x=r.x;x<r.x+r.w;x++){
+      if ((x===start.cx&&y===start.cy)||(x===far.cx&&y===far.cy)) continue;
+      freeTiles.push([x,y]);
+    }
+  }
+  shuffle(freeTiles, rg);
+  let fi=0;
+  const nextFree=()=>freeTiles[fi++];
+  const tierNow=clamp(d.opening.tier+(d.depth-1),1,3);
+  const nLoot=3+irnd(3);
+  for (let i=0;i<nLoot;i++){ const t=nextFree(); if(!t) break;
+    evs.push({x:t[0],y:t[1],type:"loot",items:rollLoot(tierNow,1+irnd(2))}); }
+  const nObs=2+irnd(2);
+  for (let i=0;i<nObs;i++){ const t=nextFree(); if(!t) break;
+    evs.push({x:t[0],y:t[1],type:"obstacle", kind:pick(["rubble","spikes","gas","chasm"])}); }
+  if (irnd(2)===0 || tierNow>1){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"puzzle", kind:pick(["riddle","levers","sink"])}); }
+  if (irnd(2)===0){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"corpse"}); }
+  if (tierNow>1 && irnd(3)===0){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"shrine"}); }
+  d.floors.push(floor);
+  d.floorIx=d.floors.length-1;
+  d.px=start.cx; d.py=start.cy;
+  d.tierNow=tierNow;
+  markSeen();
+}
+function shuffle(a, rg){ for (let i=a.length-1;i>0;i--){ const j=Math.floor(rg()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t; } }
+function curFloor(){ return game.dungeon.floors[game.dungeon.floorIx]; }
+function tileAt(x,y){
+  const f=curFloor();
+  if (x<0||y<0||x>=f.w||y>=f.h) return "#";
+  return f.grid[y][x];
+}
+function tierEnemy(){
+  const tier=game.dungeon.tierNow;
+  const base=HORRORS[tier][irnd(HORRORS[tier].length)];
+  const hp=Math.max(3,Math.round(base.hp*(0.85+Math.random()*0.3)));
+  return { n:base.n, mhp:hp, hp:hp, atk:base.atk, tr:base.tr, artSeed:irnd(2147483647), human:false };
+}
+function markSeen(){
+  const d=game.dungeon, f=curFloor();
+  const R=4;
+  for (let y=d.py-R;y<=d.py+R;y++) for (let x=d.px-R;x<=d.px+R;x++){
+    if (x>=0&&y>=0&&x<f.w&&y<f.h && Math.hypot(x-d.px,y-d.py)<=R) f.seen.add(x+","+y);
+  }
+}
+function tryMove(dx,dy){
+  const d=game.dungeon;
+  const nx=d.px+dx, ny=d.py+dy;
+  if (tileAt(nx,ny)==="#") return;
+  d.lastDx=dx; d.lastDy=dy;
+  d.px=nx; d.py=ny; d.steps++;
+  markSeen();
+  const p=game.player;
+  p.stam=clamp(p.stam-0.12,0,maxStam());
+  if (p.stam<=0 && d.steps%4===0){
+    p.hp-=1;
+    if (p.hp<=0){ die("Your body quit in the"+pick([" dark"," water"," deep"])+" of "+d.opening.name+"."); return; }
+  }
+  const f=curFloor();
+  const room=f.rooms.find(r=>nx>=r.x&&nx<r.x+r.w&&ny>=r.y&&ny<r.y+r.h);
+  if (room && !f.visitedRooms.has(room.x+":"+room.y)){
+    f.visitedRooms.add(room.x+":"+room.y);
+    const evHere=f.events.find(e=>e.x===nx&&e.y===ny);
+    if (!evHere && Math.random()<0.30){
+      const roll=Math.random();
+      if (roll<0.55) startCombat(tierEnemy());
+      else if (roll<0.80) meetAdventurer();
+    }
+  }
+  const ev=f.events.find(e=>e.x===nx&&e.y===ny);
+  if (ev && !ev.done) triggerEvent(ev);
+}
+function stepBack(){
+  const d=game.dungeon;
+  if (d.lastDx!==undefined){ d.px-=d.lastDx; d.py-=d.lastDy; }
+  else d.px-=1;
+}
+
+/* ----- dungeon events ----- */
+function triggerEvent(ev){
+  switch (ev.type){
+    case "loot": {
+      ev.done=true;
+      const got=[];
+      for (const it of ev.items){ if (addItem(it.n,it.v,it.kind)) got.push(it.n); }
+      if (got.length) say(["Wedged in the dark: "+got.join(", ")+"."]);
+      else say(["Something worth taking, but your pack says otherwise."]);
+      break; }
+    case "obstacle": obstacleEvent(ev); break;
+    case "puzzle": puzzleEvent(ev); break;
+    case "corpse": corpseEvent(ev); break;
+    case "shrine": shrineEvent(ev); break;
+  }
+}
+function obstacleEvent(ev){
+  const p=game.player;
+  if (ev.kind==="rubble"){
+    showText(["A seam of collapsed roofing. Slabs the size of doors, packed like teeth."], ()=>{
+      showMenu("RUBBLE", [
+        { t:"Force it (Strength)", fn:()=>{ ev.done=true;
+            if (check("str",9)) say(["You brace, heave, and lose a layer of skin. The way opens."]);
+            else hurt(2,"A slab answers with interest. You bleed.");
+            saveGame(); } },
+        { t:"Wiggle through (Agility)", fn:()=>{ ev.done=true;
+            if (check("agi",9)) say(["You fold yourself through a gap a cat would refuse."]);
+            else hurt(2,"You squeeze through, minus some meat.");
+            saveGame(); } },
+        { t:"Leave it", fn:()=>{ ev.done=true; stepBack(); } }
+      ]);
+    });
+  } else if (ev.kind==="spikes"){
+    showText(["The floor bristles with rusted spikes - grown, not placed. Someone's old blood browns the tips."], ()=>{
+      showMenu("SPIKES", [
+        { t:"Cross carefully (Agility)", fn:()=>{ ev.done=true;
+            if (check("agi",10)) say(["You pick a line between the teeth. Across."]);
+            else hurt(4,"A spike finds the meat of your calf.");
+            saveGame(); } },
+        { t:"Use Rope & Hook", fn:()=>{ ev.done=true;
+            if (countItem("Rope & Hook")){ useFromInv("Rope & Hook",1);
+              say(["You rig a line and cross like a sane person."]); }
+            else { say(["No rope. Definitely a problem now."]); stepBack(); }
+            saveGame(); } },
+        { t:"Back off", fn:()=>{ ev.done=true; stepBack(); } }
+      ]);
+    });
+  } else if (ev.kind==="gas"){
+    showText(["A pocket of air that hates you: sweet, wet, wrong. Your eyes stream. Your knees disagree with standing."], ()=>{
+      showMenu("FOUL AIR", [
+        { t:"Hold your breath and press on (Will)", fn:()=>{ ev.done=true;
+            if (check("wll",10)) say(["You refuse the air's opinion. Through."]);
+            else { hurt(3,"Your lungs will remember this for days."); p.stam=clamp(p.stam-20,0,maxStam()); }
+            saveGame(); } },
+        { t:"Drink Antitoxin", fn:()=>{ ev.done=true;
+            if (countItem("Antitoxin")){ useFromInv("Antitoxin",1);
+              say(["Bitter. Effective. Through."]); }
+            else { say(["Nothing in your pack but regret."]); stepBack(); }
+            saveGame(); } },
+        { t:"Back off", fn:()=>{ ev.done=true; stepBack(); } }
+      ]);
+    });
+  } else {
+    showText(["The floor simply ends. Below: a wind that rises from somewhere with intent."], ()=>{
+      showMenu("CHASM", [
+        { t:"Use Rope & Hook", fn:()=>{ ev.done=true;
+            if (countItem("Rope & Hook")){ useFromInv("Rope & Hook",1);
+              say(["Anchor, swing, land, breathe."]); }
+            else { say(["No rope, no wings. Hmm."]); stepBack(); }
+            saveGame(); } },
+        { t:"Jump (Agility)", fn:()=>{ ev.done=true;
+            if (check("agi",11)) say(["You fly like a frightened, beautiful idiot. Across."]);
+            else hurt(8,"You hit the far lip badly. The wind laughs in a mammal way.");
+            saveGame(); } },
+        { t:"Back off", fn:()=>{ ev.done=true; stepBack(); } }
+      ]);
+    });
+  }
+}
+function puzzleEvent(ev){
+  const d=game.dungeon;
+  if (ev.kind==="riddle"){
+    const r=pick(RIDDLES);
+    showText(["A door of fused vertebrae. As your light touches it, a dry voice asks:","\""+r.q+"\""], ()=>{
+      showMenu("IT WANTS AN ANSWER", r.a.map((ans,i)=>({
+        t:ans, fn:()=>{ ev.done=true;
+          if (i===r.c){
+            say(["The door unhinges - politely, this once."], ()=>{ if(!addItem(pick(LOOT).n, 45, "loot")){} });
+          } else {
+            say(["Wrong. The vertebrae tighten like a fist. You lose breath, blood, and pride.",
+                 "The door relents eventually."], ()=>{ hurt(3,null); game.player.stam=clamp(game.player.stam-15,0,maxStam()); });
+          }
+          saveGame();
+        }
+      })));
+    });
+  } else if (ev.kind==="levers"){
+    const hints=[
+      "The middle lever is clogged with hair. It will only jam.",
+      "The left lever is warm. The other two are grave-cold.",
+      "A dead delver's note: 'not the middle. never the middle.'",
+      "One lever is polished smooth by many hands.",
+      "The wall behind the right lever is scorched."
+    ];
+    const correct=irnd(3);
+    showText(["Three levers jut from a mouth-shaped panel. Scratched generations deep:","\""+pick(hints)+"\""], ()=>{
+      showMenu("LEVERS", ["Left lever","Middle lever","Right lever"].map((lab,i)=>({
+        t:lab, fn:()=>{ ev.done=true;
+          if (i===correct){ const l=rollLoot(d.tierNow,1);
+            say(["Something heavy unbolts in the wall. A cavity opens."], ()=>{
+              l.forEach(it=>addItem(it.n,it.v,it.kind)); }); }
+          else say(["A slam, a hiss. Darts. A lesson in humility and bleeding."], ()=>hurt(3,null));
+          saveGame();
+        }
+      })));
+    });
+  } else {
+    showText(["A basin of black water, shallow as a lie. A groove runs from it to a barred alcove.","Something in the basin measures you."], ()=>{
+      showMenu("THE BASIN", [
+        { t:"Give it blood (5 HP)", fn:()=>{ ev.done=true;
+            game.player.hp=Math.max(1,game.player.hp-5);
+            const l=rollLoot(d.tierNow,2);
+            say(["You open your palm over the basin. It drinks. The bars lift, slow as eyelids."], ()=>{
+              l.forEach(it=>addItem(it.n,it.v,it.kind)); }); saveGame(); } },
+        { t:"Fill a vial (needs Bileglass Vial)", fn:()=>{ ev.done=true;
+            if (countItem("Bileglass Vial")){ useFromInv("Bileglass Vial",1);
+              say(["You bottle a little of the dark. The alcove stays shut, but the vial is heavy beyond its size."], ()=>{
+                addItem("Bottled Dark", 90, "loot"); }); }
+            else say(["You have no vial. The water settles, disappointed."]);
+            saveGame(); } },
+        { t:"Walk away", fn:()=>{ ev.done=true; } }
+      ]);
+    });
+  }
+}
+function corpseEvent(ev){
+  showText(["A delver, long dead. Leathers gone to varnish. The pack is intact. The fingers are very long."], ()=>{
+    showMenu("THE DEAD", [
+      { t:"Search the body", fn:()=>{
+          const roll=Math.random();
+          if (roll<0.5){ ev.done=true;
+            const l=rollLoot(game.dungeon.tierNow,1);
+            say(["You strip the pack. \"Sorry,\" you say. The corpse's jaw hangs a little lower."], ()=>{
+              l.forEach(it=>addItem(it.n,it.v,it.kind)); }); }
+          else if (roll<0.8){
+            showText(["The fingers close. It was not as dead as advertised. It stands.","Of course it stands."], ()=>{
+              ev.done=true; startCombat(tierEnemy()); }); }
+          else { ev.done=true; say(["Bones, dust, a tooth. Nothing worth the crime of hope."]); }
+          saveGame(); } },
+      { t:"Stack stones over them (stamina -10)", fn:()=>{ ev.done=true;
+          game.player.stam=clamp(game.player.stam-10,0,maxStam());
+          if (Math.random()<0.25) game.player.wll+=1;
+          say(["The tower of the dead stays a rubble of its own.",
+               "Something in you settles. (Will may have grown.)"]); saveGame(); } },
+      { t:"Leave them", fn:()=>{ ev.done=true; } }
+    ]);
+  });
+}
+function shrineEvent(ev){
+  showText(["A niche of stacked tibias. In front: a hunk of votive fat burning without heat.","An older faith. It does not ask. It offers."], ()=>{
+    showMenu("OLD FAITH", [
+      { t:"Kneel (Will)", fn:()=>{ ev.done=true;
+          if (check("wll",9)){ game.player.maxhp+=2; game.player.hp+=2;
+            say(["The fat-flame leans toward you. Something vast and indifferent approves for exactly one breath.",
+                 "Max HP +2."]); }
+          else hurt(2,"The flame flickers through you like a cold draft. You left something here. You will know what, later.");
+          saveGame(); } },
+      { t:"Snuff it for the votive fat (loot)", fn:()=>{ ev.done=true;
+          const l=rollLoot(game.dungeon.tierNow,1);
+          say(["Greedy, but warm-handed. You pocket the fat."], ()=>{ l.forEach(it=>addItem(it.n,it.v,it.kind)); });
+          saveGame(); } },
+      { t:"Leave it burning", fn:()=>{ ev.done=true; } }
+    ]);
+  });
+}
+
+/* ----- adventurer encounters ----- */
+function meetAdventurer(){
+  const p=game.player;
+  const who=pick(ADV_NAMES);
+  const kind=Math.random();
+  if (kind<0.45){
+    showText(["A lantern bobs into view: another delver - "+who+", by the gear, someone who has crawled deeper than you."], ()=>{
+      showMenu(who.toUpperCase(), [
+        { t:"Share a ration & trade news", fn:()=>{
+            if (countItem("Ration")){ useFromInv("Ration",1); p.stam=clamp(p.stam+10,0,maxStam());
+              const hint=pick(OPENINGS);
+              say(["You split a ration in the dark. "+who+" trades you a rumor about "+hint.name+".",
+                   "Good company. Rare down here."]); }
+            else say(["You have no ration. "+who+" shrugs: \"Poverty is a door too.\""]);
+            saveGame(); } },
+        { t:"Trade - sell loot at a good price", fn:()=>{
+            const lo=p.inv.filter(i=>i.kind==="loot");
+            if (!lo.length){ say(["Nothing worth a trade."]); return; }
+            const it=lo[0]; const val=Math.round(it.v*1.3);
+            p.gold+=val; p.inv.splice(p.inv.indexOf(it),1);
+            say([who+" pays "+fmt(val)+" for your "+it.n+". \"Ward 6 collectors. Don't ask.\""]);
+            saveGame(); } },
+        { t:"Part ways", fn:()=>{} }
+      ]);
+    });
+  } else if (kind<0.75){
+    showText(["A voice from an alcove: \"Toll. Thirty percent. Or we discuss the alternative.\"",
+              "Numbers resolve into bodies. You are in the math now."], ()=>{
+      showMenu(who.toUpperCase()+"'S BOYS", [
+        { t:"Pay the toll", fn:()=>{ const toll=Math.floor(p.gold*0.3);
+            p.gold-=toll;
+            say([who+" counts your coin with professional boredom. \"Lovely doing business.\""]); saveGame(); } },
+        { t:"Talk them down (Wits)", fn:()=>{
+            if (check("wit",11)) say(["You convince them you are cursed - inhabited by something with opinions. Nobody wants that cargo."]);
+            else say(["They laugh. Then they beat the toll out of you, and a little extra."], ()=>{
+              hurt(4,null); p.gold=Math.floor(p.gold*0.6); });
+            saveGame(); } },
+        { t:"Fight", fn:()=>{ startCombat({ n:who+"'s Cutter", mhp:12+game.dungeon.tierNow*4, hp:12+game.dungeon.tierNow*4,
+            atk:2+game.dungeon.tierNow, tr:null, artSeed:irnd(2147483647), human:true }); } },
+        { t:"Run (Agility)", fn:()=>{
+            if (check("agi",10)) say(["You melt into the dark. Footsteps curse behind you."]);
+            else say(["They catch your pack strap."], ()=>{ hurt(2,null); p.gold=Math.floor(p.gold*0.85); });
+            saveGame(); } }
+      ]);
+    });
+  } else {
+    showText([who+" blocks the corridor, blade drawn, grinning like it is a festival.",
+              "\"Beat me and take my kit. Lose and I take yours. Rules are rules.\""], ()=>{
+      showMenu(who.toUpperCase(), [
+        { t:"Accept the duel", fn:()=>{ startCombat({ n:who+" the Duelist", mhp:14+game.dungeon.tierNow*3, hp:14+game.dungeon.tierNow*3,
+            atk:2+game.dungeon.tierNow, tr:null, artSeed:irnd(2147483647), human:true, duel:true }); } },
+        { t:"Talk it out (Wits)", fn:()=>{
+            if (check("wit",9)){ say(["You point out that screaming draws the things with many opinions.",
+              who+" concedes and shares a flask."]); p.stam=clamp(p.stam+10,0,maxStam()); }
+            else say(["\"Coward, then.\" The word follows you deeper than the corridor does."]); } },
+        { t:"Walk away", fn:()=>{ stepBack(); } }
+      ]);
+    });
+  }
+}
+
+/* ----- checks, wounds, death ----- */
+function check(stat, dc){
+  const p=game.player;
+  return d10()+p[stat]-p.wounds.length>=dc;
+}
+function hurt(n, msg){
+  const p=game.player;
+  p.hp-=n;
+  const lines=[];
+  if (msg) lines.push(msg);
+  lines.push("(-"+n+" HP. "+p.hp+"/"+p.maxhp+")");
+  if (p.hp<=0){ die("Something in "+(game.dungeon? game.dungeon.opening.name : "Vharn")+" finished you."); return; }
+  if (p.hp<=p.maxhp*0.3 && Math.random()<0.4){
+    const limb=pick(["arm","ribs","leg","hand","eye"]);
+    if (p.wounds.indexOf(limb)<0){
+      p.wounds.push(limb);
+      lines.push("A wound you will feel a long time: your "+limb+".");
+    }
+  }
+  say(lines);
+  saveGame();
+}
+function die(cause){
+  const p=game.player;
+  game.combat=null;
+  const age=Math.floor(game.week/52);
+  const ep=[ "You die at "+age+". "+cause ];
+  if (p.child && p.child.weeks>=728){
+    ep.push("But blood remembers: "+p.child.name+", "+Math.floor(p.child.weeks/52)+" years old, old enough to hate the doors and grown enough to open them.");
+    ep.push("What is inherited: the house and its improvements, " + (p.weapon.d>2? "your "+p.weapon.n+", ":"") + "the leanings of your body, and a spark of "+p.child.spark+".");
+    ep.push("The save stands. Vharn shrugs. The lamp is relit.");
+    ep.push("[ENTER] take up the knife as "+p.child.name+".");
+    game.state="legacy";
+    game.flags.epilogue=ep;
+    return;
+  }
+  game.state="dead";
+  wipeSave();
+  if (p.child){
+    ep.push(p.spouse? p.spouse.name+" keeps the lamp lit for a child too young to hate the doors yet. The house leans. The city waits."
+                    : "Your child will be told you drowned. In water, in dark - the story grows teeth either way.");
+  } else if (p.spouse){
+    ep.push(p.spouse.name+" sells your kit, keeps the house, and tells the Lamp you died rich. Widows survive Vharn. She will.");
+  } else {
+    ep.push("No family, no legend. The wall in the Guild Hall gains a name it will lose in a month's rain.");
+  }
+  ep.push("Kills "+p.kills+" | delves "+p.delves+" | deepest depth "+p.deep+" | "+fmt(p.gold)+" unspent");
+  ep.push("Press ENTER for a new name in the book.");
+  game.flags.epilogue=ep;
+}
+
+/* ============================================================
+   COMBAT
+   ============================================================ */
+function startCombat(enemy){
+  enemy.maxhp=enemy.mhp||enemy.hp;
+  game.combat={ e:enemy, log:["The "+enemy.n+" comes out of the dark."], turn:"player", choice:0, guard:false, won:false };
+  game.state="combat";
+}
+function clog(s){ const c=game.combat; c.log.push(s); if (c.log.length>4) c.log.shift(); }
+function playerAtk(){ const p=game.player; return p.weapon.d + irnd(3) + Math.floor(p.str/2); }
+function playerDef(){ return game.player.armor.a; }
+function combatPlayerAction(a){
+  const c=game.combat, e=c.e;
+  if (c.turn!=="player"||game.state!=="combat") return;
+  if (a==="strike"){
+    const dmg=Math.max(1, playerAtk()-irnd(2));
+    e.hp-=dmg;
+    clog("You carve "+e.n+" for "+dmg+".");
+    if (e.hp<=0){ winCombat(); return; }
+  } else if (a==="heavy"){
+    if (d10()+game.player.str>=9){
+      const dmg=playerAtk()+3; e.hp-=dmg;
+      clog("A deep, mean cut. "+e.n+" shrieks like a kettle. (-"+dmg+")");
+    } else {
+      clog("You overreach. The dark takes its fee.");
+      combatEnemyTurn();
+      return;
+    }
+    if (e.hp<=0){ winCombat(); return; }
+  } else if (a==="guard"){
+    c.guard=true;
+    clog("You set yourself behind steel and fear.");
+  } else if (a==="flask"){
+    const p=game.player;
+    if (countItem("Bandage")){
+      useFromInv("Bandage",1);
+      p.hp=clamp(p.hp+8,0,p.maxhp);
+      clog("Needle and thread, mid-fight. +8 HP. Ugly. Alive.");
+    } else if (countItem("Ration")){
+      useFromInv("Ration",1);
+      p.stam=clamp(p.stam+35,0,maxStam()); p.hp=clamp(p.hp+2,0,p.maxhp);
+      clog("You eat while it watches. Stamina +35, HP +2. Deranged. Effective.");
+    } else {
+      clog("No bandage, no ration. Just you and it.");
+    }
+  } else if (a==="flee"){
+    if (d10()+game.player.agi>=9){
+      clog("You run like the city raised you to.");
+      if (game.dungeon) stepBack();
+      endCombat();
+      return;
+    } else clog("It reads your weight shift. No escape this beat.");
+  }
+  combatEnemyTurn();
+}
+function combatEnemyTurn(){
+  const c=game.combat, e=c.e, p=game.player;
+  if (e.tr==="grasp" && Math.random()<0.18){
+    clog(e.n+" holds you. Long fingers, long patience.");
+    c.turn="player"; return;
+  }
+  if (e.tr==="swarm" && Math.random()<0.35){
+    let total=0;
+    for (let i=0;i<3;i++) total+=Math.max(0, Math.min(Math.max(1,e.atk+irnd(3)-playerDef()-(c.guard?1:0)), 3));
+    total=Math.max(1,total); p.hp-=total;
+    clog("A hundred small hungers find you. (-"+total+")");
+  } else {
+    const raw=e.atk+irnd(4)+1;
+    const dmg=Math.max(1, raw-playerDef()-(c.guard?2:0));
+    p.hp-=dmg;
+    clog(e.n+(e.human? " cuts you." : " breaks against you and through.")+" (-"+dmg+")");
+  }
+  if (e.tr==="weep" && Math.random()<0.25){
+    const stat=pick(["str","agi","wit","wll"]);
+    const names={str:"Strength",agi:"Agility",wit:"Wits",wll:"Will"};
+    if (p[stat]>1) p[stat]-=1;
+    clog("It drinks from you. "+names[stat]+" is less than it was.");
+  }
+  c.guard=false;
+  if (p.hp<=0){
+    die(game.dungeon? "Torn apart in the "+game.dungeon.opening.name : "Slain in Vharn");
+    return;
+  }
+  c.turn="player";
+}
+function winCombat(){
+  const c=game.combat, p=game.player;
+  p.kills++;
+  const g=2+irnd(6)+game.dungeon.tierNow*2;
+  p.gold+=g;
+  const l=rollLoot(game.dungeon.tierNow, Math.random()<0.4?2:1);
+  const got=[];
+  for (const it of l){ if (addItem(it.n,it.v,it.kind)) got.push(it.n); }
+  clog("It stops. The dark settles like sediment.");
+  clog("+"+fmt(g)+(got.length? ", and "+got.join(", "):""));
+  if (c.e.duel && p.weapon.d<6){ p.weapon={n:"Duelist's Blade", d:6}; clog("You also liberate their blade."); }
+  c.won=true; c.turn="won";
+  saveGame();
+}
+function endCombat(){ game.combat=null; game.state="dungeon"; }
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function txt(s,x,y,col,big){
+  ctx.font=(big? "bold 8px":"7px")+" 'Courier New', monospace";
+  ctx.textBaseline="top";
+  ctx.fillStyle=col||PAL.bone;
+  ctx.fillText(s,x,y);
+}
+function box(x,y,w,h,fill,border){
+  ctx.fillStyle=fill||"rgba(10,7,12,0.94)";
+  ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle=border||PAL.rust;
+  ctx.lineWidth=1;
+  ctx.strokeRect(x+0.5,y+0.5,w-1,h-1);
+}
+function spr(art, map, x, y){
+  for (let r=0;r<art.length;r++) for (let c=0;c<art[r].length;c++){
+    const ch=art[r][c];
+    if (ch==="."||ch===" ") continue;
+    ctx.fillStyle=map[ch]||PAL.bone;
+    ctx.fillRect(x+c, y+r, 1, 1);
+  }
+}
+const HERO_DN=["..ffff..",".fHHHHf.",".fHkkHf.",".fHkkHf.","..cccc..","c.cccc.c","..c..c..","..b..b.."];
+const HERO_SD=["..ffff..",".fHHHH..",".fHkkH..",".fkHHH..","..cccc..","..cccc.c","..c.cc..","..b..b.."];
+const HERO_MAP={ f:PAL.cloth||"#3a4d5c", H:PAL.skin, k:PAL.ink, c:"#2c2530", b:PAL.rust };
+function drawHero(x,y,side){ spr(side? HERO_SD:HERO_DN, HERO_MAP, x, y); }
+function drawNPC(x,y,col){
+  const art=["..ffff..",".fHHHHf.",".fHkkHf.",".fHkkHf.","..cccc..","..cccc..","..c..c..","..b..b.."];
+  spr(art, { f:col, H:PAL.skin, k:PAL.ink, c:"#2c2530", b:PAL.ink }, x, y);
+}
+/* abomination generator - every horror looks different, seeded */
+function drawAbomination(cx,cy,seed,scale){
+  const rg=mulberry(seed);
+  const fs=["#6e2f38","#7c3540","#54303a","#8a3a44","#5f4a3a","#74504c"];
+  const body=fs[Math.floor(rg()*fs.length)];
+  const dark="#2a141c";
+  const S=scale||2.0;
+  const Wd=Math.round(20*S), Hd=Math.round(17*S);
+  for (let r=0;r<Hd;r++){
+    const t=r/Hd;
+    const wob=1+0.35*Math.sin((r+seed%13)*0.9);
+    let ww=Math.round(Math.sin(Math.PI*t)*Wd*0.5*wob);
+    if (ww<=0) continue;
+    ctx.fillStyle=body;
+    ctx.fillRect(cx-ww, cy+r, ww*2, 1);
+    if (r%4===0){ ctx.fillStyle=dark; ctx.fillRect(cx-ww+Math.floor(rg()*ww), cy+r, Math.ceil(ww*(0.2+rg()*0.3)), 1); }
+  }
+  const legs=3+Math.floor(rg()*5);
+  ctx.fillStyle=body;
+  for (let i=0;i<legs;i++){
+    const lx=cx-Wd*0.4+rg()*Wd*0.8;
+    const len=3+Math.floor(rg()*5);
+    ctx.fillRect(Math.round(lx), cy+Hd-1, 1, len);
+    ctx.fillRect(Math.round(lx)+(rg()<0.5?-1:1), cy+Hd+len-1, 1, 2);
+  }
+  const eyes=1+Math.floor(rg()*4);
+  for (let i=0;i<eyes;i++){
+    const ex=cx-Math.round(Wd*0.4)+Math.floor(rg()*Wd*0.8);
+    const ey=cy+2+Math.floor(rg()*Hd*0.4);
+    ctx.fillStyle=rg()<0.5? PAL.gold : "#d8d3c0";
+    ctx.fillRect(ex,ey,Math.max(1,1+Math.floor(rg()*2)),1);
+    if (rg()<0.5){ ctx.fillStyle=dark; ctx.fillRect(ex,ey+1,1,1+Math.floor(rg()*3)); }
+  }
+  const mouths=1+Math.floor(rg()*2);
+  for (let i=0;i<mouths;i++){
+    const mx=cx-Math.floor(Wd*0.3)+Math.floor(rg()*Wd*0.6);
+    const my=cy+Math.floor(Hd*0.45)+Math.floor(rg()*Hd*0.3);
+    const mw=2+Math.floor(rg()*4);
+    ctx.fillStyle=dark;
+    ctx.fillRect(mx,my,mw,1);
+    ctx.fillStyle=PAL.bone;
+    for (let t2=0;t2<mw;t2++){ if (rg()<0.6) ctx.fillRect(mx+t2,my-1,1,1); }
+  }
+  if (rg()<0.6){
+    ctx.fillStyle=PAL.bone;
+    for (let i2=-3;i2<=3;i2++) ctx.fillRect(cx+i2*2, cy-2-(3-Math.abs(i2)), 1, 2);
+  }
+}
+function drawHumanFoe(x,y){
+  const art=["..ffff..",".fHHHHf.",".fHrrHf.",".fHkkHf.","..cccc..","c.cccc..","..c..c..","..b..b.."];
+  spr(art, { f:"#3a3f4c", H:PAL.skin, k:PAL.ink, r:PAL.bloodHi, c:"#2c2530", b:PAL.ink }, x, y);
+}
+
+/* ----- base render ----- */
+function drawBase(){
+  ctx.fillStyle="#171219"; ctx.fillRect(0,0,W,H);
+  if (!cityGrid) cityGrid=buildCity();
+  const b=game.base;
+  const camX=clamp(b.px-Math.floor(VW/2),0,CW-VW), camY=clamp(b.py-Math.floor(VH/2),0,CH-VH);
+  for (let y=0;y<VH;y++){
+    const wy=y+camY; if (wy>=CH) continue;
+    for (let x=0;x<VW;x++){
+      const wx=x+camX; if (wx>=CW) continue;
+      const c=cityGrid[wy][wx];
+      let col=PAL.floor;
+      if (c==="r") col="#4a4148";
+      else if (c==="o") col="#3d3742";
+      else if (c==="y") col="#313d2c";
+      else if (c==="B") col="#3c3038";
+      else if (c==="D") col=PAL.rust;
+      else if (c==="G") col=PAL.void;
+      ctx.fillStyle=col;
+      ctx.fillRect(x*T,y*T,T,T);
+      if (c==="."){ ctx.fillStyle="#1e1720"; ctx.fillRect(x*T,y*T,1,1); }
+      if (c==="D"){ ctx.fillStyle="#2c1e14"; ctx.fillRect(x*T+1,y*T+1,4,6); }
+      if (c==="G"){ ctx.fillStyle="#c8963f"; ctx.fillRect(x*T+3,y*T+3,1,1); }
+    }
+  }
+  for (const bl of BUILDINGS){
+    if (bl.home && !game.player.house) continue;
+    const sx=(bl.x-camX)*T, sy=(bl.y-camY)*T;
+    if (sx>W||sy>H||sx<-200||sy<-80) continue;
+    if (bl.gate){
+      ctx.fillStyle="#efe7d4";
+      const tw=ctx.measureText(bl.label).width;
+      ctx.fillText(bl.label, sx+T*bl.w/2-tw/2, sy-8);
+      continue;
+    }
+    ctx.fillStyle=bl.roof; ctx.fillRect(sx+1,sy+1,(bl.w-2)*T,(bl.h-2)*T);
+    ctx.fillStyle="rgba(0,0,0,0.35)"; ctx.fillRect(sx+1,sy+1,(bl.w-2)*T,2);
+    if (bl.home){
+      ctx.fillStyle="#2c1e14"; ctx.fillRect(sx+4*T,sy+(bl.h-1)*T+1,6,6);
+    }
+    ctx.fillStyle="#efe7d4";
+    ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
+    const tw2=ctx.measureText(bl.label).width;
+    ctx.fillText(bl.label, sx+T*bl.w/2-tw2/2, sy+T*bl.h/2-3);
+    if (bl.id==="tavern"||bl.id==="market"){
+      const dxp=(bl.x+Math.floor(bl.w/2)-camX)*T, dyp=(bl.y+bl.h-1-camY)*T;
+      drawNPC(dxp, dyp-8, bl.id==="tavern"? PAL.bloodHi : PAL.green);
+    }
+  }
+  drawHero((b.px-camX)*T, (b.py-camY)*T, false);
+  const p=game.player;
+  box(0,0,128,30,"rgba(8,6,10,0.92)");
+  txt(p.name+"  "+Math.floor(game.week/52)+"y  "+fmt(p.gold),3,3,PAL.gold);
+  txt("HP "+p.hp+"/"+p.maxhp+"  STAM "+Math.floor(p.stam),3,11,PAL.bone);
+  if (p.wounds.length) txt("wounded: "+p.wounds.join(","),3,19,PAL.bloodHi);
+  ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
+  txt("[Z] enter / talk",W-88,H-10,"#7a7183");
+}
+
+/* ----- dungeon render ----- */
+function drawStairs(x,y,down){
+  ctx.fillStyle="#5a4d60";
+  for (let i=0;i<3;i++) ctx.fillRect(x+1+i,y+2+i*2,T-2-i*2,1);
+  ctx.fillStyle= down? PAL.gold : PAL.bone;
+  ctx.fillRect(x+3,y+3,2,2);
+}
+function drawDungeon(){
+  const d=game.dungeon, f=curFloor();
+  ctx.fillStyle="#060409"; ctx.fillRect(0,0,W,H);
+  const camX=clamp(d.px-Math.floor(VW/2),0,f.w-VW), camY=clamp(d.py-Math.floor(VH/2),0,f.h-VH);
+  for (let y=0;y<VH;y++){
+    const wy=y+camY; if (wy>=f.h) continue;
+    for (let x=0;x<VW;x++){
+      const wx=x+camX; if (wx>=f.w) continue;
+      if (!f.seen.has(wx+","+wy)) continue;
+      const c=f.grid[wy][wx];
+      const dist=Math.hypot(wx-d.px,wy-d.py);
+      const dim=clamp(1-(dist-1.5)/5.2,0.12,1);
+      ctx.globalAlpha=dim;
+      let col;
+      if (c==="#") col=(wx+wy)%2? PAL.wall:PAL.wallHi;
+      else if (c==="<"||c===">") col="#3d3141";
+      else col=(wx+wy)%2? PAL.floor:PAL.floorHi;
+      ctx.fillStyle=col;
+      ctx.fillRect(x*T,y*T,T,T);
+      if (c==="#"){ ctx.fillStyle=PAL.wallHi; ctx.fillRect(x*T,y*T,T,2); }
+      if (c==="<") drawStairs(x*T,y*T,false);
+      if (c===">") drawStairs(x*T,y*T,true);
+      const ev=f.events.find(e=>e.x===wx&&e.y===wy&&!e.done);
+      if (ev){
+        if (ev.type==="loot"){ ctx.fillStyle=PAL.gold; ctx.fillRect(x*T+3,y*T+3,2,2); }
+        else if (ev.type==="corpse"){ ctx.fillStyle=PAL.boneDim; ctx.fillRect(x*T+2,y*T+3,4,1); ctx.fillRect(x*T+3,y*T+4,3,1); }
+        else if (ev.type==="shrine"){ ctx.fillStyle=PAL.bone; ctx.fillRect(x*T+2,y*T+2,1,3); ctx.fillRect(x*T+4,y*T+2,1,3); ctx.fillStyle=PAL.gold; ctx.fillRect(x*T+3,y*T+3,1,1); }
+        else if (ev.type==="puzzle"){ ctx.fillStyle="#6b5d7a"; ctx.fillRect(x*T+1,y*T+1,5,5); ctx.fillStyle="#0a0810"; ctx.fillRect(x*T+2,y*T+2,3,3); }
+        else if (ev.type==="obstacle"){
+          if (ev.kind==="rubble"){ ctx.fillStyle="#4b4349"; ctx.fillRect(x*T+1,y*T+2,3,3); ctx.fillRect(x*T+4,y*T+4,3,2); }
+          else if (ev.kind==="spikes"){ ctx.fillStyle=PAL.boneDim; ctx.fillRect(x*T+1,y*T+4,1,3); ctx.fillRect(x*T+4,y*T+3,1,4); }
+          else if (ev.kind==="gas"){ ctx.fillStyle="rgba(90,110,80,0.5)"; ctx.fillRect(x*T,y*T,T,T); }
+          else { ctx.fillStyle="#020103"; ctx.fillRect(x*T,y*T,T,T); }
+        }
+      }
+      ctx.globalAlpha=1;
+    }
+  }
+  drawHero((d.px-camX)*T,(d.py-camY)*T,false);
+  const g=ctx.createRadialGradient(W/2,H/2-10,60,W/2,H/2,190);
+  g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(2,1,4,0.8)");
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  const p=game.player;
+  box(0,0,168,30,"rgba(6,4,9,0.9)");
+  txt(d.opening.name+"  depth "+d.depth+" (danger "+d.tierNow+")",3,3,PAL.gold);
+  txt("HP "+p.hp+"/"+p.maxhp+"  STAM "+Math.floor(p.stam)+"  "+fmt(p.gold),3,11);
+  if (p.wounds.length) txt("wounded: "+p.wounds.join(","),3,19,PAL.bloodHi);
+  const onUp = f.grid[d.py][d.px]==="<", onDown = f.grid[d.py][d.px]===">";
+  ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
+  txt(onUp&&d.depth===1? "[Z] climb out" : onUp? "[Z] ascend" : onDown? "[Z] descend" : "[Z] menu  [M] map", W-118, H-10, "#7a7183");
+}
+function drawMinimap(){
+  const d=game.dungeon, f=curFloor();
+  box(20,14,280,150,"rgba(6,4,9,0.96)",PAL.rust);
+  txt("- "+d.opening.name+" . depth "+d.depth+" -",26,18,PAL.gold);
+  const s=3, ox=Math.floor((280-f.w*s)/2)+20, oy=Math.floor((128-f.h*s)/2)+16;
+  for (let y=0;y<f.h;y++) for (let x=0;x<f.w;x++){
+    if (!f.seen.has(x+","+y)) continue;
+    const c=f.grid[y][x];
+    ctx.fillStyle = c==="#"? "#241d2a" : (c==="<"||c===">")? PAL.gold : "#4a4152";
+    ctx.fillRect(ox+x*s,oy+y*s,s,s);
+  }
+  ctx.fillStyle="#efe7d4";
+  ctx.fillRect(ox+d.px*s-1,oy+d.py*s-1,s+2,s+2);
+  txt("[M] close",26,152,"#7a7183");
+}
+
+/* ----- UI & combat render ----- */
+function wrap(s,n){
+  if (s.length<=n) return [s];
+  let br=s.lastIndexOf(" ",n);
+  if (br<0) br=n;
+  return [s.slice(0,br), s.slice(br+1)];
+}
+function renderUI(){
+  const u=game.ui;
+  ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
+  if (u.mode==="text" && u.dialog){
+    box(0,116,320,64);
+    const wrapped=[];
+    for (const l of u.dialog.lines[u.dialog.i].split("\n")) wrapped.push.apply(wrapped, wrap(l,64));
+    let y=121;
+    for (const l of wrapped){ txt(l,6,y); y+=9; }
+    txt("Z >",306,169,"#7a7183");
+  } else if (u.mode==="menu" && u.menu){
+    const m=u.menu;
+    box(0,116,320,64);
+    txt(m.title,6,119,PAL.gold);
+    const start=Math.max(0, m.sel-3);
+    let y=128;
+    for (let i=start;i<Math.min(m.opts.length,start+4);i++){
+      const label=(i===m.sel? "> ":"  ")+m.opts[i].t.slice(0,62);
+      txt(label,6,y, i===m.sel? PAL.coin:PAL.bone);
+      y+=8;
+    }
+    const cur=m.opts[m.sel];
+    if (cur && cur.d) txt(". "+wrap(cur.d,70)[0],6,170,"#8f8878");
+    txt("Z ok  X back",266,119,"#5f5868");
+  }
+}
+function renderCombat(){
+  const c=game.combat, e=c.e;
+  drawDungeon();
+  box(90,8,140,88,"rgba(6,4,9,0.9)",PAL.rust);
+  ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
+  if (e.human) drawHumanFoe(156,36);
+  else drawAbomination(160,22,e.artSeed,1.7);
+  txt(e.n.slice(0,30),95,80,PAL.bloodHi);
+  const w=clamp(e.hp/e.maxhp,0,1);
+  ctx.fillStyle="#33131c"; ctx.fillRect(96,73,128,4);
+  ctx.fillStyle=PAL.bloodHi; ctx.fillRect(96,73,Math.round(128*w),4);
+  txt(e.hp+"/"+e.maxhp,196,64,"#8f8878");
+  box(0,74,320,42,"rgba(8,6,10,0.88)");
+  let y=78;
+  for (const l of c.log.slice(-3)){ txt(l.slice(0,74),5,y,"#cfc6b4"); y+=10; }
+  if (c.turn==="player"){
+    box(0,116,150,64,"rgba(8,6,10,0.92)");
+    const opts=["Strike","Cut Deep (risky)","Guard","Bandage / Ration","Flee"];
+    for (let i=0;i<opts.length;i++)
+      txt((i===c.choice?"> ":"  ")+opts[i],6,120+i*11, i===c.choice?PAL.coin:PAL.bone);
+  } else if (c.turn==="won"){
+    box(0,116,320,64,"rgba(8,6,10,0.92)");
+    txt("It is over. [Z] continue.",6,140,PAL.gold);
+  }
+}
+
+/* ----- title & death ----- */
+let titleTick=0;
+function renderTitle(){
+  ctx.fillStyle="#0b0810"; ctx.fillRect(0,0,W,H);
+  titleTick++;
+  for (let i=0;i<40;i++){
+    const bx=(i*37)%W, bh=20+((i*53)%50);
+    ctx.fillStyle=i%3? "#141019":"#191420";
+    ctx.fillRect(bx,H-bh,14,bh);
+    if ((i*29+Math.floor(titleTick/60))%7<2){ ctx.fillStyle="#2e2433"; ctx.fillRect(bx+3,H-bh+6,3,4); }
+  }
+  ctx.fillStyle="#c8963f";
+  for (let i=0;i<26;i++) ctx.fillRect(102+i*4, 122+Math.round(Math.sin(i)*1.4), 2, 4+((i*7)%5));
+  ctx.fillStyle="rgba(200,150,63,0.08)";
+  ctx.fillRect(80,56,160,66);
+  ctx.textAlign="center";
+  txt("O P E N I N G S",W/2,24,PAL.gold,true);
+  txt("delvings of old Vharn",W/2,36,"#8f8878");
+  txt("a gritty pixel life-in-the-depths sim (draft)",W/2,50,"#5f5868");
+  ctx.textAlign="left";
+  if (Math.floor(titleTick/30)%2===0) txt("[ENTER] begin - the city is patient",96,150,PAL.bone);
+  txt("arrows move  Z confirm  X back  M map",88,162,"#4d4453");
+}
+function renderDead(){
+  ctx.fillStyle="#070409"; ctx.fillRect(0,0,W,H);
+  const ep=game.flags.epilogue||["You are ended."];
+  txt("THE BOOK OF THE GATE",W/2-52,18,PAL.gold,true);
+  let y=36;
+  for (const l of ep){ for (const s of wrap(l,70)){ txt(s,12,y,"#b9b0a0"); y+=10; } y+=2; }
+  txt("[ENTER] Vharn waits for the next name.",92,164,"#6e6678");
+}
+
+/* ============================================================
+   UPDATE
+   ============================================================ */
+let mapOpen=false;
+function updateTitle(){
+  if (yesTap()){ newGame(); cityGrid=buildCity(); game.state="base";
+    say(["Vharn does not greet you. Vharn does not notice you.",
+         "You are one more body that owns a knife and an appetite. Unless you become more."]); }
+}
+function updateBase(){
+  if (uiBlocked()){ updateUI(); return; }
+  const mv=dirTap();
+  if (mv){ tryBaseMove(mv[0],mv[1]); return; }
+  if (yesTap()){
+    for (const b of BUILDINGS){
+      if (b.home && !game.player.house) continue;
+      if (nearBuilding(b, game.base.px, game.base.py)){ enterBuilding(b); return; }
+    }
+    say(["Cobblestones, drizzle, the smell of tallow and meat going off.",
+         "Nothing needs you here. The city keeps its appointments elsewhere."]);
+  }
+}
+function updateDungeon(){
+  if (mapOpen){ if (tap("m")||noTap()||yesTap()) mapOpen=false; return; }
+  if (uiBlocked()){ updateUI(); return; }
+  const d=game.dungeon, f=curFloor();
+  const mv=dirTap();
+  if (mv){ tryMove(mv[0],mv[1]); return; }
+  if (tap("m")){ mapOpen=true; return; }
+  if (!yesTap()) return;
+  const ch=f.grid[d.py][d.px];
+  if (ch==="<"){
+    if (d.floorIx===0){ leaveDungeon(); return; }
+    d.floorIx--;
+    const fr=curFloor();
+    d.px=fr.rooms[0].cx; d.py=fr.rooms[0].cy;
+    markSeen();
+    say(["You climb back up. The air is one level less ancient."]);
+    return;
+  }
+  if (ch===">"){
+    d.depth++;
+    game.player.deep=Math.max(game.player.deep,d.depth);
+    genFloor(d);
+    advanceWeeks(1);
+    saveGame();
+    say(["Down. The stone gets older. The things in it get less pretend."]);
+    return;
+  }
+  showMenu("DELVE", [
+        { t:"Camp (eat a ration, restore)", fn:()=>{
+            if (countItem("Ration")){ useFromInv("Ration",1);
+              game.player.stam=clamp(game.player.stam+45,0,maxStam());
+              game.player.hp=clamp(game.player.hp+4,0,game.player.maxhp);
+              advanceWeeks(1);
+              say(["Cold food, colder company. The dark watches you chew.","Stamina +45, HP +4."]); }
+            else say(["No rations. The dark suggests alternatives. You decline."]);
+            mapOpen=false; saveGame(); } },
+        { t:"Study the walls (map)", fn:()=>{ mapOpen=true; } },
+        { t:"Feel your wounds", fn:()=>{
+            const p=game.player;
+            say(p.wounds.length? ["Your "+p.wounds.join(" and your ")+((p.wounds.length>1)?" throb":" throbs")+" in time with your pulse. A flesh-setter would be wise."]
+                               : ["Holding together. For Vharn, that is a good day."]); } },
+        { t:"Nothing", fn:()=>{} }
+      ]);
+}
+function leaveDungeon(){
+  game.dungeon=null; mapOpen=false; game.state="base";
+  advanceWeeks(1);
+  const p=game.player;
+  const lines=["You climb out into Vharn drizzle. The city resumes ignoring you, which is its way of saying hello.",
+       "Delves: "+p.delves+"  |  kills: "+p.kills+"  |  purse: "+fmt(p.gold)];
+  const news=drainNews();
+  if (news.length) lines.push("Word from the surface:", ...news);
+  say(lines, ()=>saveGame());
+}
+function updateCombat(){
+  const c=game.combat;
+  if (!c) return;
+  if (c.turn==="player"){
+    if (tap("arrowup")||tap("w")) c.choice=(c.choice+4)%5;
+    if (tap("arrowdown")||tap("s")) c.choice=(c.choice+1)%5;
+    if (yesTap()){
+      const acts=["strike","heavy","guard","flask","flee"];
+      combatPlayerAction(acts[c.choice]);
+    }
+  } else if (c.turn==="won"){
+    if (yesTap()) endCombat();
+  }
+}
+function updateDead(){
+  if (!yesTap()) return;
+  if (game.state==="legacy"){ continueAsChild(); return; }
+  game=null; titleTick=0; mapOpen=false;
+}
+/* the heir takes over the save */
+function continueAsChild(){
+  const old=game.player, c=old.child;
+  if (!c){ game=null; return; }
+  if (old.spouse) old.spouse.parentOfYou=true;
+  const spark=c.spark;
+  game.player={
+    name:c.name,
+    str: Math.max(2, Math.floor(old.str*0.5)+Math.ceil(spark/3)),
+    agi: Math.max(2, Math.floor(old.agi*0.5)+Math.ceil(spark/3)),
+    wit: Math.max(2, Math.floor(old.wit*0.5)+Math.ceil(spark/4)),
+    wll: Math.max(2, Math.floor(old.wll*0.5)+Math.ceil(spark/2)),
+    hp:22, maxhp:22, stam:100, maxstam:100,
+    gold:15,
+    weapon: old.weapon.d>2? {n:old.weapon.n, d:old.weapon.d} : {n:"Rusted Knife", d:2},
+    armor: {n:old.armor.n, a:old.armor.a},
+    inv:[{n:"Ration", v:8, qty:2, kind:"food"},{n:"Bandage", v:10, qty:1, kind:"heal"}],
+    wounds:[],
+    house:old.house, upgrades:old.upgrades.slice(),
+    spouse:null, partner:null, tryChild:0, child:null,
+    kills:0, delves:0, deep:0
+  };
+  game.week=c.weeks;
+  game.dungeon=null; game.combat=null; game.base={px:20,py:15};
+  closeUI(); game.state="base"; mapOpen=false;
+  game.flags.news=[];
+  cityGrid=buildCity();
+  say(["The lamp is relit. "+game.player.name+" of the leaning house takes up the knife at "+Math.floor(game.week/52)+" years old.",
+       "Strong as half a dead parent and some of their habits. The house stands because somebody kept paying for it.",
+       "The Openings will remember your old name soon enough. The Gate has not moved."], ()=>saveGame());
+}
+function updateUI(){
+  const u=game.ui;
+  if (u.mode==="text"){
+    if (yesTap()){
+      u.dialog.i++;
+      if (u.dialog.i>=u.dialog.lines.length){
+        const cb=u.onclose; closeUI();
+        if (cb) cb();
+      }
+    }
+  } else if (u.mode==="menu"){
+    const m=u.menu;
+    if (tap("arrowup")||tap("w")) m.sel=(m.sel-1+m.opts.length)%m.opts.length;
+    if (tap("arrowdown")||tap("s")) m.sel=(m.sel+1)%m.opts.length;
+    if (yesTap()){
+      const fn=m.opts[m.sel].fn;
+      closeUI();
+      fn();
+    } else if (noTap()){
+      const oc=u.oncancel;
+      closeUI();
+      if (oc) oc();
+    }
+  }
+}
+
+/* ---------------- main loop ---------------- */
+function frame(){
+  pollGamepad();
+  if (!game) updateTitle();
+  else {
+    if (game.state==="base") updateBase();
+    else if (game.state==="dungeon") updateDungeon();
+    else if (game.state==="combat") updateCombat();
+    else if (game.state==="dead"||game.state==="legacy") updateDead();
+  }
+  if (!game) renderTitle();
+  else {
+    if (game.state==="base") drawBase();
+    else if (game.state==="dungeon") drawDungeon();
+    else if (game.state==="combat") renderCombat();
+    else if (game.state==="dead"||game.state==="legacy") renderDead();
+    if (game.dungeon && mapOpen && game.state==="dungeon") drawMinimap();
+    if (game.state!=="combat" && game.state!=="dead" && !mapOpen) renderUI();
+  }
+  endFrame();
+}
+function loop(){ frame(); requestAnimationFrame(loop); }
+loop();
+
+/* ---------------- touch controls ---------------- */
+(function(){
+  if (!window.matchMedia) return;
+  const pad=document.getElementById("pad");
+  if (!pad) return;
+  const coarse=window.matchMedia("(pointer:coarse)").matches || ("ontouchstart" in window);
+  if (!coarse) return;
+  pad.style.display="flex";
+  const down={}, timers={};
+  const MOVES=["arrowup","arrowdown","arrowleft","arrowright"];
+  pad.querySelectorAll("button[data-k]").forEach(b=>{
+    const k=b.getAttribute("data-k"), kl=k.toLowerCase();
+    const pressOnce=()=>{ window.dispatchEvent(new KeyboardEvent("keydown",{key:k}));
+                          window.dispatchEvent(new KeyboardEvent("keyup",{key:k})); };
+    const dn=e=>{ e.preventDefault(); if (down[k]) return; down[k]=1; b.classList.add("on");
+      window.dispatchEvent(new KeyboardEvent("keydown",{key:k}));
+      if (MOVES.indexOf(kl)>=0) timers[k]=setInterval(pressOnce,150);
+    };
+    const up=()=>{ if (!down[k]) return; down[k]=0; b.classList.remove("on");
+      if (timers[k]){ clearInterval(timers[k]); delete timers[k]; }
+    };
+    b.addEventListener("pointerdown",dn);
+    b.addEventListener("pointerup",up);
+    b.addEventListener("pointercancel",up);
+    b.addEventListener("pointerleave",up);
+    b.addEventListener("contextmenu",e=>e.preventDefault());
+  });
+  const fsb=document.getElementById("fsbtn");
+  if (fsb){
+    fsb.addEventListener("pointerdown",e=>{
+      e.preventDefault();
+      try {
+        if (document.fullscreenElement){ document.exitFullscreen(); }
+        else document.documentElement.requestFullscreen();
+      } catch(err){}
+    });
+    fsb.addEventListener("contextmenu",e=>e.preventDefault());
+  }
+})();
+
+/* debug handle for testing */
+window.__openings={
+  get game(){ return game; },
+  newGame, launchDelve, startCombat, combatPlayerAction, endCombat, genFloor, buildCity,
+  addItem, meetAdventurer, triggerEvent, advanceWeeks, openGate, openTavern, openOffice,
+  openHome, openMarket, updateUI, frame, press:(k)=>{ pressed[k.toLowerCase()]=true; },
+  curFloor, hurt, die, continueAsChild, saveGame, loadGame
+};
+</script>
+</body>
+</html>
