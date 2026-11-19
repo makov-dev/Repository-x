@@ -93,9 +93,35 @@ an auto-walk in progress.
    Two ones fumble. The same dice roll when the enemy brings it to you:
    catch both and the blow meets the space where you stood; one crowned
    die still shaves damage off. Guard and the flask don't gamble — they
-   just work.
+   just work. Below a quarter of your HP the **Last Stand** kicks in and
+   every die crawls, slow enough to catch.
 
-5. **Family.** Court one of six NPCs (affection from talk, gifts — the
+   **After the fight:** killed foes are carved into your bestiary — first
+   meetings show only a description and "vitals unknown"; survive a kill
+   and you know the thing forever (or learn Deep Reading at the Yard).
+   Consecutive crit-kills build a streak that pays bonus gold. Loot is
+   graded COMMON / PRIZED / RARE / RELIC the moment it leaves the dark,
+   and relics earn a banner.
+
+5. **Reputation.** The city names what you do. Seven kills of one kind of
+   thing and you are its **Slayer**; marry and you are **Wed Under the
+   Lamp**; a child makes you **Father**; coin makes you *the Gilded*,
+   depth makes you *the Deep-Drowned*, three crit-kills in a row —
+   **Sixtongue**, three tavern wins — **Spitefinger**. The Guild clerk
+   greets you by your latest name; your titles ride your HUD and your
+   gravestone.
+
+6. **The Training Yard** drills stats, and — if the numbers are there —
+   masters sell **maneuvers**: Riposte (dodge twin sixes, next Strike
+   crits free), Gravedigger's Cleave (Cut Deep never fumbles), Ashen
+   Stare (the weepers can't drink you), Deep Reading (vitals on sight).
+
+7. **The Flayed Lamp** serves food, rumor, marriage and now the
+   **Bones Game**: catch twin sixes against the house and your stake
+   triples. In combat, your last action stays in the menu as a one-tap
+   **Repeat**.
+
+8. **Family.** Court one of six NPCs (affection from talk, gifts — the
    true gifts are Bone Rings and Pale Roses), own a house, marry, install
    the nursery, try for a child, name is rolled from the leftovers of
    Vharn's naming customs. Children grow (spark grows when you teach them).
@@ -119,7 +145,7 @@ an auto-walk in progress.
    the Lamp's door, when you climb out of a delve, and with the morning
    soup after a week's rest. Neglect is a choice, and the city keeps score.
 
-6. **Death & the blood line.** Death is permanent — but a child of 14 or
+9. **Death & the blood line.** Death is permanent — but a child of 14 or
    more *continues*: the save stands, you take over the heir with half your
    old body's leanings plus their taught "spark" for stats, the house and
    its upgrades, your good weapons, and 15g (inheritance is taxed). Dead

@@ -324,7 +324,9 @@ function newGame(){
       wounds:[],
       house:null, upgrades:[],
       spouse:null, partner:null, tryChild:0, child:null,
-      kills:0, delves:0, deep:0
+      kills:0, delves:0, deep:0,
+      titles:[], killsByKind:{}, bestiary:{}, maneuvers:[],
+      streak:0, gambleWins:0, lastAction:null
     },
     base:{ px:20, py:15 },
     dungeon:null,
@@ -408,6 +410,14 @@ function loadGame(){
       game=snap.game; closeUI();
       if (!game.flags) game.flags={news:[]};
       if (!game.flags.news) game.flags.news=[];
+      const Pl=game.player;
+      if (!Array.isArray(Pl.titles)) Pl.titles=[];
+      if (!Array.isArray(Pl.maneuvers)) Pl.maneuvers=[];
+      if (!Pl.killsByKind) Pl.killsByKind={};
+      if (!Pl.bestiary) Pl.bestiary={};
+      if (typeof Pl.streak!=="number") Pl.streak=0;
+      if (typeof Pl.gambleWins!=="number") Pl.gambleWins=0;
+      if (typeof Pl.lastAction!=="string") Pl.lastAction=null;
       game.state = game.dungeon? "dungeon":"base";
     }
   } catch(e){}
@@ -481,7 +491,7 @@ function enterBuilding(b){
 /* ----- facilities ----- */
 function openGuild(){
   say(["The Guild Hall smells of wet stone and old blood. A clerk with too few teeth looks up.",
-       "Deeds get sold here, adventurer. Names get carved here too. Usually both at once."], ()=>{
+       "\"Deeds get sold here, "+addr()+". Names get carved here too. Usually both at once.\""], ()=>{
     showMenu("GUILD HALL", [
       { t:"Rumors of the Openings (5g)", fn:buyRumor },
       { t:"Register your name", fn:()=>{ say(["The clerk chalks your name on a slate.","Try to outlive the ink."]); } },
@@ -526,12 +536,14 @@ function sellMenu(){
   const opts=p.inv.filter(i=>i.kind==="loot").map(i=>({
     t:i.n+" x"+i.qty+" - "+fmt(i.v*i.qty),
     fn:()=>{ const val=i.v*i.qty; p.gold+=val; p.inv.splice(p.inv.indexOf(i),1);
+      addFloat("+"+fmt(val), PAL.coin, W/2, 92); checkTitles();
       say(["The broker bites the "+i.n+" thoughtlessly, then pays "+fmt(val)+"."], ()=>openMarket()); }
   }));
   if (!opts.length){ say(["\"Nothing to sell. Dig deeper, come back filthier.\""], ()=>openMarket()); return; }
   const all=lootValue();
   opts.push({ t:"SELL EVERYTHING ("+fmt(all)+")", fn:()=>{
     p.gold+=all; p.inv=p.inv.filter(i=>i.kind!=="loot");
+    addFloat("+"+fmt(all), PAL.coin, W/2, 92); checkTitles();
     say(["The broker sweeps your pack onto the scale, pays "+fmt(all)+", and does not ask where any of it came from."], ()=>openMarket());
   } });
   showMenu("SELL", opts.concat([{t:"Back", fn:openMarket}]), openMarket);
@@ -594,6 +606,7 @@ function openYard(){
     { t:"Drill Agility (10g, stamina -25)", fn:()=>train("agi","Agility") },
     { t:"Study maps & riddles (10g, stamina -25)", fn:()=>train("wit","Wits") },
     { t:"Practice not screaming (10g, stamina -25)", fn:()=>train("wll","Will") },
+    { t:"Seek instruction: special maneuvers", fn:maneuverMenu },
     { t:"Leave", fn:()=>{} }
   ]);
 }
@@ -618,6 +631,7 @@ function openTavern(){
           if (p.gold<6){ say(["The barkeep slides your empty bowl back, unimpressed."], ()=>openTavern()); return; }
           p.gold-=6; p.stam=clamp(p.stam+40,0,maxStam());
           say(["Grease, onions, mystery. You feel like a person again."], ()=>openTavern()); } },
+      { t:"The Bones Game (stake 10g)", fn:()=>bonesGame(10) },
       { t:"Buy a round, listen to the room (8g)", fn:listenTavern },
       { t:"Who is here tonight?", fn:rosterMenu }
     ];
@@ -731,6 +745,7 @@ function proposeCourt(){
   }
   useFromInv("Bone Ring");
   p.spouse=pt; p.partner=null; pt.aff=100; pt.marriedTo="you";
+  earnTitle("Wed Under the Lamp");
   say([pt.name+" turns the ring in the tallow light. Then she closes your hand over it.",
        "\"Wear it till I put it back on you properly. Home. Tonight.\"",
        "You are wed. The Lamp cheers out of habit, then sincerity."]);
@@ -757,6 +772,7 @@ function openOffice(){
       fn:()=>{ if (p.gold<u.cost){ say(["Short by "+fmt(u.cost-p.gold)+". The clerk shrugs like the weather."], ()=>openOffice()); return; }
         p.gold-=u.cost; p.upgrades.push(u.id);
         p.stam=clamp(p.stam,0,maxStam());
+        checkTitles();
         say(["Work crews come. They hammer. They argue. They leave. "+u.n+": done."], ()=>openOffice());
         saveGame(); }
     }));
@@ -776,6 +792,7 @@ function buyHouse(){
   if (p.gold<250){ say(["The clerk quotes the price again, slower, like you are hard of hearing."], ()=>openOffice()); return; }
   p.gold-=250; p.house="Leaning Tenement";
   cityGrid=buildCity();
+  earnTitle("Householder of Ward Nine");
   say(["Keys. A deed with a wax stamp. A door that only leans when it rains.",
        "The Leaning Tenement is yours. When you die, it stays. That is the whole point of it."]);
   advanceWeeks(2);
@@ -820,6 +837,7 @@ function homeRest(){
     p.child={ name:pick(["Wren","Cob","Liss","Mote","Brack","Sable"]), weeks:0, spark:0 };
     msgs.unshift("A child is born into the leaning house. Wailing. Unreasonable. Alive.",
                  "You and "+(p.spouse? p.spouse.name.split(" ")[0] : "the midwife")+" name the scrap "+p.child.name+".");
+    checkTitles();
   }
   if (p.wounds.length && p.spouse && p.upgrades.indexOf("hearth")>=0){
     p.wounds.splice(0,1);
@@ -1054,7 +1072,14 @@ function triggerEvent(ev){
     case "loot": {
       ev.done=true;
       const got=[];
-      for (const it of ev.items){ if (addItem(it.n,it.v,it.kind)) got.push(it.n); }
+      for (const it of ev.items){
+        if (addItem(it.n,it.v,it.kind)){
+          got.push(it.n);
+          const r=lootRarity(it.v);
+          addFloat(it.n+" - "+r.t, r.col, W/2+(irnd(96)-48), 76);
+          if (r.t==="RELIC"){ kicker(8); setBanner(["A RELIC FROM THE DARK","The "+it.n+". Word of it will reach the market."]); }
+        }
+      }
       if (got.length) say(["Wedged in the dark: "+got.join(", ")+"."]);
       else say(["Something worth taking, but your pack says otherwise."]);
       break; }
@@ -1332,6 +1357,7 @@ function die(cause){
     ep.push("No family, no legend. The wall in the Guild Hall gains a name it will lose in a month's rain.");
   }
   ep.push("Kills "+p.kills+" | delves "+p.delves+" | deepest depth "+p.deep+" | "+fmt(p.gold)+" unspent");
+  if (p.titles.length) ep.push("The wards knew you as: "+p.titles.join(", ")+".");
   ep.push("Press ENTER for a new name in the book.");
   game.flags.epilogue=ep;
 }
@@ -1341,7 +1367,11 @@ function die(cause){
    ============================================================ */
 function startCombat(enemy){
   enemy.maxhp=enemy.mhp||enemy.hp;
-  game.combat={ e:enemy, log:["The "+enemy.n+" comes out of the dark."], turn:"player", choice:0, guard:false, won:false };
+  const p=game.player;
+  if (!p.bestiary[enemy.n]) p.bestiary[enemy.n]={ met:game.week, killed:false };
+  const lore=BESTIARY_DESC[enemy.n] || (enemy.human? "A delver with a knife and an argument. Vharn breeds them faster than grief does." : "Something the city never bothered to name twice.");
+  game.combat={ e:enemy, log:["The "+enemy.n+" comes out of the dark.", lore], turn:"player", choice:0, guard:false, won:false, critKill:false, riposte:false };
+  if (!foeKnown(enemy.n)) game.combat.log.push("You have never seen its like up close. Survive it, and you will know it.");
   game.state="combat";
 }
 function clog(s){ const c=game.combat; c.log.push(s); if (c.log.length>4) c.log.shift(); }
@@ -1352,25 +1382,28 @@ let worldTick=0;
 function armDice(kind, seed){
   const c=game.combat;
   c.dice={ kind:kind, v1:1+irnd(6), v2:1+irnd(6), s1:6, s2:10, st1:false, st2:false, seed:seed };
+  if (game.player.hp<=game.player.maxhp*0.25){ c.dice.s1=13; c.dice.s2=22; }
 }
 function stopDie(d,ix){
   if (ix===0 && !d.st1) d.st1=true;
   if (ix===1 && !d.st2) d.st2=true;
 }
 function rollDiceFrame(){
-  const c=game.combat, d=c&&c.dice;
+  const c=game.combat, d= gDice || (c&&c.dice);
   if (!d) return false;
   if (tap("z")){ if (!d.st1) d.st1=true; else d.st2=true; }
   if (tap("x")){ if (!d.st2) d.st2=true; else d.st1=true; }
   if (!d.st1) d.v1=1+Math.floor(worldTick/d.s1)%6;
   if (!d.st2) d.v2=1+Math.floor(worldTick/(d.st1?7:d.s2))%6;
-  if (d.st1&&d.st2){ const f=d.onDone; c.dice=null; f(d.v1,d.v2); }
+  if (d.st1&&d.st2){ const f=d.onDone; if (gDice) gDice=null; else c.dice=null; f(d.v1,d.v2); }
   return true;
 }
 function sixesOf(v1,v2){ return (v1===6?1:0)+(v2===6?1:0); }
 function combatPlayerAction(a){
   const c=game.combat, e=c.e;
   if (c.turn!=="player"||game.state!=="combat"||c.dice) return;
+  if (a==="repeat"){ if (!game.player.lastAction) return; a=game.player.lastAction; }
+  game.player.lastAction=a;
   if (a==="guard"){
     c.guard=true;
     clog("You set yourself behind steel and fear.");
@@ -1400,23 +1433,37 @@ function resolvePlayerAction(a,v1,v2){
   const c=game.combat, e=c.e;
   const sixes=sixesOf(v1,v2);
   if (a==="strike"){
+    if (c.riposte){
+      c.riposte=false;
+      const dmg=playerAtk()*2;
+      e.hp-=dmg;
+      clog("RIPOSTE. Your steel answers before it finishes. (-"+dmg+")");
+      addFloat("RIPOSTE -"+dmg, PAL.coin, W/2, 95); kicker();
+      if (e.hp<=0){ c.critKill=true; winCombat(); return; }
+    } else {
     let dmg=Math.max(1, playerAtk()-irnd(2));
     if (sixes===1){ dmg+=2; clog("A crowned die blesses the edge. (+2)"); }
     if (sixes===2){
       dmg=playerAtk()*2;
       e.hp-=dmg;
       clog("TWIN SIXES. You strike like a verdict. (-"+dmg+")");
-      if (e.hp<=0){ winCombat(); return; }
+      addFloat("CRIT -"+dmg, PAL.coin, W/2, 95); kicker();
+      if (e.hp<=0){ c.critKill=true; winCombat(); return; }
     } else {
       e.hp-=dmg;
       clog("You carve "+e.n+" for "+dmg+".");
+      addFloat("-"+dmg, PAL.bloodHi, W/2, 95);
       if (e.hp<=0){ winCombat(); return; }
     }
+    }
   } else if (a==="heavy"){
-    const crown=sixes===2, fumble=(v1===1&&v2===1);
+    const crown=sixes===2, fumble=(v1===1&&v2===1)&&!hasManeuver("cleave");
     if (crown || (!fumble && d10()+game.player.str>=9)){
       const dmg=(playerAtk()+3)*(crown?2:1);
       e.hp-=dmg;
+      if (crown) c.critKill=true;
+      addFloat((crown? "CRIT -":"-")+dmg, crown? PAL.coin:PAL.bloodHi, W/2, 95);
+      if (crown) kicker();
       clog(crown? "TWIN SIXES - a deep, mean, senseless cut. (-"+dmg+")"
                 : "A deep, mean cut. "+e.n+" shrieks like a kettle. (-"+dmg+")");
     } else {
@@ -1463,6 +1510,8 @@ function resolveDefense(raw,v1,v2,swarm){
   const sixes=sixesOf(v1,v2);
   if (sixes===2){
     clog("BOTH DICE CROWN. It consumes the space where you stood.");
+    if (hasManeuver("riposte")){ c.riposte=true; clog("Riposte armed. Your next strike answers everything."); }
+    addFloat("DODGE", PAL.coin, W/2, 100);
   } else {
     let dmg=Math.max(1, raw-playerDef()-(c.guard?2:0));
     if (sixes===1){
@@ -1470,9 +1519,11 @@ function resolveDefense(raw,v1,v2,swarm){
       if (red>0){ dmg-=red; clog("One crowned die turns the blow aside. (-"+red+")"); }
     }
     p.hp-=dmg;
+    addFloat("-"+dmg, PAL.bloodHi, W/2+(irnd(24)-12), 100);
+    if (dmg>=6) kicker();
     clog(swarm? "(-"+dmg+")" : e.n+(e.human? " cuts you." : " breaks against you and through.")+" (-"+dmg+")");
   }
-  if (e.tr==="weep" && sixes<2 && Math.random()<0.25){
+  if (e.tr==="weep" && sixes<2 && !hasManeuver("stare") && Math.random()<0.25){
     const stat=pick(["str","agi","wit","wll"]);
     const names={str:"Strength",agi:"Agility",wit:"Wits",wll:"Will"};
     if (p[stat]>1) p[stat]-=1;
@@ -1492,18 +1543,147 @@ function afterEnemyTurn(){
 function winCombat(){
   const c=game.combat, p=game.player;
   p.kills++;
-  const g=2+irnd(6)+game.dungeon.tierNow*2;
+  const bk=p.bestiary[c.e.n]; if (bk) bk.killed=true;
+  if (!c.e.human){
+    p.killsByKind[c.e.n]=(p.killsByKind[c.e.n]||0)+1;
+    if (p.killsByKind[c.e.n]===7) earnTitle(c.e.n+" Slayer");
+  }
+  if (c.critKill) p.streak++; else p.streak=0;
+  let g=2+irnd(6)+game.dungeon.tierNow*2;
+  if (p.streak>=2){ const bonus=p.streak*4; g+=bonus; clog("The dark keeps score. Streak x"+p.streak+" (+"+bonus+"g)"); addFloat("STREAK x"+p.streak, PAL.coin, W/2, 78); }
   p.gold+=g;
+  addFloat("+"+fmt(g), PAL.coin, W/2+16, 92);
   const l=rollLoot(game.dungeon.tierNow, Math.random()<0.4?2:1);
   const got=[];
-  for (const it of l){ if (addItem(it.n,it.v,it.kind)) got.push(it.n); }
+  for (const it of l){
+    if (addItem(it.n,it.v,it.kind)){
+      got.push(it.n);
+      const r=lootRarity(it.v);
+      addFloat(it.n+" - "+r.t, r.col, W/2+(irnd(96)-48), 68);
+      if (r.t==="RELIC"){ kicker(8); setBanner(["A RELIC FROM THE DARK","The "+it.n+". Word of it will reach the market."]); }
+    }
+  }
   clog("It stops. The dark settles like sediment.");
   clog("+"+fmt(g)+(got.length? ", and "+got.join(", "):""));
   if (c.e.duel && p.weapon.d<6){ p.weapon={n:"Duelist's Blade", d:6}; clog("You also liberate their blade."); }
   c.won=true; c.turn="won";
+  checkTitles();
   saveGame();
 }
 function endCombat(){ game.combat=null; game.state="dungeon"; }
+
+/* ----- juice: floats, shake, banners, off-combat dice ----- */
+let floats=[], shakeT=0, bannerMsg=null, bannerT=0, gDice=null;
+function addFloat(s,col,x,y){
+  if (floats.length>14) floats.shift();
+  floats.push({ s:s, col:col||"#e8e0cf", x:(x==null? W/2-20+(irnd(40)-10):x), y:(y==null? 90:y), t:0 });
+}
+function kicker(n){ shakeT=Math.max(shakeT, n||6); }
+function setBanner(lines){ bannerMsg=lines; bannerT=190; }
+function lootRarity(v){
+  return v>=70? {t:"RELIC", col:"#c99df5"} : v>=45? {t:"RARE", col:"#e0b95a"}
+       : v>=25? {t:"PRIZED", col:"#9dc08f"} : {t:"common", col:"#9a9184"};
+}
+
+/* ----- reputation: the titles the city gives you ----- */
+const MANEUVERS = [
+  { id:"riposte", stat:"agi", req:5, n:"Riposte", cost:60, d:"Catch twin sixes on defense and your next Strike is a free critical." },
+  { id:"cleave",  stat:"str", req:5, n:"Gravedigger's Cleave", cost:80, d:"Cut Deep no longer fumbles on snake eyes." },
+  { id:"stare",   stat:"wll", req:6, n:"Ashen Stare", cost:70, d:"Weep-trait foes find nothing in you to drink." },
+  { id:"read",    stat:"wit", req:5, n:"Deep Reading", cost:70, d:"You read a foe's truths on sight: all vitals visible from the first meeting." }
+];
+const ACT_LABEL={ strike:"Strike", heavy:"Cut Deep (risky)", guard:"Guard", flask:"Bandage / Ration", flee:"Flee" };
+function hasManeuver(id){ const p=game&&game.player; return !!p && p.maneuvers.indexOf(id)>=0; }
+function foeKnown(n){
+  const p=game.player, b=p.bestiary[n];
+  return !!(b && (b.killed || hasManeuver("read")));
+}
+function quickActs(){ const base=["strike","heavy","guard","flask","flee"]; const last=game.player.lastAction; return last? ["repeat"].concat(base) : base; }
+function actLabel(a){ return a==="repeat"? "Repeat: "+ACT_LABEL[game.player.lastAction] : ACT_LABEL[a]; }
+function statName(s){ return {str:"Strength", agi:"Agility", wit:"Wits", wll:"Will"}[s]; }
+function earnTitle(t){
+  const p=game.player;
+  if (!p || p.titles.indexOf(t)>=0) return;
+  p.titles.push(t);
+  setBanner(["WORD CARRIES THROUGH THE WARDS","They begin to call you "+t+"."]);
+  saveGame();
+}
+function checkTitles(){
+  const p=game.player;
+  if (!p) return;
+  if (p.child) earnTitle("Father");
+  if (p.house) earnTitle("Householder of Ward Nine");
+  if (p.house && p.upgrades.length>=3) earnTitle("Slumlord of Ward Nine");
+  if (p.gold>=500) earnTitle("the Gilded");
+  if (p.deep>=12) earnTitle("the Deep-Drowned");
+  if (p.kills>=25) earnTitle("Terror of the Openings");
+  if (p.streak>=3) earnTitle("Sixtongue");
+  if (p.gambleWins>=3) earnTitle("Spitefinger");
+}
+function addr(){ const p=game.player; return (p && p.titles.length)? p.titles[p.titles.length-1] : (p? p.name : "friend"); }
+function maneuverMenu(){
+  const p=game.player;
+  const opts=MANEUVERS.filter(m=>p.maneuvers.indexOf(m.id)<0).map(m=>({
+    t:m.n+" ("+fmt(m.cost)+")",
+    d:"Needs "+statName(m.stat)+" "+m.req+". "+m.d,
+    fn:()=>{
+      if (p[m.stat]<m.req){ say(["The yard master watches two of your kicks, shakes his head.",
+        "\"Not yet. "+statName(m.stat)+" "+m.req+" first. You will get there. Or the dark will.\""], ()=>maneuverMenu()); return; }
+      if (p.gold<m.cost){ say(["Short by "+fmt(m.cost-p.gold)+". The yard master waits like wage day."], ()=>maneuverMenu()); return; }
+      p.gold-=m.cost; p.maneuvers.push(m.id); advanceWeeks(3);
+      setBanner(["MANEUVER LEARNED","You know "+m.n+" now. The body remembers."]);
+      say(["Weeks of falling and getting up. Then one morning the motion is simply yours.", m.n+": learned."], ()=>openYard());
+      saveGame(); checkTitles();
+    }
+  }));
+  if (!opts.length) opts.push({ t:"(They have taught you all they know)", fn:()=>{} });
+  opts.push({ t:"Back", fn:openYard });
+  showMenu("SPECIAL MANEUVERS", opts);
+}
+function bonesGame(stake){
+  const p=game.player;
+  if (p.gold<stake){ say(["The stickman eyes your purse. \"Empty hands pull no bones.\""], ()=>openTavern()); return; }
+  p.gold-=stake;
+  say(["A scarred man rattles two knuckle-dice in a cup and slides it across the table.",
+       "\"Catch twin sixes and it triples. One six, stake back. Nothing - to the pot.\"",
+       "Stake: "+fmt(stake)], ()=>{
+    gDice={ kind:"gamble", v1:1+irnd(6), v2:1+irnd(6), s1:6, s2:10, st1:false, st2:false, stake:stake,
+      onDone:(v1,v2)=>{
+        const sixes=sixesOf(v1,v2);
+        if (sixes===2){
+          const win=stake*3;
+          p.gold+=win; p.gambleWins++;
+          setBanner(["THE LAMP ROARS","Twin sixes. "+fmt(win)+" and the room loves you."]);
+          addFloat("+"+fmt(win), PAL.coin, W/2, 74);
+        } else if (sixes===1){
+          p.gold+=stake;
+          say(["One crowned die. The stickman pays your stake back, grudging.",
+               "\"Half a miracle. Half is paid.\""], ()=>openTavern());
+        } else {
+          say(["The dice spit nothing. He sweeps the coins away without looking at them.",
+               "\"The dark takes its fee up here too.\""], ()=>openTavern());
+        }
+        checkTitles();
+        saveGame();
+      } };
+  });
+}
+
+/* ----- known lore of the deep: first meetings are blind ----- */
+const BESTIARY_DESC = {
+  "Grinworm Cluster":"A heap of pale worms arranged, loosely, into the shape of a smile. One of them blinks.",
+  "Milk-Toothed Thing":"Soft, huge, nearly warm. Its mouth is a child's first teeth - all of them at once, and all of them yours.",
+  "Raft of Skin":"Tanned hide of many owners stretched taut on nothing. It moves like a raft and holds like regret.",
+  "Gutter-Weeping Wretch":"Was a drainage worker, once. The weeping is not grief. It is drainage.",
+  "Bile Priest of the Ninth Seam":"Robed in gall and certainty. Whatever it preaches, your veins are the collection plate.",
+  "The Sutured Bride":"Many women sewn into one wedding gown. The veil never lifts; the stitches never heal. She has time.",
+  "Molar Colossus":"A tower of teeth ten storeys tall, all root and no mouth. It grinds forward for reasons of its own.",
+  "Flayed Choir":"A dozen skins hung on hooks, singing in parts. You are not being recruited. You are being scored.",
+  "The Hundred-Handed Host":"Fifty pairs of hands and one enormous patience. It only wants to hold you.",
+  "Pale Chandelier":"The arms of the drowned, arranged as light. It hangs from ceilings that should not exist. So it hangs from yours.",
+  "Wound-Warden of the Deep Ward":"A jailer of the city's worst cellar, assembled from other people's unhealed injuries.",
+  "The Long Mother":"Fifty hands, a warmth at the end of the corridor, and a story about both. Do not go to the warmth."
+};
 
 /* ============================================================
    RENDER
@@ -1749,6 +1929,7 @@ function drawBase(){
   txt(p.name+"  "+Math.floor(game.week/52)+"y  "+fmt(p.gold),3,3,PAL.gold);
   txt("HP "+p.hp+"/"+p.maxhp+" STAM "+Math.floor(p.stam),3,14,PAL.bone);
   if (p.wounds.length) txt("wounds: "+p.wounds.join(","),3,25,PAL.bloodHi);
+  else if (p.titles.length) txt("\""+p.titles[p.titles.length-1]+"\"",3,25,"#a89762");
   cornerChips();
 }
 
@@ -1884,6 +2065,37 @@ function renderUI(){
     hit(262,117,56,12,()=>pressZ("x"));
   }
 }
+function drawGambleBoard(){
+  const d=gDice, j=worldTick%2;
+  box(68,58,184,104,"rgba(10,7,12,0.96)",PAL.gold);
+  txt("THE BONES GAME",126,62,PAL.gold);
+  txt("stake "+fmt(d.stake)+" - win "+fmt(d.stake*3),74,76,"#8f8878");
+  drawDie(94+(d.st1?0:j),94,d.v1,d.st1);
+  drawDie(152+(d.st2?0:(1-j)),94,d.v2,d.st2);
+  if (!d.st1) hit(94,94,26,28,()=>{ if (!d.st1) d.st1=true; });
+  if (!d.st2) hit(152,94,26,28,()=>{ if (!d.st2) d.st2=true; });
+  txt("catch both sixes - Z / X or tap",74,150,"#7a7183");
+}
+function drawJuice(){
+  for (const f of floats){ f.t++; f.y-=0.4; }
+  floats=floats.filter(f=>f.t<90);
+  if (shakeT>0) shakeT--;
+  if (bannerT>0) bannerT--;
+  ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
+  for (const f of floats){
+    ctx.globalAlpha=clamp(1-f.t/90,0,1);
+    txt(f.s, clamp(f.x,2,308), clamp(f.y,2,172), f.col);
+  }
+  ctx.globalAlpha=1;
+  if (bannerT>0 && bannerMsg){
+    const bw=210, bx=(W-bw)/2, bh=bannerMsg.length>1?30:20;
+    box(bx,40,bw,bh,"rgba(10,7,12,0.94)",PAL.gold);
+    if (bannerMsg.length>1){
+      txt(bannerMsg[0],bx+10,44,PAL.gold);
+      txt(bannerMsg[1].slice(0,46),bx+10,55,"#cfc6b4");
+    } else txt(bannerMsg[0],bx+10,46,PAL.gold);
+  }
+}
 function drawDie(x,y,v,stopped){
   const six=v===6;
   ctx.fillStyle= six? "#c9a24a" : "#e8e0cf";
@@ -1903,10 +2115,15 @@ function renderCombat(){
   if (e.human) drawHumanFoe(156,36);
   else drawAbomination(160,22,e.artSeed,1.7);
   txt(e.n.slice(0,30),95,80,PAL.bloodHi);
+  const known=foeKnown(e.n);
   const w=clamp(e.hp/e.maxhp,0,1);
   ctx.fillStyle="#33131c"; ctx.fillRect(96,73,128,4);
-  ctx.fillStyle=PAL.bloodHi; ctx.fillRect(96,73,Math.round(128*w),4);
-  txt(e.hp+"/"+e.maxhp,196,64,"#8f8878");
+  if (known){
+    ctx.fillStyle=PAL.bloodHi; ctx.fillRect(96,73,Math.round(128*w),4);
+    txt(e.hp+"/"+e.maxhp,196,64,"#8f8878");
+  } else {
+    txt("vitals unknown",196,64,"#5f5868");
+  }
   box(0,74,320,42,"rgba(8,6,10,0.88)");
   let y=78;
   for (const l of c.log.slice(-3)){ txt(l.slice(0,54),5,y,"#cfc6b4"); y+=10; }
@@ -1918,13 +2135,12 @@ function renderCombat(){
     drawDie(169+(d.st2?0:(1-j)),136,d.v2,d.st2);
     if (!d.st1) hit(115,136,26,28,()=>d.st1=true);
     if (!d.st2) hit(169,136,26,28,()=>d.st2=true);
-    txt("roll both dice - Z / X or tap them",104,168,"#7a7183");
+    txt(game.player.hp<=game.player.maxhp*0.25? "LAST STAND - dice crawl slow" : "roll both dice - Z / X / tap",104,168,"#7a7183");
   } else if (c.turn==="player"){
     box(0,116,150,64,"rgba(8,6,10,0.92)");
-    const opts=["Strike","Cut Deep (risky)","Guard","Bandage / Ration","Flee"];
-    const acts=["strike","heavy","guard","flask","flee"];
-    for (let i=0;i<opts.length;i++){
-      txt((i===c.choice?"> ":"  ")+opts[i],6,120+i*11, i===c.choice?PAL.coin:PAL.bone);
+    const acts=quickActs();
+    for (let i=0;i<acts.length;i++){
+      txt((i===c.choice?"> ":"  ")+actLabel(acts[i]),6,120+i*11, i===c.choice?PAL.coin:PAL.bone);
       hit(0,117+i*11,150,11,()=>{ c.choice=i; pressZ("z"); });
     }
     txt("twin 6s = crit",156,169,"#5f5868");
@@ -2082,12 +2298,10 @@ function updateCombat(){
   if (!c) return;
   if (c.dice){ rollDiceFrame(); return; }
   if (c.turn==="player"){
-    if (tap("arrowup")||tap("w")) c.choice=(c.choice+4)%5;
-    if (tap("arrowdown")||tap("s")) c.choice=(c.choice+1)%5;
-    if (yesTap()){
-      const acts=["strike","heavy","guard","flask","flee"];
-      combatPlayerAction(acts[c.choice]);
-    }
+    const acts=quickActs();
+    if (tap("arrowup")||tap("w")) c.choice=(c.choice+acts.length-1)%acts.length;
+    if (tap("arrowdown")||tap("s")) c.choice=(c.choice+1)%acts.length;
+    if (yesTap()) combatPlayerAction(acts[c.choice]);
   } else if (c.turn==="won"){
     if (yesTap()) endCombat();
   }
@@ -2117,7 +2331,9 @@ function continueAsChild(){
     wounds:[],
     house:old.house, upgrades:old.upgrades.slice(),
     spouse:null, partner:null, tryChild:0, child:null,
-    kills:0, delves:0, deep:0
+    kills:0, delves:0, deep:0,
+    streak:0, gambleWins:0, lastAction:null,
+    titles:[], killsByKind:{}, bestiary:old.bestiary, maneuvers:[]
   };
   game.week=c.weeks;
   game.dungeon=null; game.combat=null; game.base={px:20,py:15};
@@ -2159,13 +2375,16 @@ function frame(){
   uiHits=[];
   worldTick++;
   pollGamepad();
-  if (!game) updateTitle();
+  if (gDice){ rollDiceFrame(); }
+  else if (!game) updateTitle();
   else {
     if (game.state==="base") updateBase();
     else if (game.state==="dungeon") updateDungeon();
     else if (game.state==="combat") updateCombat();
     else if (game.state==="dead"||game.state==="legacy") updateDead();
   }
+  const shk = shakeT>0 && !gDice;
+  if (shk){ ctx.save(); ctx.translate(irnd(3)-1, irnd(3)-1); }
   if (!game) renderTitle();
   else {
     if (game.state==="base") drawBase();
@@ -2175,6 +2394,9 @@ function frame(){
     if (game.dungeon && mapOpen && game.state==="dungeon") drawMinimap();
     if (game.state!=="combat" && game.state!=="dead" && !mapOpen) renderUI();
   }
+  if (shk) ctx.restore();
+  if (gDice) drawGambleBoard();
+  drawJuice();
   if (hintT>0 && hintMsg){
     hintT--;
     ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
@@ -2194,7 +2416,10 @@ window.__openings={
   newGame, launchDelve, startCombat, combatPlayerAction, endCombat, genFloor, buildCity,
   addItem, meetAdventurer, triggerEvent, advanceWeeks, openGate, openTavern, openOffice,
   openHome, openMarket, updateUI, closeUI, frame, press:(k)=>{ pressed[k.toLowerCase()]=true; },
-  curFloor, hurt, die, continueAsChild, saveGame, loadGame
+  curFloor, hurt, die, continueAsChild, saveGame, loadGame,
+  earnTitle, checkTitles, foeKnown, hasManeuver, quickActs, actLabel, bonesGame, addr,
+  MANEUVERS,
+  get gDice(){ return gDice; }, get bannerMsg(){ return bannerMsg; }
 };
 </script>
 </body>
