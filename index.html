@@ -136,11 +136,55 @@ CVS.addEventListener("pointerdown", e=>{
   const gx=(e.clientX-r.left)*W/r.width, gy=(e.clientY-r.top)*H/r.height;
   for (let i=uiHits.length-1;i>=0;i--){
     const h=uiHits[i];
-    if (gx>=h.x && gx<h.x+h.w && gy>=h.y && gy<h.y+h.h){ e.preventDefault(); h.fn(); break; }
+    if (gx>=h.x && gx<h.x+h.w && gy>=h.y && gy<h.y+h.h){ e.preventDefault(); h.fn(gx,gy); break; }
   }
 });
 let hintMsg=null, hintT=0;
 function showHint(m){ hintMsg=m; hintT=130; }
+/* ----- tap-to-walk (tap a tile, hero walks there) ----- */
+let walkPath=null, walkCb=null, walkTick=0;
+function stopWalk(){ walkPath=null; walkCb=null; }
+function bfsPath(sx,sy,tx,ty,pass,w,h){
+  if (sx===tx && sy===ty) return [];
+  if (tx<0||ty<0||tx>=w||ty>=h) return null;
+  const key=(x,y)=>x+","+y;
+  const prev=new Map();
+  prev.set(key(sx,sy), null);
+  const q=[[sx,sy]]; let head=0;
+  while (head<q.length){
+    const c=q[head++], x=c[0], y=c[1];
+    if (x===tx && y===ty){
+      const path=[]; let cur=c;
+      while (cur){ path.push(cur); cur=prev.get(key(cur[0],cur[1])); }
+      path.reverse(); path.shift();
+      return path;
+    }
+    const nb=[[x+1,y],[x-1,y],[x,y+1],[x,y-1]];
+    for (let i=0;i<4;i++){
+      const nx=nb[i][0], ny=nb[i][1];
+      if (nx<0||ny<0||nx>=w||ny>=h) continue;
+      const k=key(nx,ny);
+      if (prev.has(k)) continue;
+      if (!pass(nx,ny)) continue;
+      prev.set(k, c);
+      q.push([nx,ny]);
+    }
+  }
+  return null;
+}
+function dungPass(x,y){
+  const f=curFloor();
+  if (x<0||y<0||x>=f.w||y>=f.h) return false;
+  if (f.grid[y][x]==="#") return false;
+  return f.seen.has(x+","+y);
+}
+function walkTo(tx,ty,cb,pass,w,h){
+  const src=game.state==="dungeon"? game.dungeon : game.base;
+  if (tx===src.px && ty===src.py){ if (cb) cb(); return; }
+  const path=bfsPath(src.px,src.py,tx,ty,pass,w,h);
+  if (!path){ showHint("No path there from where you stand."); return; }
+  walkPath=path; walkCb=cb||null; walkTick=4;
+}
 
 /* ---------------- palette ---------------- */
 const PAL = {
@@ -1541,25 +1585,51 @@ function drawBase(){
     }
   }
   drawHero((b.px-camX)*T, (b.py-camY)*T, false);
-  if (!game.ui.mode) for (const bl of BUILDINGS){
-    if (bl.home && !game.player.house) continue;
-    const sx=(bl.x-camX)*T, sy=(bl.y-camY)*T;
-    if (sx>W||sy>H||sx+b.w*T<0||sy+b.h*T<0) continue;
-    const near=nearBuilding(bl, b.px, b.py);
-    hit(Math.max(0,sx), Math.max(0,sy), bl.w*T, bl.h*T, ()=>{
+  if (!game.ui.mode){
+    hit(0,0,W,H,(gx,gy)=>{
       if (game.state!=="base" || game.ui.mode) return;
-      if (nearBuilding(bl, game.base.px, game.base.py)) enterBuilding(bl);
-      else showHint("Too far from the "+bl.label+". Walk closer.");
+      const wx=clamp(Math.floor(gx/T)+camX,0,CW-1), wy=clamp(Math.floor(gy/T)+camY,0,CH-1);
+      if (citySolid(wx,wy)) return;
+      walkTo(wx,wy,null, (x,y)=>!citySolid(x,y), CW, CH);
     });
+    for (const bl of BUILDINGS){
+      if (bl.home && !game.player.house) continue;
+      const sx=(bl.x-camX)*T, sy=(bl.y-camY)*T;
+      if (sx>W||sy>H||sx+b.w*T<0||sy+b.h*T<0) continue;
+      hit(Math.max(0,sx), Math.max(0,sy), bl.w*T, bl.h*T, ()=>{
+        if (game.state!=="base" || game.ui.mode) return;
+        if (nearBuilding(bl, game.base.px, game.base.py)){ stopWalk(); enterBuilding(bl); return; }
+        const cands=[];
+        if (bl.home){
+          const dx0=bl.door[0], dy0=bl.door[1];
+          cands.push([dx0,dy0]);
+          cands.push([dx0+1,dy0],[dx0-1,dy0],[dx0,dy0+1],[dx0,dy0-1]);
+        } else {
+          for (let x=bl.x;x<bl.x+bl.w;x++){
+            cands.push([x,bl.y+bl.h]);
+            if (!bl.gate){ cands.push([x,bl.y-1]); }
+          }
+          for (let y=bl.y;y<bl.y+bl.h;y++) cands.push([bl.x-1,y],[bl.x+bl.w,y]);
+        }
+        let best=null, bd=1e9;
+        for (const c of cands){
+          if (c[0]<0||c[1]<0||c[0]>=CW||c[1]>=CH) continue;
+          if (citySolid(c[0],c[1])) continue;
+          const dd=Math.abs(c[0]-game.base.px)+Math.abs(c[1]-game.base.py);
+          if (dd<bd){ bd=dd; best=c; }
+        }
+        if (best) walkTo(best[0],best[1], ()=>{ if (nearBuilding(bl, game.base.px, game.base.py)) enterBuilding(bl); }, (x,y)=>!citySolid(x,y), CW, CH);
+        else showHint("No way in from here.");
+      });
+    }
   }
-  if (hintT>0){ hintT--; if (hintMsg) txt(hintMsg.slice(0,66),W/2-ctx.measureText(hintMsg.slice(0,66)).width/2,6,"#e0b95a"); }
   const p=game.player;
   box(0,0,128,30,"rgba(8,6,10,0.92)");
   txt(p.name+"  "+Math.floor(game.week/52)+"y  "+fmt(p.gold),3,3,PAL.gold);
   txt("HP "+p.hp+"/"+p.maxhp+"  STAM "+Math.floor(p.stam),3,11,PAL.bone);
   if (p.wounds.length) txt("wounded: "+p.wounds.join(","),3,19,PAL.bloodHi);
   ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
-  txt("tap a building to enter",W-98,H-10,"#7a7183");
+  txt("tap a building or tile to walk there",W-130,H-10,"#7a7183");
 }
 
 /* ----- dungeon render ----- */
@@ -1618,6 +1688,14 @@ function drawDungeon(){
   if (p.wounds.length) txt("wounded: "+p.wounds.join(","),3,19,PAL.bloodHi);
   const onUp = f.grid[d.py][d.px]==="<", onDown = f.grid[d.py][d.px]===">";
   if (!game.combat){
+  hit(0,0,W,H,(gx,gy)=>{
+    const f2=curFloor(), d2=game.dungeon;
+    if (!f2 || !d2) return;
+    const wx=clamp(Math.floor(gx/T)+camX,0,f2.w-1), wy=clamp(Math.floor(gy/T)+camY,0,f2.h-1);
+    if (!f2.seen.has(wx+","+wy)) return;
+    if (f2.grid[wy][wx]==="#") return;
+    walkTo(wx,wy,null, dungPass, f2.w, f2.h);
+  });
   if (onUp) chip(d.depth===1? "CLIMB OUT" : "ASCEND", W-106, H-14, 40, ()=>pressZ("z"));
   else if (onDown) chip("DESCEND", W-106, H-14, 40, ()=>pressZ("z"));
   else chip("MENU", W-106, H-14, 40, ()=>pressZ("z"));
@@ -1762,7 +1840,21 @@ function updateTitle(){
 function updateBase(){
   if (uiBlocked()){ updateUI(); return; }
   const mv=dirTap();
-  if (mv){ tryBaseMove(mv[0],mv[1]); return; }
+  if (mv){ stopWalk(); tryBaseMove(mv[0],mv[1]); return; }
+  if (walkPath && walkPath.length){
+    if (yesTap()||noTap()){ stopWalk(); return; }
+    if (++walkTick>=5){
+      walkTick=0;
+      const st=walkPath.shift();
+      if (citySolid(st[0],st[1])){ stopWalk(); }
+      else {
+        game.base.px=st[0]; game.base.py=st[1];
+        if (!walkPath.length && walkCb){ const cb=walkCb; walkCb=null; cb(); }
+      }
+    }
+    return;
+  }
+  walkPath=null; walkCb=null;
   if (yesTap()){
     for (const b of BUILDINGS){
       if (b.home && !game.player.house) continue;
@@ -1777,7 +1869,23 @@ function updateDungeon(){
   if (uiBlocked()){ updateUI(); return; }
   const d=game.dungeon, f=curFloor();
   const mv=dirTap();
-  if (mv){ tryMove(mv[0],mv[1]); return; }
+  if (mv){ stopWalk(); tryMove(mv[0],mv[1]); return; }
+  if (walkPath && walkPath.length){
+    if (yesTap()||noTap()){ stopWalk(); return; }
+    if (tap("m")){ stopWalk(); mapOpen=true; return; }
+    if (++walkTick>=6){
+      walkTick=0;
+      const st=walkPath.shift();
+      if (f.grid[st[1]] && f.grid[st[1]][st[0]]==="#"){ stopWalk(); }
+      else {
+        tryMove(st[0]-d.px, st[1]-d.py);
+        if (!walkPath){ stopWalk(); }
+        else if (!walkPath.length){ walkPath=null; const cb=walkCb; walkCb=null; }
+      }
+    }
+    return;
+  }
+  walkPath=null; walkCb=null;
   if (tap("m")){ mapOpen=true; return; }
   if (!yesTap()) return;
   const ch=f.grid[d.py][d.px];
@@ -1921,6 +2029,13 @@ function frame(){
     else if (game.state==="dead"||game.state==="legacy") renderDead();
     if (game.dungeon && mapOpen && game.state==="dungeon") drawMinimap();
     if (game.state!=="combat" && game.state!=="dead" && !mapOpen) renderUI();
+  }
+  if (hintT>0 && hintMsg){
+    hintT--;
+    ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
+    const hm=hintMsg.slice(0,66), hw=ctx.measureText(hm).width;
+    ctx.fillStyle="rgba(8,6,10,0.9)"; ctx.fillRect(W/2-hw/2-3, 2, hw+6, 11);
+    txt(hm, W/2-hw/2, 4, "#e0b95a");
   }
   endFrame();
 }

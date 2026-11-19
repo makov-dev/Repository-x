@@ -38,12 +38,13 @@ under the canvas: D-pad (hold to walk), big **Z**, **X**, **⏎**, **MAP**,
 canvas scales to the screen; saves live in browser localStorage, so keep using
 the same browser to continue a run.
 
-Everything on the game screen itself is tappable too — you only need the D-pad
-to walk: tap dialog text to advance it, tap a menu option to pick it, tap a
-combat action (Strike/Guard/Flee…) to do it, tap a building in the city to
-enter it (walk close first), and use the on-screen chips in a delve —
-**DESCEND / ASCEND / CLIMB OUT**, **MENU**, **MAP**. The title and death
-screens tap through as well.
+Everything on the game screen itself is tappable too — you never need the D-pad:
+**tap the map to walk there** (pathfinding handles walls; in the city, tapping a
+building walks you to it and takes you inside), tap dialog text to advance it,
+tap a menu option to pick it, tap a combat action (Strike/Guard/Flee…) to do
+it, and use the on-screen chips in a delve — **DESCEND / ASCEND / CLIMB OUT**,
+**MENU**, **MAP**. The title and death screens tap through as well. Tapping
+Z/X or moving the D-pad cancels an auto-walk in progress.
 
 ## The loop
 
