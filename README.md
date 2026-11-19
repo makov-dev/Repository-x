@@ -92,11 +92,25 @@ an auto-walk in progress.
      and old shrines that ask nothing and offer plenty.
 
    Each Opening has its own light: the Cessgate swims sewer-green, the
-   Ossuary breathes dry gold, the Cathedral stains everything violet.
+   Ossuary breathes dry gold, the Cathedral stains everything violet —
+   and each one **hums its own buried pitch** while you're inside.
    Bones, rubble, cracks and wet patches mark the floors; loot and
    shrines pulse faintly; dust drifts, water drips, your lamp flickers
    as you move. Robbery works both ways — walk the streets rich and
    other adventurers will look at you like arithmetic.
+
+   **Greedy hands.** The dark owns a lender's patience. It plants
+   **glints** in the rubble (Vharn-purple, tempting) that are honest
+   double-loot more often than not — and *waiting* the rest of the
+   time. It leaves **whimpers**: starved delvers who beg for a ration
+   you can spare or can't. Feed one and half the Lamp might raise a
+   cup to you; keep walking and the sound follows exactly one corridor.
+   Finish it humanely, and it costs exactly one Will. And at the
+   stairs, if rooms are still unemptied, the dark leans close and
+   recites the gambler's whole liturgy: *one more room, one more
+   room.* Below the fifth depth, everything pays time-and-a-half —
+   the dark wants you deep. Greed is a stat here; it just reads as
+   stamina.
 
 4. **Combat.** Turn-based: Strike, Cut Deep (risky), Guard, Bandage/Ration,
    Flee (AGI check). Damage from weapon dice + STR; wounds are applied when
@@ -158,7 +172,19 @@ an auto-walk in progress.
 6. **The Training Yard** drills stats, and — if the numbers are there —
    masters sell **maneuvers**: Riposte (dodge twin sixes, next Strike
    crits free), Gravedigger's Cleave (Cut Deep never fumbles), Ashen
-   Stare (the weepers can't drink you), Deep Reading (vitals on sight).
+   Stare (the weepers can't drink you), Deep Reading (vitals on sight),
+   **Parry Eternal** (twin sixes on defense and the thing loses its
+   next swing entirely, AGI 8), **Martyr's Calm** (once the Last Stand
+   begins, the slow dice never speed up again, WLL 8) and **The
+   Beheader's Hour** (twin sixes against a foe below a quarter of its
+   vitals end it outright — a STR 9 character can behead things that
+   out-stat them four to one).
+
+   **Skill beats stat blocks.** Every caught six stacks one **EDGE**
+   (max 3) — each point rides the steel as bonus damage, a perfect
+   dodge stacks it, and taking a hit bleeds it all away. A careful
+   gambler faces down horrors ten times their pay grade; a sloppy one
+   dies rich and full of potential.
 
 7. **The Flayed Lamp** serves food, rumor, marriage and now the
    **Bones Game**: catch twin sixes against the house and your stake
@@ -189,7 +215,35 @@ an auto-walk in progress.
    the Lamp's door, when you climb out of a delve, and with the morning
    soup after a week's rest. Neglect is a choice, and the city keeps score.
 
-9. **Death & the blood line.** Death is permanent — but a child of 14 or
+9. **The hidden history.** Nobody in Vharn knows what the Openings are
+   — the city stands on something that used to be divine, opened its
+   own doors to heaven, found no heaven there, and died of it. The
+   Church of Cinders preaches **fragments it does not understand**:
+   bones of the first sinners, promised gardens, a parable about
+   vigilance. The truth is found **only by delving**: kneel at old
+   shrines, search dead men's packs, listen to the wrong stories told
+   right in the Lamp, push to the fifth, seventh, and ninth depths,
+   kill the great horrors, light the thirteenth candle for no one,
+   pay for the city's graves. Each fragment discovered shows, side by
+   side, *what Cinders sings* and *what the dark says* — at the Guild
+   Hall or the Church. Nine fragments exist. The city will never say
+   any of them aloud.
+
+10. **The Threshold.** When the dark has told you enough — six truths,
+    the three great horrors of the deep given their deaths, the ninth
+    depth witnessed, five graves paid for, and a child left behind who
+    will outlive you — the descending stairs stop being stairs. The
+    DESCEND chip becomes **THE GATE**. What waits there is old and vast
+    and *tired*, holding a door the way a jaw holds a scream, and its
+    face does something nothing down here has ever done: it is
+    **relieved**. Take the duty and you become **the Gatekeeper** — a
+    god of the small local kind: the Gate gives you the last truths,
+    raises body and soul, and thereafter *refuses* to let you die.
+    Refuse the duty and you climb back into a city you now understand,
+    carrying the relief of an abandoned god for the rest of your short
+    life.
+
+11. **Death & the blood line.** Death is permanent — but a child of 14 or
    more *continues*: the save stands, you take over the heir with half your
    old body's leanings plus their taught "spark" for stats, the house and
    its upgrades, your good weapons, and 15g (inheritance is taxed). Dead

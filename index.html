@@ -421,6 +421,11 @@ function loadGame(){
       if (typeof Pl.streak!=="number") Pl.streak=0;
       if (typeof Pl.gambleWins!=="number") Pl.gambleWins=0;
       if (typeof Pl.lastAction!=="string") Pl.lastAction=null;
+      if (typeof Pl.gatekeeper!=="boolean") Pl.gatekeeper=false;
+      if (typeof Pl.deep!=="number") Pl.deep=0;
+      if (!Array.isArray(game.flags.lore)) game.flags.lore=[];
+      if (typeof game.flags.funerals!=="number") game.flags.funerals=0;
+      if (typeof game.flags.candles!=="number") game.flags.candles=0;
       game.state = game.dungeon? "dungeon":"base";
     }
   } catch(e){}
@@ -543,6 +548,7 @@ function openGuild(){
           const fallen=["Toma","Bren of Ward 9","the Red twins","Quiet Lias","your predecessor"];
           say(["Chalk names, half scrubbed away: "+fallen.join(", ")+".",
                "Fresh ones each week. The wardens never scrub the fresh ones."]); } },
+      { t:"Read the salt-scribed fragments (the clerk snickers)", fn:openCodex },
       { t:"Leave", fn:()=>{} }
     ]);
   });
@@ -666,6 +672,8 @@ function openChurch(){
       { t:"Light a candle for the dead (3g) - +2 HP", fn:()=>{
           if (p.gold<3){ say(["You have less than a candle. The sexton pretends not to have heard."], ()=>openChurch()); return; }
           p.gold-=3; p.hp=clamp(p.hp+2,0,p.maxhp);
+          game.flags.candles=(game.flags.candles||0)+1;
+          if (game.flags.candles===13) findLore("bellhymn","the thirteenth candle, lit for no one in particular");
           say(["You light it among the others. Every one of them is someone not forgotten.","Somebody once lit one for you, probably. It didn't take."], ()=>openChurch()); saveGame(); } }
     ];
     if (list.length){
@@ -676,6 +684,7 @@ function openChurch(){
           const names=list.join(", ");
           p.gold-=30; advanceWeeks(1);
           game.flags.unburied=[];
+          game.flags.funerals=(game.flags.funerals||0)+1;
           setBanner(["FUNERAL AT CINDERS","You saw them under: "+names.slice(0,42)+"."]);
           sfx("bell"); setTimeout(()=>sfx("bell"), 700);
           if (p.wounds.length){ p.wounds.splice(0,1);
@@ -690,6 +699,7 @@ function openChurch(){
     if (p.spouse) opts.push({ t:"Renew your vows with "+p.spouse.name.split(" ")[0], fn:()=>{
         p.stam=clamp(p.stam+15,0,maxStam());
         say(["Old words, older dust, both rings warmed by the same candle.","You walk out lighter than the mathematics of it explains."], ()=>openChurch()); saveGame(); } });
+    opts.push({ t:"Read the ash-scriptures (what Cinders keeps, badly)", fn:openCodex });
     opts.push({ t:"Leave", fn:()=>{} });
     showMenu("CHURCH OF CINDERS", opts);
   });
@@ -720,6 +730,10 @@ function train(stat, label){
 function openTavern(){
   const p=game.player;
   const intro=["The Flayed Lamp: tallow light, soup with opinions, and every second patron counting someone absent."];
+  if ((game.flags.mercy||0)>0 && !game.flags.mercyTold){
+    game.flags.mercyTold=1;
+    game.flags.news.push("A gaunt delver tells the room you fed him at the mouth of the Cessgate. Half the Lamp raises a cup to you. The other half checks their packs.");
+  }
   const news=drainNews();
   say(news.length? intro.concat(news) : intro, ()=>{
     const opts=[
@@ -763,7 +777,8 @@ function listenTavern(){
     "\"You can marry here, or you can die rich. The city accepts both documents.\"",
     "\"Never eat anything down there that offers itself.\"",
     "\"The Long Mother is a story. A story with fifty hands, but a story.\""
-  ])], ()=>openTavern());
+  ])], ()=>{ if (Math.random()<0.15) findLore("changed","the wrong stories, told right");
+             openTavern(); });
 }
 function courtMeet(){
   const p=game.player;
@@ -1108,6 +1123,8 @@ function genFloor(d){
   if (irnd(2)===0 || tierNow>1){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"puzzle", kind:pick(["riddle","levers","sink"])}); }
   if (irnd(2)===0){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"corpse"}); }
   if (tierNow>1 && irnd(3)===0){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"shrine"}); }
+  if (irnd(4)===0){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"bait"}); }
+  if (irnd(10)===0){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"whimper"}); }
   d.floors.push(floor);
   d.floorIx=d.floors.length-1;
   d.px=start.cx; d.py=start.cy;
@@ -1174,6 +1191,7 @@ function triggerEvent(ev){
       ev.done=true;
       const got=[];
       for (const it of ev.items){
+        if (game.dungeon && game.dungeon.depth>=5) it.v=Math.round(it.v*1.5);
         if (addItem(it.n,it.v,it.kind)){
           got.push(it.n);
           const r=lootRarity(it.v);
@@ -1182,13 +1200,15 @@ function triggerEvent(ev){
           if (r.t==="RELIC"){ kicker(8); setBanner(["A RELIC FROM THE DARK","The "+it.n+". Word of it will reach the market."]); sparkBurst(W/2, 76, "#c99df5", 30, 1.8); }
         }
       }
-      if (got.length) say(["Wedged in the dark: "+got.join(", ")+"."]);
-      else say(["Something worth taking, but your pack says otherwise."]);
+      if (got.length){ say(["Wedged in the dark: "+got.join(", ")+"."], ()=>temptMore()); }
+      else { say(["Something worth taking, but your pack says otherwise."]); temptMore(); }
       break; }
     case "obstacle": obstacleEvent(ev); break;
     case "puzzle": puzzleEvent(ev); break;
     case "corpse": corpseEvent(ev); break;
     case "shrine": shrineEvent(ev); break;
+    case "bait": baitEvent(ev); break;
+    case "whimper": whimperEvent(ev); break;
   }
 }
 function obstacleEvent(ev){
@@ -1317,6 +1337,7 @@ function corpseEvent(ev){
           const roll=Math.random();
           if (roll<0.5){ ev.done=true;
             const l=rollLoot(game.dungeon.tierNow,1);
+            if (Math.random()<0.25) findLore("gild","a dead man's ledgers");
             say(["You strip the pack. \"Sorry,\" you say. The corpse's jaw hangs a little lower."], ()=>{
               l.forEach(it=>addItem(it.n,it.v,it.kind)); }); }
           else if (roll<0.8){
@@ -1339,7 +1360,8 @@ function shrineEvent(ev){
       { t:"Kneel (Will)", fn:()=>{ ev.done=true;
           if (check("wll",9)){ game.player.maxhp+=2; game.player.hp+=2;
             say(["The fat-flame leans toward you. Something vast and indifferent approves for exactly one breath.",
-                 "Max HP +2."]); }
+                 "Max HP +2."]);
+            findLore("ribs","the old faith's quiet offer"); }
           else hurt(2,"The flame flickers through you like a cold draft. You left something here. You will know what, later.");
           saveGame(); } },
       { t:"Snuff it for the votive fat (loot)", fn:()=>{ ev.done=true;
@@ -1433,7 +1455,10 @@ function hurt(n, msg){
   const lines=[];
   if (msg) lines.push(msg);
   lines.push("(-"+n+" HP. "+p.hp+"/"+p.maxhp+")");
-  if (p.hp<=0){ die("Something in "+(game.dungeon? game.dungeon.opening.name : "Vharn")+" finished you."); return; }
+  if (p.hp<=0){
+    if (p.gatekeeper){ p.hp=1; say(["The Gate refuses. Whatever finished you, it was not enough.","(+held at 1 HP)"]); }
+    else { die("Something in "+(game.dungeon? game.dungeon.opening.name : "Vharn")+" finished you."); return; }
+  }
   if (p.hp<=p.maxhp*0.3 && Math.random()<0.4){
     const limb=pick(["arm","ribs","leg","hand","eye"]);
     if (p.wounds.indexOf(limb)<0){
@@ -1499,17 +1524,24 @@ let worldTick=0;
 function armDice(kind, seed){
   const c=game.combat;
   c.dice={ kind:kind, v1:1+irnd(6), v2:1+irnd(6), s1:6, s2:10, st1:false, st2:false, seed:seed };
-  if (game.player.hp<=game.player.maxhp*0.25){ c.dice.s1=13; c.dice.s2=22; }
+  if (game.player.hp<=game.player.maxhp*0.25){ c.dice.s1=13; c.dice.s2=22; c.lastStand=true; }
+  else if (c.lastStand && hasManeuver("calm")){ c.dice.s1=13; c.dice.s2=22; }
 }
 function stopDie(d,ix){
+  const was= ix===0? d.st1 : d.st2;
   if (ix===0 && !d.st1) d.st1=true;
   if (ix===1 && !d.st2) d.st2=true;
+  if (!was && d["v"+(ix+1)]===6 && game && game.combat){
+    const c=game.combat;
+    c.edge=Math.min(3,(c.edge||0)+1);
+    addFloat("EDGE +"+c.edge, "#e0b95a", ix===0? 126: 186, 130);
+  }
 }
 function rollDiceFrame(){
   const c=game.combat, d= gDice || (c&&c.dice);
   if (!d) return false;
-  if (tap("z")){ if (!d.st1) d.st1=true; else d.st2=true; }
-  if (tap("x")){ if (!d.st2) d.st2=true; else d.st1=true; }
+  if (tap("z")){ if (!d.st1) stopDie(d,0); else stopDie(d,1); }
+  if (tap("x")){ if (!d.st2) stopDie(d,1); else stopDie(d,0); }
   if (worldTick%4===0) sfx("tick");
   if (d.st1 && !d._c1){ d._c1=true; sfx(d.v1===6? "six":"click"); }
   if (d.st2 && !d._c2){ d._c2=true; sfx(d.v2===6? "six":"click"); }
@@ -1564,10 +1596,12 @@ function resolvePlayerAction(a,v1,v2){
       if (e.hp<=0){ c.critKill=true; winCombat(); return; }
     } else {
     let dmg=Math.max(1, playerAtk()-irnd(2));
+    if (c.edge){ dmg+=c.edge; clog("The edge you caught rides the steel. (+"+c.edge+")"); c.edge=0; }
     if (sixes===1){ dmg+=2; clog("A crowned die blesses the edge. (+2)"); }
     if (sixes===2){
       dmg=playerAtk()*2;
       e.hp-=dmg;
+      if (hasManeuver("behead") && e.hp>0 && e.hp<=e.maxhp*0.25){ e.hp=0; clog("The Beheader's Hour. Below a quarter, heads are a formality."); }
       clog("TWIN SIXES. You strike like a verdict. (-"+dmg+")");
       addFloat("CRIT -"+dmg, PAL.coin, W/2, 95); kicker();
       critPulse=8; sfx("crit"); sparkBurst(W/2, 90, "#e0b95a", 26, 1.6); setFlash("rgba(201,162,74,", 6);
@@ -1582,8 +1616,11 @@ function resolvePlayerAction(a,v1,v2){
   } else if (a==="heavy"){
     const crown=sixes===2, fumble=(v1===1&&v2===1)&&!hasManeuver("cleave");
     if (crown || (!fumble && d10()+game.player.str>=9)){
-      const dmg=(playerAtk()+3)*(crown?2:1);
+      const dmg=(playerAtk()+3)*(crown?2:1)+(c.edge||0);
+      if (c.edge) clog("The edge you caught rides the steel. (+"+c.edge+")");
+      c.edge=0;
       e.hp-=dmg;
+      if (!c.critKill && hasManeuver("behead") && e.hp>0 && e.hp<=e.maxhp*0.25){ e.hp=0; c.critKill=true; clog("The Beheader's Hour. Below a quarter, heads are a formality."); }
       if (crown) c.critKill=true;
       addFloat((crown? "CRIT -":"-")+dmg, crown? PAL.coin:PAL.bloodHi, W/2, 95);
       if (crown){ kicker(); critPulse=8; sfx("crit"); sparkBurst(W/2, 90, "#e0b95a", 26, 1.6); } else sfx("hit");
@@ -1611,6 +1648,7 @@ function resolvePlayerAction(a,v1,v2){
 }
 function combatEnemyTurn(){
   const c=game.combat, e=c.e, p=game.player;
+  if (c.stagger){ c.stagger=false; clog("Parry Eternal holds. It claws at where the air remembers you. The round is yours twice."); afterEnemyTurn(); return; }
   if (e.tr==="grasp" && Math.random()<0.18){
     clog(e.n+" holds you. Long fingers, long patience.");
     afterEnemyTurn(); return;
@@ -1635,6 +1673,7 @@ function resolveDefense(raw,v1,v2,swarm){
   if (sixes===2){
     clog("BOTH DICE CROWN. It consumes the space where you stood.");
     if (hasManeuver("riposte")){ c.riposte=true; clog("Riposte armed. Your next strike answers everything."); }
+    c.edge=Math.min(3,(c.edge||0)+1);
     addFloat("DODGE", PAL.coin, W/2, 100);
     sfx("dodge"); sparkBurst(W/2, 96, "#cfc6b4", 14, 1.2);
   } else {
@@ -1644,6 +1683,7 @@ function resolveDefense(raw,v1,v2,swarm){
       if (red>0){ dmg-=red; clog("One crowned die turns the blow aside. (-"+red+")"); }
     }
     p.hp-=dmg;
+    c.edge=0;
     addFloat("-"+dmg, PAL.bloodHi, W/2+(irnd(24)-12), 100);
     sfx("hurt"); setFlash("rgba(110,34,48,", Math.min(8, 4+dmg));
     if (dmg>=6) kicker();
@@ -1661,8 +1701,8 @@ function afterEnemyTurn(){
   const c=game.combat, p=game.player;
   c.guard=false;
   if (p.hp<=0){
-    die(game.dungeon? "Torn apart in the "+game.dungeon.opening.name : "Slain in Vharn");
-    return;
+    if (p.gatekeeper){ p.hp=1; clog("The Gate refuses. It is not done with you."); }
+    else { die(game.dungeon? "Torn apart in the "+game.dungeon.opening.name : "Slain in Vharn"); return; }
   }
   c.turn="player";
 }
@@ -1673,6 +1713,7 @@ function winCombat(){
   if (!c.e.human){
     p.killsByKind[c.e.n]=(p.killsByKind[c.e.n]||0)+1;
     if (p.killsByKind[c.e.n]===7) earnTitle(c.e.n+" Slayer");
+    if (!c.e.human) maybeFoeLore(c.e.n);
   }
   if (c.critKill) p.streak++; else p.streak=0;
   const tilt= game.dungeon? game.dungeon.tierNow:1;
@@ -1681,7 +1722,9 @@ function winCombat(){
   p.gold+=g;
   addFloat("+"+fmt(g), PAL.coin, W/2+16, 92);
   sfx("coin"); sparkBurst(W/2, 88, "#e0b95a", 14, 1.1);
+  if (game.dungeon && game.dungeon.depth>=5) clog("Below the fifth, the dark pays time and a half.");
   const l=rollLoot(tilt, Math.random()<0.4?2:1);
+  if (game.dungeon && game.dungeon.depth>=5) l.forEach(it=>{ it.v=Math.round(it.v*1.5); });
   const got=[];
   for (const it of l){
     if (addItem(it.n,it.v,it.kind)){
@@ -1862,8 +1905,203 @@ function lootRarity(v){
 }
 
 /* ----- reputation: the titles the city gives you ----- */
+/* ----- the hidden history: what nobody in Vharn knows ----- */
+const LORE_FRAG=[
+  { id:"ribs", church:"Doctrine says: the world's floor is the bones of the first sinners, cursed to bear us.",
+    truth:"They were not sinners. The streets do not stand on bones. The bones hold up the thing the city refuses to name: a torso, city-wide, and the Openings are its entry wounds." },
+  { id:"gild", church:"Doctrine says: gold found below is tithe, returned by the Seven Lights to whoever dares.",
+    truth:"Gold in the dark is not treasure. It is sap. It leaks out of the carcass, and everything below is rooted in it, and everything above it is tasted." },
+  { id:"changed", church:"Doctrine says: the vanished rose bodily to the Choir of Seven Lights, and the lights are good.",
+    truth:"They were human. Close enough to godhood to reach up. They opened the Gate to heaven, and heaven was not there. Something else was. It examined them, and kept them, and let them change." },
+  { id:"host", church:"Doctrine says: the Hundred-Handed Host is a punishment, sent down for the debtors' sins.",
+    truth:"The Host is not punishment. It is memory: a hundred years of hands, all from one body, still doing one chore over and over at the city's throat." },
+  { id:"warden", church:"Doctrine says: the Wound-Warden is a saint who stayed below to shield the faithful.",
+    truth:"The god died of many wounds. Each wound grew a warden, the way a tree grows a knot. The Warden is the knot of one hurt, still holding it in." },
+  { id:"mother", church:"Doctrine says: the Long Mother bore the first martyrs and mourns them still.",
+    truth:"The Mother is the carcass's warmth. The warmth is a lure, the lure is a throat, and the story about fifty hands is the only part anyone has compared notes on." },
+  { id:"notheaven", church:"Doctrine says: beyond the Gate waits a garden filled with every name you ever mourned.",
+    truth:"Beyond the Gate there is no heaven. There is a hall, there is a door, and on the door there is a duty. That is the whole of the hereafter." },
+  { id:"bellhymn", church:"Doctrine says: the Cinders bell was cast from a conquered idol's crown, and its toll protects.",
+    truth:"The bell-hymn is sung incorrectly on purpose. An older copy writes it from a hymn the changing ones sang while they changed. Sung right, it quiets them. Sung right, it also answers." },
+  { id:"keeper", church:"Doctrine says: the Gatekeeper is a parable about vigilance. Only that. Only ever that.",
+    truth:"A gate needs a keeper as a wound needs a watcher. They made a keeper out of one of their own and set him in the hall. He is still there. He would like to be relieved." }
+];
+const LORE_BY_ID={}; for (const fr of LORE_FRAG) LORE_BY_ID[fr.id]=fr;
+const KEEPER_APEXES=["The Hundred-Handed Host","Wound-Warden of the Deep Ward","The Long Mother"];
+function hasLore(id){ const fl=(game.flags.lore||[]); return fl.indexOf(id)>=0; }
+function findLore(id, via){
+  if (!game || hasLore(id)) return;
+  const fr=LORE_BY_ID[id]; if (!fr) return;
+  game.flags.lore=game.flags.lore||[];
+  game.flags.lore.push(id);
+  setBanner(["A FRAGMENT OF THE TRUTH", (via? "From "+via+". ":"")+fr.truth.slice(0,42)+"..."]);
+  sfx("gain"); sparkBurst(W/2, 60, "#c99df5", 22, 1.5);
+  saveGame();
+}
+function maybeDepthLore(depth){
+  if (depth===5) findLore("gild","the fifth depth, where the dark starts paying");
+  if (depth===7) findLore("notheaven","the seventh depth, where the stone forgets");
+  if (depth===9) findLore("keeper","the ninth depth, which has a door in it");
+}
+function maybeFoeLore(n){
+  if (n==="The Hundred-Handed Host") findLore("host","the Host's hundred deaths");
+  if (n==="Wound-Warden of the Deep Ward") findLore("warden","the knot you cut out");
+  if (n==="The Long Mother") findLore("mother","the warmth that lied");
+}
+function gateConditions(){
+  const p=game.player, fl=game.flags.lore||[];
+  const apex=KEEPER_APEXES.filter(n=>p.bestiary[n] && p.bestiary[n].killed).length;
+  return [
+    { l:"know six truths the city has forgotten ("+Math.min(fl.length,6)+"/6)", ok:fl.length>=6 },
+    { l:"give the three great horrors of the deep their deaths ("+apex+"/3)", ok:apex>=3 },
+    { l:"stand at the ninth depth, where the stone forgets ("+Math.min(p.deep||0,9)+"/9)", ok:(p.deep||0)>=9 },
+    { l:"pay Cinders for five graves the city left open ("+Math.min(game.flags.funerals||0,5)+"/5)", ok:(game.flags.funerals||0)>=5 },
+    { l:"leave blood behind: a child who outlives you", ok:!!p.child }
+  ];
+}
+function gateReady(){ return gateConditions().every(c=>c.ok); }
+function thresholdMenu(){
+  showMenu("THE THRESHOLD - WHAT A KEEPER IS MADE OF",
+    gateConditions().map(c=>({ t:(c.ok? "[X] ":"[ ] ")+c.l, fn:()=>{} }))
+    .concat([{ t:"Back", fn:()=>{} }]));
+}
+function openCodex(){
+  const fl=game.flags.lore||[];
+  const recent=fl.slice(-2).map(id=>LORE_BY_ID[id]).filter(Boolean);
+  const lines=["What the Church sings, and what you have read in the dark. "+fl.length+" of "+LORE_FRAG.length+" fragments."];
+  if (!fl.length) lines.push("\"The Lights are good,\" Cinders teaches. You have no reason to doubt it. Yet.");
+  for (const fr of recent){
+    lines.push("Cinders sings: "+fr.church.slice(0,100));
+    lines.push("The dark says: "+fr.truth.slice(0,100));
+  }
+  say(lines, ()=>{ if (fl.length>=4) thresholdMenu(); });
+}
+function openTheGate(){
+  const p=game.player;
+  showText(["The stairs do not step. They open.",
+    "Below the ninth depth there is a hall you have seen in the corners of every fresco Cinders ever mislabeled.",
+    "And on the far side of it, the Gate. Holding it: something that used to be a person, holding it the way a jaw holds a scream.",
+    "It sees you. Its face does something you have not seen on anything down here. It is \*relieved\*."], ()=>{
+    showMenu("THE GATE", [
+      { t:"Take the duty. Become the Gatekeeper.", fn:()=>{
+          p.gatekeeper=true; p.maxhp+=12; p.hp=p.maxhp;
+          for (const s of ["str","agi","wit","wll"]) p[s]=Math.min(12, Math.max(p[s],9));
+          game.flags.lore=LORE_FRAG.map(f=>f.id);
+          game.flags.gatekept=true;
+          earnTitle("the Gatekeeper");
+          setBanner(["THE GATE IS KEPT","Vharn prays on, unaware of who is listening."]);
+          sfx("bell"); setTimeout(()=>sfx("bell"),700); setTimeout(()=>sfx("bell"),1400);
+          game.dungeon=null; game.state="base";
+          saveGame(); } },
+      { t:"Turn away. Nobody keeps it. Not yet.", fn:()=>{
+          say(["You climb out of a hall older than wrongness, and the relief on the Keeper's face follows you up like a draft.","You will carry that for the rest of your short life."]);
+          game.dungeon=null; game.state="base";
+          saveGame(); } }
+    ]);
+  });
+}
+/* ----- gambler's pull: the dark always wants one more room ----- */
+function freeTile(f){
+  const d=game.dungeon;
+  for (let tries=0; tries<80; tries++){
+    const x=1+irnd(f.w-2), y=1+irnd(f.h-2);
+    if (f.grid[y][x]==="#") continue;
+    if (f.events.some(e=>e.x===x&&e.y===y)) continue;
+    if (d && x===d.px && y===d.py) continue;
+    return [x,y];
+  }
+  return null;
+}
+function temptMore(){
+  const d=game.dungeon;
+  if (!d || game.state!=="dungeon" || game.combat) return;
+  const p=game.player;
+  if (p.stam<=18 || d.deepTempt) return;
+  if (Math.random()>=0.22) return;
+  d.deepTempt=true;
+  showMenu("ONE MORE ROOM", [
+    { t:"One more room. (the dark promises)", fn:()=>{
+        p.stam=clamp(p.stam-8,0,maxStam());
+        const t=freeTile(curFloor());
+        if (t) curFloor().events.push({x:t[0],y:t[1],type:"bait"});
+        say(["You go one room past sense. The dark hums the way a lender hums."]);
+        saveGame(); } },
+    { t:"No. Out, while the out is open.", fn:()=>{} }
+  ]);
+}
+function temptClimb(){
+  const d=game.dungeon, f=curFloor(), p=game.player;
+  if (d.tempted || p.stam<=20) return false;
+  const open=f.events.filter(e=>!e.done && (e.type==="loot"||e.type==="bait"));
+  if (!open.length || Math.random()>=0.3) return false;
+  d.tempted=true;
+  showMenu("THE DARK LEANS CLOSE", [
+    { t:"One more room. You have not emptied this one.", fn:()=>{
+        p.stam=clamp(p.stam-8,0,maxStam());
+        const t=freeTile(f);
+        if (t) f.events.push({x:t[0],y:t[1],type:"bait"});
+        say(["\"One more room,\" the dark recites, patient as arithmetic."]);
+        saveGame(); } },
+    { t:"Climb out while the climbing is good", fn:()=>{ leaveDungeon(); } }
+  ]);
+  return true;
+}
+function ambusher(){
+  const base=tierEnemy();
+  base.hp=Math.round(base.hp*1.25); base.mhp=base.hp; base.atk=base.atk+1;
+  return base;
+}
+function baitEvent(ev){
+  showText(["A glint, low in a seam of rubble. You know the shape of it, the exact shape of what you came down here for.",
+    "It knows the shape of you, too."], ()=>{
+    showMenu("THE GLINT", [
+      { t:"Reach for it", fn:()=>{ ev.done=true;
+          if (Math.random()<0.45){
+            startCombat(ambusher());
+            game.combat.log.push("It was not loot. It was a lure.");
+          } else {
+            const l=rollLoot(game.dungeon.tierNow,2);
+            l.forEach(it=>{ it.v=Math.round(it.v*1.4); });
+            say(["The glint was honest. Greedy hands, honest glint - double take.","You take it all, and take it fast, before the sentence that offered it can change its mind."], ()=>{ l.forEach(it=>addItem(it.n,it.v,it.kind)); });
+          }
+          saveGame(); } },
+      { t:"Hands off", fn:()=>{ ev.done=true;
+          say(["You leave the glint for someone with worse instincts. Grief in this city is a subscription, and you are not subscribing today."]); } }
+    ]);
+  });
+}
+function whimperEvent(ev){
+  showText(["A wet sound at the edge of the lamplight: a delver folded against the wall, starved down to pure intent.",
+    "\"Bread,\" he says. \"Or finish it. I waived pride in the city. I kept some for down here.\""], ()=>{
+    showMenu("THE WHIMPER", [
+      { t:"Give a ration", fn:()=>{ ev.done=true;
+          if (!countItem("Ration")){ say(["You pat your pack with a liar's hands. His face does an old, practiced nothing."]); return; }
+          useFromInv("Ration",1);
+          game.flags.mercy=(game.flags.mercy||0)+1;
+          if (Math.random()<0.4) game.player.wll=Math.min(10,game.player.wll+1);
+          const who=pick(ADV_NAMES);
+          say([who+" eats like the bread might be a story itself.",
+               "\"If I see you up there,\" he says, \"you get the seat nearest the soup.\""]);
+          if (Math.random()<0.5) findLore("changed","a starving man's correct prayers");
+          saveGame(); } },
+      { t:"Keep walking", fn:()=>{ ev.done=true;
+          game.flags.cruel=(game.flags.cruel||0)+1;
+          say(["You keep walking. The sound follows you for exactly one corridor, then the dark eats it.","This city runs on that arithmetic."]);
+          saveGame(); } },
+      { t:"Finish it (a mercy of a kind)", fn:()=>{ ev.done=true;
+          game.flags.cruel=(game.flags.cruel||0)+1;
+          game.player.wll=Math.max(1,game.player.wll-1);
+          say(["He thanks you. That is the part that will keep.","(-1 Will. It costs exactly that much.)"]);
+          saveGame(); } }
+    ]);
+  });
+}
+
 const MANEUVERS = [
   { id:"riposte", stat:"agi", req:5, n:"Riposte", cost:60, d:"Catch twin sixes on defense and your next Strike is a free critical." },
+  { id:"parry", stat:"agi", req:8, n:"Parry Eternal", cost:120, d:"Catch twin sixes on defense and the thing loses its next swing entirely." },
+  { id:"behead", stat:"str", req:9, n:"The Beheader's Hour", cost:150, d:"Twin sixes against a foe below a quarter of its vitals end it. Whatever it is. Whatever it was." },
+  { id:"calm", stat:"wll", req:8, n:"Martyr's Calm", cost:100, d:"Once the Last Stand begins, its slow dice do not stop being slow." },
   { id:"cleave",  stat:"str", req:5, n:"Gravedigger's Cleave", cost:80, d:"Cut Deep no longer fumbles on snake eyes." },
   { id:"stare",   stat:"wll", req:6, n:"Ashen Stare", cost:70, d:"Weep-trait foes find nothing in you to drink." },
   { id:"read",    stat:"wit", req:5, n:"Deep Reading", cost:70, d:"You read a foe's truths on sight: all vitals visible from the first meeting." }
@@ -2274,10 +2512,12 @@ function drawDungeon(){
       const ev=f.events.find(e=>e.x===wx&&e.y===wy&&!e.done);
       if (ev){
         if (ev.type==="loot"){ ctx.fillStyle=PAL.gold; ctx.fillRect(x*T+3,y*T+3,2,2); }
+        else if (ev.type==="bait"){ ctx.fillStyle=(worldTick%20<10)? PAL.gold : "#c99df5"; ctx.fillRect(x*T+3,y*T+3,2,2); }
+        else if (ev.type==="whimper"){ ctx.fillStyle="#6b6f78"; ctx.fillRect(x*T+2,y*T+4,3,2); ctx.fillRect(x*T+3,y*T+2,1,2); }
         else if (ev.type==="corpse"){ ctx.fillStyle=PAL.boneDim; ctx.fillRect(x*T+2,y*T+3,4,1); ctx.fillRect(x*T+3,y*T+4,3,1); }
         else if (ev.type==="shrine"){ ctx.fillStyle=PAL.bone; ctx.fillRect(x*T+2,y*T+2,1,3); ctx.fillRect(x*T+4,y*T+2,1,3); ctx.fillStyle=PAL.gold; ctx.fillRect(x*T+3,y*T+3,1,1); }
         else if (ev.type==="puzzle"){ ctx.fillStyle="#6b5d7a"; ctx.fillRect(x*T+1,y*T+1,5,5); ctx.fillStyle="#0a0810"; ctx.fillRect(x*T+2,y*T+2,3,3); }
-        if (ev.type==="loot"||ev.type==="shrine"||ev.type==="puzzle"){
+        if (ev.type==="loot"||ev.type==="bait"||ev.type==="shrine"||ev.type==="puzzle"){
           const pul=(0.10+0.08*Math.sin(worldTick/9+wx*1.7+wy*2.3)).toFixed(3);
           ctx.fillStyle= ev.type==="loot"? "rgba(224,185,90,"+pul+")" : "rgba(150,140,190,"+pul+")";
           ctx.fillRect(x*T-1,y*T-1,T+2,T+2);
@@ -2330,7 +2570,7 @@ function drawDungeon(){
     walkTo(wx,wy,null, dungPass, f2.w, f2.h);
   });
   if (onUp) chip(d.depth===1? "CLIMB OUT" : "ASCEND", W-116, H-14, 54, ()=>pressZ("z"));
-  else if (onDown) chip("DESCEND", W-116, H-14, 54, ()=>pressZ("z"));
+  else if (onDown) chip(gateReady()? "THE GATE":"DESCEND", W-116, H-14, 54, ()=>pressZ("z"));
   else chip("MENU", W-116, H-14, 54, ()=>pressZ("z"));
   chip("MAP", W-60, H-14, 30, ()=>pressZ("m"));
   }
@@ -2496,8 +2736,8 @@ function renderCombat(){
     txt("CATCH THE SIXES",108,118,"#e0b95a");
     drawDie(115+(d.st1?0:j),136,d.v1,d.st1);
     drawDie(169+(d.st2?0:(1-j)),136,d.v2,d.st2);
-    if (!d.st1) hit(115,136,26,28,()=>d.st1=true);
-    if (!d.st2) hit(169,136,26,28,()=>d.st2=true);
+    if (!d.st1) hit(115,136,26,28,()=>stopDie(d,0));
+    if (!d.st2) hit(169,136,26,28,()=>stopDie(d,1));
     txt(game.player.hp<=game.player.maxhp*0.25? "LAST STAND - dice crawl slow" : "roll both dice - Z / X / tap",104,168,"#7a7183");
   } else if (c.turn==="player"){
     box(0,116,150,64,"rgba(8,6,10,0.92)");
@@ -2612,7 +2852,10 @@ function updateDungeon(){
   if (!yesTap()) return;
   const ch=f.grid[d.py][d.px];
   if (ch==="<"){
-    if (d.floorIx===0){ leaveDungeon(); return; }
+    if (d.floorIx===0){
+      if (temptClimb()) return;
+      leaveDungeon(); return;
+    }
     d.floorIx--;
     const fr=curFloor();
     d.px=fr.rooms[0].cx; d.py=fr.rooms[0].cy;
@@ -2621,8 +2864,10 @@ function updateDungeon(){
     return;
   }
   if (ch===">"){
+    if (gateReady()){ openTheGate(); return; }
     d.depth++;
     game.player.deep=Math.max(game.player.deep,d.depth);
+    maybeDepthLore(d.depth);
     genFloor(d);
     advanceWeeks(1);
     saveGame();
@@ -2798,6 +3043,7 @@ window.__openings={
   curFloor, hurt, die, continueAsChild, saveGame, loadGame,
   earnTitle, checkTitles, foeKnown, hasManeuver, quickActs, actLabel, bonesGame, addr,
   openChurch, maybeMugged, openTavern, voiceSfx, coinCascade, updateAmbience,
+  findLore, openCodex, gateConditions, openTheGate, LORE_FRAG,
   MANEUVERS, BUILDINGS, OPENINGS, sfx, toggleSnd,
   get gDice(){ return gDice; }, get bannerMsg(){ return bannerMsg; },
   get droneOpen(){ return droneOpen; }
