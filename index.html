@@ -98,13 +98,13 @@ function toggleFS(){
 }
 function chip(label,x,y,w,fn,en){
   if (en===undefined) en=true;
-  ctx.font="7px 'Courier New',monospace";
+  ctx.font="bold 9px 'Courier New',monospace";
   ctx.fillStyle= en? "#241b2d" : "#130e18";
   ctx.fillRect(x,y,w,13);
   ctx.strokeStyle= en? "#7d6f4c" : "#2a2233";
   ctx.strokeRect(x+.5,y+.5,w-1,12);
   const tw=ctx.measureText(label).width;
-  txt(label,x+Math.max(1,Math.floor((w-tw)/2)),y+3, en? "#d8cba8" : "#57506a");
+  txt(label,x+Math.max(1,Math.floor((w-tw)/2)),y+2, en? "#d8cba8" : "#57506a");
   if (en) hit(x,y,w,13,fn);
 }
 CVS.addEventListener("pointerdown", e=>{
@@ -919,6 +919,7 @@ function openGate(){
    DUNGEONS
    ============================================================ */
 function launchDelve(opening){
+  if (typeof opening==="number") opening=OPENINGS[opening];
   const d={ opening:opening, depth:1, floors:[], px:0, py:0, steps:0 };
   game.dungeon=d;
   game.state="dungeon";
@@ -1435,8 +1436,10 @@ function endCombat(){ game.combat=null; game.state="dungeon"; }
    RENDER
    ============================================================ */
 function txt(s,x,y,col,big){
-  ctx.font=(big? "bold 8px":"7px")+" 'Courier New', monospace";
+  ctx.font=(big? "bold 11px":"bold 9px")+" 'Courier New', monospace";
   ctx.textBaseline="top";
+  ctx.fillStyle="#0a0710";
+  ctx.fillText(s,x+1,y); ctx.fillText(s,x-1,y); ctx.fillText(s,x,y+1); ctx.fillText(s,x,y-1);
   ctx.fillStyle=col||PAL.bone;
   ctx.fillText(s,x,y);
 }
@@ -1521,9 +1524,9 @@ let worldTick=0;
 function drawBuilding(bl, sx, sy){
   const w=bl.w*T, h=bl.h*T;
   const rnd=mulberry(bl.x*131+bl.y*17);
-  ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
+  ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
   const tw=ctx.measureText(bl.label).width;
-  txt(bl.label, sx+w/2-tw/2, sy-9, "#efe7d4");
+  txt(bl.label, sx+w/2-tw/2, sy-10, "#efe7d4");
   if (bl.gate){
     ctx.fillStyle="rgba(6,4,9,0.75)"; ctx.fillRect(sx+2,sy,w-4,h);
     ctx.fillStyle="#3a2f42";
@@ -1670,11 +1673,10 @@ function drawBase(){
     }
   }
   const p=game.player;
-  box(0,0,128,30,"rgba(8,6,10,0.92)");
+  box(0,0,148,38,"rgba(8,6,10,0.92)");
   txt(p.name+"  "+Math.floor(game.week/52)+"y  "+fmt(p.gold),3,3,PAL.gold);
-  txt("HP "+p.hp+"/"+p.maxhp+"  STAM "+Math.floor(p.stam),3,11,PAL.bone);
-  if (p.wounds.length) txt("wounded: "+p.wounds.join(","),3,19,PAL.bloodHi);
-  ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
+  txt("HP "+p.hp+"/"+p.maxhp+" STAM "+Math.floor(p.stam),3,14,PAL.bone);
+  if (p.wounds.length) txt("wounds: "+p.wounds.join(","),3,25,PAL.bloodHi);
   cornerChips();
 }
 
@@ -1728,10 +1730,10 @@ function drawDungeon(){
   g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(2,1,4,0.8)");
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
   const p=game.player;
-  box(0,0,168,30,"rgba(6,4,9,0.9)");
-  txt(d.opening.name+"  depth "+d.depth+" (danger "+d.tierNow+")",3,3,PAL.gold);
-  txt("HP "+p.hp+"/"+p.maxhp+"  STAM "+Math.floor(p.stam)+"  "+fmt(p.gold),3,11);
-  if (p.wounds.length) txt("wounded: "+p.wounds.join(","),3,19,PAL.bloodHi);
+  box(0,0,196,38,"rgba(6,4,9,0.9)");
+  txt(d.opening.name.slice(0,34)+" d"+d.depth+" (dgr "+d.tierNow+")",3,3,PAL.gold);
+  txt("HP "+p.hp+"/"+p.maxhp+" STAM "+Math.floor(p.stam)+" "+fmt(p.gold),3,14);
+  if (p.wounds.length) txt("wounds: "+p.wounds.join(","),3,25,PAL.bloodHi);
   const onUp = f.grid[d.py][d.px]==="<", onDown = f.grid[d.py][d.px]===">";
   if (!game.combat){
   hit(0,0,W,H,(gx,gy)=>{
@@ -1742,10 +1744,10 @@ function drawDungeon(){
     if (f2.grid[wy][wx]==="#") return;
     walkTo(wx,wy,null, dungPass, f2.w, f2.h);
   });
-  if (onUp) chip(d.depth===1? "CLIMB OUT" : "ASCEND", W-106, H-14, 40, ()=>pressZ("z"));
-  else if (onDown) chip("DESCEND", W-106, H-14, 40, ()=>pressZ("z"));
-  else chip("MENU", W-106, H-14, 40, ()=>pressZ("z"));
-  chip("MAP", W-62, H-14, 30, ()=>pressZ("m"));
+  if (onUp) chip(d.depth===1? "CLIMB OUT" : "ASCEND", W-116, H-14, 54, ()=>pressZ("z"));
+  else if (onDown) chip("DESCEND", W-116, H-14, 54, ()=>pressZ("z"));
+  else chip("MENU", W-116, H-14, 54, ()=>pressZ("z"));
+  chip("MAP", W-60, H-14, 30, ()=>pressZ("m"));
   }
   cornerChips();
 }
@@ -1776,14 +1778,14 @@ function wrap(s,n){
 }
 function renderUI(){
   const u=game.ui;
-  ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
+  ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
   if (u.mode==="text" && u.dialog){
     box(0,116,320,64);
     const wrapped=[];
-    for (const l of u.dialog.lines[u.dialog.i].split("\n")) wrapped.push.apply(wrapped, wrap(l,64));
-    let y=121;
-    for (const l of wrapped){ txt(l,6,y); y+=9; }
-    txt("tap / Z >",288,169,"#7a7183");
+    for (const l of u.dialog.lines[u.dialog.i].split("\n")) wrapped.push.apply(wrapped, wrap(l,56));
+    let y=120;
+    for (const l of wrapped){ txt(l,6,y); y+=10; }
+    txt("tap / Z >",261,169,"#7a7183");
     if (u.dialog.i<u.dialog.lines.length-1)
       txt("▼",311,168,"#c8963f");
     hit(0,116,320,64,()=>pressZ("z"));
@@ -1795,26 +1797,26 @@ function renderUI(){
     let y=128;
     const rows=[];
     for (let i=start;i<Math.min(m.opts.length,start+4);i++){
-      const label=(i===m.sel? "> ":"  ")+m.opts[i].t.slice(0,62);
-      txt(label,6,y, i===m.sel? PAL.coin:PAL.bone);
+      const label=(i===m.sel? "> ":"  ")+m.opts[i].t.slice(0,52);
+      txt(label,4,y, i===m.sel? PAL.coin:PAL.bone);
       rows.push(i);
-      y+=8;
+      y+=10;
     }
     for (const i of rows)
-      hit(4,125+(i-start)*8,312,9,()=>{ m.sel=i; pressZ("z"); });
-    if (m.opts.length>start+4) txt("▼",311,170,"#c8963f");
-    if (start>0) txt("▲",311,119,"#c8963f");
+      hit(4,126+(i-start)*10,312,10,()=>{ m.sel=i; pressZ("z"); });
+    if (m.opts.length>start+4) txt("▼",307,169,"#c8963f");
+    if (start>0) txt("▲",307,118,"#c8963f");
     const cur=m.opts[m.sel];
-    if (cur && cur.d) txt(". "+wrap(cur.d,70)[0],6,170,"#8f8878");
-    txt("tap / X back",270,119,"#5f5868");
-    hit(260,117,58,10,()=>pressZ("x"));
+    if (cur && cur.d) txt(". "+wrap(cur.d,54)[0],6,169,"#8f8878");
+    txt("X back",272,119,"#5f5868");
+    hit(262,117,56,12,()=>pressZ("x"));
   }
 }
 function renderCombat(){
   const c=game.combat, e=c.e;
   drawDungeon();
   box(90,8,140,88,"rgba(6,4,9,0.9)",PAL.rust);
-  ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
+  ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
   if (e.human) drawHumanFoe(156,36);
   else drawAbomination(160,22,e.artSeed,1.7);
   txt(e.n.slice(0,30),95,80,PAL.bloodHi);
@@ -1824,7 +1826,7 @@ function renderCombat(){
   txt(e.hp+"/"+e.maxhp,196,64,"#8f8878");
   box(0,74,320,42,"rgba(8,6,10,0.88)");
   let y=78;
-  for (const l of c.log.slice(-3)){ txt(l.slice(0,74),5,y,"#cfc6b4"); y+=10; }
+  for (const l of c.log.slice(-3)){ txt(l.slice(0,54),5,y,"#cfc6b4"); y+=10; }
   if (c.turn==="player"){
     box(0,116,150,64,"rgba(8,6,10,0.92)");
     const opts=["Strike","Cut Deep (risky)","Guard","Bandage / Ration","Flee"];
@@ -1862,8 +1864,8 @@ function renderTitle(){
   txt("delvings of old Vharn",W/2,36,"#8f8878");
   txt("a gritty pixel life-in-the-depths sim (draft)",W/2,50,"#5f5868");
   ctx.textAlign="left";
-  if (Math.floor(titleTick/30)%2===0) txt("[ENTER] or tap to begin - the city is patient",72,150,PAL.bone);
-  txt("arrows move  Z confirm  X back  M map",88,162,"#4d4453");
+  if (Math.floor(titleTick/30)%2===0) txt("[ENTER] or tap to begin",96,148,PAL.bone);
+  txt("the city is patient - arrows move, Z confirms",40,162,"#4d4453");
   hit(0,0,W,H,()=>pressZ("Enter"));
 }
 function renderDead(){
@@ -1871,8 +1873,8 @@ function renderDead(){
   const ep=game.flags.epilogue||["You are ended."];
   txt("THE BOOK OF THE GATE",W/2-52,18,PAL.gold,true);
   let y=36;
-  for (const l of ep){ for (const s of wrap(l,70)){ txt(s,12,y,"#b9b0a0"); y+=10; } y+=2; }
-  txt("[ENTER] or tap - Vharn waits for the next name.",68,164,"#6e6678");
+  for (const l of ep){ for (const s of wrap(l,56)){ txt(s,12,y,"#b9b0a0"); y+=10; } y+=2; }
+  txt("[ENTER] or tap - Vharn waits.",76,164,"#6e6678");
   hit(0,0,W,H,()=>pressZ("Enter"));
 }
 
@@ -2082,10 +2084,10 @@ function frame(){
   }
   if (hintT>0 && hintMsg){
     hintT--;
-    ctx.font="7px 'Courier New',monospace"; ctx.textBaseline="top";
-    const hm=hintMsg.slice(0,66), hw=ctx.measureText(hm).width;
-    ctx.fillStyle="rgba(8,6,10,0.9)"; ctx.fillRect(W/2-hw/2-3, 2, hw+6, 11);
-    txt(hm, W/2-hw/2, 4, "#e0b95a");
+    ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
+    const hm=hintMsg.slice(0,52), hw=ctx.measureText(hm).width;
+    ctx.fillStyle="rgba(8,6,10,0.92)"; ctx.fillRect(W/2-hw/2-3, 1, hw+6, 14);
+    txt(hm, W/2-hw/2, 3, "#e0b95a");
   }
   endFrame();
 }
