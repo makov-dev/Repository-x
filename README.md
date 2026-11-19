@@ -27,6 +27,7 @@ your view. No virtual pad; the canvas is the only control surface.
 - **Click / tap dialog text** → advance it.
 - **Click / tap a menu option** → pick it (**tap / X back** corner = cancel).
 - **Click / tap a combat action** (Strike / Guard / Flee…) → do it.
+- In combat the rolling dice themselves are tappable.
 - In a delve: on-screen chips **DESCEND / ASCEND / CLIMB OUT**, **MENU**,
   **MAP**; **SAV** quicksave and **FS** fullscreen live in the top-right corner.
 - Title and death screens: tap / click or **Enter**.
@@ -85,6 +86,14 @@ an auto-walk in progress.
    Flee (AGI check). Damage from weapon dice + STR; wounds are applied when
    you're badly hurt and each one penalizes every skill check until a
    flesh-setter (or a devoted spouse) deals with it.
+
+   **The dice.** Attacks, Cut Deep and Flee roll two live d6 on screen —
+   they spin at different speeds; catch each one with a tap (or Z / X).
+   **Twin sixes = crit** — double damage, and Cut Deep pierces entirely.
+   Two ones fumble. The same dice roll when the enemy brings it to you:
+   catch both and the blow meets the space where you stood; one crowned
+   die still shaves damage off. Guard and the flask don't gamble — they
+   just work.
 
 5. **Family.** Court one of six NPCs (affection from talk, gifts — the
    true gifts are Bone Rings and Pale Roses), own a house, marry, install

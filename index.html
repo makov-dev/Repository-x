@@ -529,6 +529,11 @@ function sellMenu(){
       say(["The broker bites the "+i.n+" thoughtlessly, then pays "+fmt(val)+"."], ()=>openMarket()); }
   }));
   if (!opts.length){ say(["\"Nothing to sell. Dig deeper, come back filthier.\""], ()=>openMarket()); return; }
+  const all=lootValue();
+  opts.push({ t:"SELL EVERYTHING ("+fmt(all)+")", fn:()=>{
+    p.gold+=all; p.inv=p.inv.filter(i=>i.kind!=="loot");
+    say(["The broker sweeps your pack onto the scale, pays "+fmt(all)+", and does not ask where any of it came from."], ()=>openMarket());
+  } });
   showMenu("SELL", opts.concat([{t:"Back", fn:openMarket}]), openMarket);
 }
 function supplyMenu(){
@@ -1342,28 +1347,37 @@ function startCombat(enemy){
 function clog(s){ const c=game.combat; c.log.push(s); if (c.log.length>4) c.log.shift(); }
 function playerAtk(){ const p=game.player; return p.weapon.d + irnd(3) + Math.floor(p.str/2); }
 function playerDef(){ return game.player.armor.a; }
+/* ----- the dice (dopamine layer) ----- */
+let worldTick=0;
+function armDice(kind, seed){
+  const c=game.combat;
+  c.dice={ kind:kind, v1:1+irnd(6), v2:1+irnd(6), s1:6, s2:10, st1:false, st2:false, seed:seed };
+}
+function stopDie(d,ix){
+  if (ix===0 && !d.st1) d.st1=true;
+  if (ix===1 && !d.st2) d.st2=true;
+}
+function rollDiceFrame(){
+  const c=game.combat, d=c&&c.dice;
+  if (!d) return false;
+  if (tap("z")){ if (!d.st1) d.st1=true; else d.st2=true; }
+  if (tap("x")){ if (!d.st2) d.st2=true; else d.st1=true; }
+  if (!d.st1) d.v1=1+Math.floor(worldTick/d.s1)%6;
+  if (!d.st2) d.v2=1+Math.floor(worldTick/(d.st1?7:d.s2))%6;
+  if (d.st1&&d.st2){ const f=d.onDone; c.dice=null; f(d.v1,d.v2); }
+  return true;
+}
+function sixesOf(v1,v2){ return (v1===6?1:0)+(v2===6?1:0); }
 function combatPlayerAction(a){
   const c=game.combat, e=c.e;
-  if (c.turn!=="player"||game.state!=="combat") return;
-  if (a==="strike"){
-    const dmg=Math.max(1, playerAtk()-irnd(2));
-    e.hp-=dmg;
-    clog("You carve "+e.n+" for "+dmg+".");
-    if (e.hp<=0){ winCombat(); return; }
-  } else if (a==="heavy"){
-    if (d10()+game.player.str>=9){
-      const dmg=playerAtk()+3; e.hp-=dmg;
-      clog("A deep, mean cut. "+e.n+" shrieks like a kettle. (-"+dmg+")");
-    } else {
-      clog("You overreach. The dark takes its fee.");
-      combatEnemyTurn();
-      return;
-    }
-    if (e.hp<=0){ winCombat(); return; }
-  } else if (a==="guard"){
+  if (c.turn!=="player"||game.state!=="combat"||c.dice) return;
+  if (a==="guard"){
     c.guard=true;
     clog("You set yourself behind steel and fear.");
-  } else if (a==="flask"){
+    combatEnemyTurn();
+    return;
+  }
+  if (a==="flask"){
     const p=game.player;
     if (countItem("Bandage")){
       useFromInv("Bandage",1);
@@ -1376,13 +1390,51 @@ function combatPlayerAction(a){
     } else {
       clog("No bandage, no ration. Just you and it.");
     }
+    combatEnemyTurn();
+    return;
+  }
+  armDice("atk", a);
+  c.dice.onDone=(v1,v2)=>resolvePlayerAction(a,v1,v2);
+}
+function resolvePlayerAction(a,v1,v2){
+  const c=game.combat, e=c.e;
+  const sixes=sixesOf(v1,v2);
+  if (a==="strike"){
+    let dmg=Math.max(1, playerAtk()-irnd(2));
+    if (sixes===1){ dmg+=2; clog("A crowned die blesses the edge. (+2)"); }
+    if (sixes===2){
+      dmg=playerAtk()*2;
+      e.hp-=dmg;
+      clog("TWIN SIXES. You strike like a verdict. (-"+dmg+")");
+      if (e.hp<=0){ winCombat(); return; }
+    } else {
+      e.hp-=dmg;
+      clog("You carve "+e.n+" for "+dmg+".");
+      if (e.hp<=0){ winCombat(); return; }
+    }
+  } else if (a==="heavy"){
+    const crown=sixes===2, fumble=(v1===1&&v2===1);
+    if (crown || (!fumble && d10()+game.player.str>=9)){
+      const dmg=(playerAtk()+3)*(crown?2:1);
+      e.hp-=dmg;
+      clog(crown? "TWIN SIXES - a deep, mean, senseless cut. (-"+dmg+")"
+                : "A deep, mean cut. "+e.n+" shrieks like a kettle. (-"+dmg+")");
+    } else {
+      clog(fumble? "Both dice spit ones. You overreach badly." : "You overreach. The dark takes its fee.");
+      combatEnemyTurn();
+      return;
+    }
+    if (e.hp<=0){ winCombat(); return; }
   } else if (a==="flee"){
-    if (d10()+game.player.agi>=9){
-      clog("You run like the city raised you to.");
+    const agility=d10()+game.player.agi+(sixes===1?2:0);
+    if (sixes===2 || agility>=9){
+      clog(sixes===2? "Both crowns - you are gone before it finishes turning."
+                    : "You run like the city raised you to.");
       if (game.dungeon) stepBack();
       endCombat();
       return;
-    } else clog("It reads your weight shift. No escape this beat.");
+    }
+    clog("It reads your weight shift. No escape this beat.");
   }
   combatEnemyTurn();
 }
@@ -1390,25 +1442,46 @@ function combatEnemyTurn(){
   const c=game.combat, e=c.e, p=game.player;
   if (e.tr==="grasp" && Math.random()<0.18){
     clog(e.n+" holds you. Long fingers, long patience.");
-    c.turn="player"; return;
+    afterEnemyTurn(); return;
   }
   if (e.tr==="swarm" && Math.random()<0.35){
     let total=0;
     for (let i=0;i<3;i++) total+=Math.max(0, Math.min(Math.max(1,e.atk+irnd(3)-playerDef()-(c.guard?1:0)), 3));
-    total=Math.max(1,total); p.hp-=total;
-    clog("A hundred small hungers find you. (-"+total+")");
-  } else {
-    const raw=e.atk+irnd(4)+1;
-    const dmg=Math.max(1, raw-playerDef()-(c.guard?2:0));
-    p.hp-=dmg;
-    clog(e.n+(e.human? " cuts you." : " breaks against you and through.")+" (-"+dmg+")");
+    total=Math.max(1,total);
+    clog("A hundred small hungers streak toward you - catch the dice!");
+    armDice("def", total);
+    c.dice.onDone=(v1,v2)=>resolveDefense(total,v1,v2,true);
+    return;
   }
-  if (e.tr==="weep" && Math.random()<0.25){
+  const raw=e.atk+irnd(4)+1;
+  armDice("def", raw);
+  clog(e.n+(e.human? " cuts at you." : " breaks against you and through.")+" - catch the dice!");
+  c.dice.onDone=(v1,v2)=>resolveDefense(raw,v1,v2,false);
+}
+function resolveDefense(raw,v1,v2,swarm){
+  const c=game.combat, e=c.e, p=game.player;
+  const sixes=sixesOf(v1,v2);
+  if (sixes===2){
+    clog("BOTH DICE CROWN. It consumes the space where you stood.");
+  } else {
+    let dmg=Math.max(1, raw-playerDef()-(c.guard?2:0));
+    if (sixes===1){
+      const red=Math.min(dmg-1,2);
+      if (red>0){ dmg-=red; clog("One crowned die turns the blow aside. (-"+red+")"); }
+    }
+    p.hp-=dmg;
+    clog(swarm? "(-"+dmg+")" : e.n+(e.human? " cuts you." : " breaks against you and through.")+" (-"+dmg+")");
+  }
+  if (e.tr==="weep" && sixes<2 && Math.random()<0.25){
     const stat=pick(["str","agi","wit","wll"]);
     const names={str:"Strength",agi:"Agility",wit:"Wits",wll:"Will"};
     if (p[stat]>1) p[stat]-=1;
     clog("It drinks from you. "+names[stat]+" is less than it was.");
   }
+  afterEnemyTurn();
+}
+function afterEnemyTurn(){
+  const c=game.combat, p=game.player;
   c.guard=false;
   if (p.hp<=0){
     die(game.dungeon? "Torn apart in the "+game.dungeon.opening.name : "Slain in Vharn");
@@ -1520,7 +1593,6 @@ function drawHumanFoe(x,y){
 }
 
 /* ----- base render ----- */
-let worldTick=0;
 function drawBuilding(bl, sx, sy){
   const w=bl.w*T, h=bl.h*T;
   const rnd=mulberry(bl.x*131+bl.y*17);
@@ -1812,6 +1884,17 @@ function renderUI(){
     hit(262,117,56,12,()=>pressZ("x"));
   }
 }
+function drawDie(x,y,v,stopped){
+  const six=v===6;
+  ctx.fillStyle= six? "#c9a24a" : "#e8e0cf";
+  ctx.fillRect(x,y,26,26);
+  ctx.strokeStyle= stopped? "#f5d67a" : "#372c3a";
+  ctx.strokeRect(x+.5,y+.5,25,25);
+  ctx.fillStyle= six? "#2a1c08" : "#1c141f";
+  const PIPS={1:[[1,1]],2:[[0,0],[2,2]],3:[[0,0],[1,1],[2,2]],4:[[0,0],[0,2],[2,0],[2,2]],5:[[0,0],[0,2],[1,1],[2,0],[2,2]],6:[[0,0],[0,1],[0,2],[2,0],[2,1],[2,2]]};
+  for (const p of PIPS[v]) ctx.fillRect(x+5+p[0]*7, y+5+p[1]*7, 4, 4);
+  if (six && stopped) txt("SIX",x-3,y+26,"#e0b95a");
+}
 function renderCombat(){
   const c=game.combat, e=c.e;
   drawDungeon();
@@ -1827,7 +1910,16 @@ function renderCombat(){
   box(0,74,320,42,"rgba(8,6,10,0.88)");
   let y=78;
   for (const l of c.log.slice(-3)){ txt(l.slice(0,54),5,y,"#cfc6b4"); y+=10; }
-  if (c.turn==="player"){
+  if (c.dice){
+    const d=c.dice, j=worldTick%2;
+    box(102,114,116,66,"rgba(8,6,10,0.96)",PAL.gold);
+    txt("CATCH THE SIXES",108,118,"#e0b95a");
+    drawDie(115+(d.st1?0:j),136,d.v1,d.st1);
+    drawDie(169+(d.st2?0:(1-j)),136,d.v2,d.st2);
+    if (!d.st1) hit(115,136,26,28,()=>d.st1=true);
+    if (!d.st2) hit(169,136,26,28,()=>d.st2=true);
+    txt("roll both dice - Z / X or tap them",104,168,"#7a7183");
+  } else if (c.turn==="player"){
     box(0,116,150,64,"rgba(8,6,10,0.92)");
     const opts=["Strike","Cut Deep (risky)","Guard","Bandage / Ration","Flee"];
     const acts=["strike","heavy","guard","flask","flee"];
@@ -1835,7 +1927,7 @@ function renderCombat(){
       txt((i===c.choice?"> ":"  ")+opts[i],6,120+i*11, i===c.choice?PAL.coin:PAL.bone);
       hit(0,117+i*11,150,11,()=>{ c.choice=i; pressZ("z"); });
     }
-    txt("tap to act",156,169,"#5f5868");
+    txt("twin 6s = crit",156,169,"#5f5868");
   } else if (c.turn==="won"){
     box(0,116,320,64,"rgba(8,6,10,0.92)");
     txt("It is over. [Z] / tap to continue.",6,140,PAL.gold);
@@ -1988,6 +2080,7 @@ function leaveDungeon(){
 function updateCombat(){
   const c=game.combat;
   if (!c) return;
+  if (c.dice){ rollDiceFrame(); return; }
   if (c.turn==="player"){
     if (tap("arrowup")||tap("w")) c.choice=(c.choice+4)%5;
     if (tap("arrowdown")||tap("s")) c.choice=(c.choice+1)%5;
@@ -2100,7 +2193,7 @@ window.__openings={
   get game(){ return game; },
   newGame, launchDelve, startCombat, combatPlayerAction, endCombat, genFloor, buildCity,
   addItem, meetAdventurer, triggerEvent, advanceWeeks, openGate, openTavern, openOffice,
-  openHome, openMarket, updateUI, frame, press:(k)=>{ pressed[k.toLowerCase()]=true; },
+  openHome, openMarket, updateUI, closeUI, frame, press:(k)=>{ pressed[k.toLowerCase()]=true; },
   curFloor, hurt, die, continueAsChild, saveGame, loadGame
 };
 </script>
