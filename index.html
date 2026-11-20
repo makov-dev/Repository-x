@@ -1817,7 +1817,7 @@ function hurt(n, msg){
 }
 function die(cause){
   const p=game.player;
-  game.combat=null;
+  game.combat=null; deadPage=0;
   sfx("lose");
   setTimeout(()=>sfx("bell"), 700); setTimeout(()=>sfx("bell"), 1400); setTimeout(()=>sfx("bell"), 2100);
   const age=Math.floor(game.week/52);
@@ -3117,10 +3117,12 @@ function renderCombat(){
   if (c.intro>0){
     ctx.fillStyle="rgba(4,2,8,0.88)"; ctx.fillRect(0,0,W,H);
     if (e.human) drawHumanFoe(120,26); else drawAbomination(160,20,e.artSeed,2.1);
-    txt("- SOMETHING NEW -",112,102,"#c99df5");
-    const lore=(c.log[1]||e.n), lw=wrap(String(lore),54);
-    txt(lw[0],6,116,"#a89d90");
-    if (lw[1]) txt(lw[1].slice(0,54),6,126,"#a89d90");
+    txt("- SOMETHING NEW -",112,100,"#c99df5");
+    box(0,110,320,50,"rgba(8,6,10,0.88)");
+    let lore=String(c.log[1]||e.n);
+    const lw=wrap(lore,52).concat(c.log[2]? wrap("*"+c.log[2],52) : []);
+    let iy=114;
+    for (let li=0; li<lw.length && li<5; li++){ txt(lw[li].replace(/^\*/,""),8,iy, lw[li].charAt(0)==="*"? "#7a7183":"#a89d90"); iy+=10; }
     txt("tap or Z to steel yourself",96,166,"#7a7183");
     hit(0,0,W,H,()=>{ c.intro=0; });
     cornerChips();
@@ -3141,8 +3143,11 @@ function renderCombat(){
     txt("vitals unknown",196,64,"#5f5868");
   }
   box(0,74,320,42,"rgba(8,6,10,0.88)");
-  let y=78;
-  for (const l of c.log.slice(-3)){ txt(l.slice(0,54),5,y,"#cfc6b4"); y+=10; }
+  let logRows=[];
+  for (const l of c.log.slice(-3)) logRows=logRows.concat(wrap(String(l),58));
+  logRows=logRows.slice(-4);
+  let y=79;
+  for (const l of logRows){ txt(l,5,y,"#cfc6b4"); y+=9; }
   if (c.dice){
     const d=c.dice, j=worldTick%2;
     box(102,114,116,66,"rgba(8,6,10,0.96)",PAL.gold);
@@ -3155,9 +3160,10 @@ function renderCombat(){
   } else if (c.turn==="player"){
     box(0,116,150,64,"rgba(8,6,10,0.92)");
     const acts=quickActs();
+    const sp= acts.length>5? 10:11;
     for (let i=0;i<acts.length;i++){
-      txt((i===c.choice?"> ":"  ")+actLabel(acts[i]),6,120+i*11, i===c.choice?PAL.coin:PAL.bone);
-      hit(0,117+i*11,150,11,()=>{ c.choice=i; pressZ("z"); });
+      txt((i===c.choice?"> ":"  ")+actLabel(acts[i]),6,120+i*sp, i===c.choice?PAL.coin:PAL.bone);
+      hit(0,117+i*sp,150,sp,()=>{ c.choice=i; pressZ("z"); });
     }
     txt("twin 6s = crit",156,169,"#5f5868");
   } else if (c.turn==="won"){
@@ -3204,13 +3210,21 @@ function renderTitle(){
   txt("the city is patient - arrows move, Z confirms",40,162,"#4d4453");
   hit(0,0,W,H,()=>pressZ("Enter"));
 }
+let deadPage=0;
+function deadRows(){
+  const ep=(game.flags.epilogue||["You are ended."]);
+  let rows=[]; for (const l of ep) rows=rows.concat(wrap(String(l),56));
+  return rows;
+}
 function renderDead(){
   ctx.fillStyle="#070409"; ctx.fillRect(0,0,W,H);
-  const ep=game.flags.epilogue||["You are ended."];
+  const rows=deadRows(), per=11, pages=Math.max(1,Math.ceil(rows.length/per));
+  if (deadPage>=pages) deadPage=pages-1;
   txt("THE BOOK OF THE GATE",W/2-52,18,PAL.gold,true);
-  let y=36;
-  for (const l of ep){ for (const s of wrap(l,56)){ txt(s,12,y,"#b9b0a0"); y+=10; } y+=2; }
-  txt("[ENTER] or tap - Vharn waits.",76,164,"#6e6678");
+  let y=32;
+  for (const s of rows.slice(deadPage*per,(deadPage+1)*per)){ txt(s,12,y,"#b9b0a0"); y+=10; }
+  if (deadPage<pages-1) txt("tap / ENTER >",262,168,"#7a7183");
+  else txt("[ENTER] or tap - Vharn waits.",76,164,"#6e6678");
   hit(0,0,W,H,()=>pressZ("Enter"));
 }
 
@@ -3350,8 +3364,10 @@ function updateCombat(){
 }
 function updateDead(){
   if (!yesTap()) return;
+  const pages=Math.max(1,Math.ceil(deadRows().length/11));
+  if (deadPage<pages-1){ deadPage++; return; }
   if (game.state==="legacy"){ continueAsChild(); return; }
-  game=null; titleTick=0; mapOpen=false;
+  game=null; titleTick=0; mapOpen=false; deadPage=0;
 }
 /* the heir takes over the save */
 function continueAsChild(){
