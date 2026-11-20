@@ -2204,7 +2204,7 @@ function endCombat(){
 let floats=[], shakeT=0, bannerMsg=null, bannerT=0, gDice=null, drips=[];
 let sparks=[], flashCol=null, flashT=0;
 let sndOn=true, AC=null;
-let critPulse=0, droneNodes=[], droneOpen=null, droneDepth=0, rainNodes=null;
+let critPulse=0, droneNodes=[], droneLPs=[], droneOpen=null, droneDepth=0, rainNodes=null;
 function ac(){
   if (!AC){ try { AC = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){ AC=null; } }
   if (AC && AC.state==="suspended"){ try { AC.resume(); } catch(e){} }
@@ -2268,7 +2268,7 @@ function stopDrone(){
       } catch(e){}
     }
   }
-  droneNodes=[]; droneOpen=null;
+  droneNodes=[]; droneLPs=[]; droneOpen=null;
 }
 function startDrone(name, depth){
   stopDrone(); droneOpen=name; droneDepth=Math.min(6,depth||1);
@@ -2288,8 +2288,11 @@ function startDrone(name, depth){
       lfo.connect(lg); lg.connect(o.frequency);
       let tail=g;
       if (a.createBiquadFilter){
-        const lp=a.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=Math.max(230, 430-40*(dep-1));
+        const lp=a.createBiquadFilter(); lp.type="lowpass";
+        lp._d=Math.max(230, 430-40*(dep-1));
+        lp.frequency.value=lp._d;
         g.connect(lp); tail=lp;
+        droneLPs.push(lp);
       }
       o.connect(g); tail.connect(a.destination);
       o.start(); lfo.start();
@@ -2354,6 +2357,32 @@ function updateBattleMusic(){
     setTimeout(()=>beep(47, 0.12, "sine", vol*0.75), 105);
   }
 }
+/* greed is a heartbeat too: quicker, thinner, higher - it rises in your
+   ears as you close on treasure you can actually see */
+const heartEcho={ on:false, iv:70, acc:0, dist:9 };
+function updateTreasureEcho(){
+  heartEcho.on=false;
+  if (!game || !sndOn || hbM.on || game.state!=="dungeon" || game.ui.mode){ heartEcho.acc=0; return; }
+  const d=game.dungeon; if (!d) return;
+  const f=curFloor(); if (!f) return;
+  let best=9;
+  for (const ev of f.events){
+    if (ev.done || (ev.type!=="loot" && ev.type!=="bait" && ev.type!=="shrine")) continue;
+    if (!f.seen.has(ev.x+","+ev.y)) continue;
+    const dd=Math.abs(ev.x-d.px)+Math.abs(ev.y-d.py);
+    if (dd<best) best=dd;
+  }
+  if (best>8) return;
+  heartEcho.on=true; heartEcho.dist=best;
+  heartEcho.iv=28+best*4.5;
+  heartEcho.acc++;
+  if (heartEcho.acc>=Math.round(heartEcho.iv)){
+    heartEcho.acc=0;
+    const vol=0.016+0.02*(1-best/8);
+    beep(84, 0.09, "sine", vol);
+    setTimeout(()=>beep(63, 0.1, "sine", vol*0.7), 90);
+  }
+}
 function updateAmbience(){
   if (!game || !sndOn){ stopDrone(); stopRain(); return; }
   if (game.state==="dungeon" || (game.state==="combat" && game.dungeon)){
@@ -2366,6 +2395,18 @@ function updateAmbience(){
       const dist=Math.abs(fl.lurker.x-dd.px)+Math.abs(fl.lurker.y-dd.py);
       if (dist<=8){ if (worldTick%11===0 && Math.random()<(8-dist)*0.03) sfx("creak"); }
       else if (worldTick%23===0 && Math.random()<0.02) sfx("creak");
+    }
+    if (fl && droneLPs.length){
+      let sd=8;
+      for (const ev of fl.events){
+        if (ev.type!=="secret" || ev.done) continue;
+        const dd=Math.abs(ev.x-game.dungeon.px)+Math.abs(ev.y-game.dungeon.py);
+        if (dd<sd) sd=dd;
+      }
+      for (const lp of droneLPs){
+        const tgt= lp._d * (sd<7? (0.5+sd*0.05) : 1);
+        lp.frequency.value += (tgt-lp.frequency.value)*0.05;
+      }
     }
   } else if (game.state==="base"){
     stopDrone(); startRain();
@@ -3642,6 +3683,7 @@ function frame(){
   pollGamepad();
   updateAmbience();
   updateBattleMusic();
+  updateTreasureEcho();
   if (critPulse>0) critPulse--;
   if (gDice){ rollDiceFrame(); }
   else if (!game) updateTitle();
@@ -3700,7 +3742,9 @@ window.__openings={
   get gDice(){ return gDice; }, get bannerMsg(){ return bannerMsg; },
   get droneOpen(){ return droneOpen; },
   get droneDepth(){ return droneDepth; },
-  get heart(){ return hbM; }
+  get heart(){ return hbM; },
+  get echo(){ return heartEcho; },
+  get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; }
 };
 </script>
 </body>

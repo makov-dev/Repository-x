@@ -33,6 +33,11 @@ deep red mine-gloom. In a fight **the music is your heartbeat**: a slow calm
 lub-dub when you are whole, pounding faster with every wound and **skipping a beat whenever steel or claw
 actually finds you**, easing
 noticeably back to calm after a kill, and stopping dead the instant you do.
+In the quiet between fights **greed gets a heartbeat of its own**: a quicker,
+thinner, higher echo that rises in your ears as you close on treasure you can
+see. And the dark can be heard before it is found: **near an undiscovered
+secret wall the drone muffles and thickens**, like walking into wool, and
+clears the moment the hidden thing gives itself up.
 And Jericho
 breathes: pigeons flap along
 the rooftops, a steady drizzle crosshatches the streets and the rain checks
