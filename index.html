@@ -10,7 +10,7 @@
 </style>
 </head>
 <body>
-<canvas id="cv" width="320" height="180"></canvas>
+<canvas id="cv" width="960" height="540"></canvas>
 <script>
 "use strict";
 /* OPENINGS - a gritty pixel delving life-sim (draft) */
@@ -20,6 +20,7 @@ const ctx = CVS.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
 const W = 320, H = 180, T = 8;
+const RES = 3;
 const VW = 40, VH = 22;
 const camZ = 1.5;
 const VWz = Math.ceil(VW/camZ), VHz = Math.ceil(VH/camZ), Wz = W/camZ, Hz = H/camZ;
@@ -3546,6 +3547,7 @@ function frame(){
     else if (game.state==="combat") updateCombat();
     else if (game.state==="dead"||game.state==="legacy") updateDead();
   }
+  ctx.setTransform(RES,0,0,RES,0,0);
   const shk = (shakeT>0 || critPulse>0) && !gDice;
   if (shk){
     ctx.save(); ctx.translate(irnd(3)-1, irnd(3)-1);

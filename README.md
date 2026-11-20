@@ -10,8 +10,10 @@ patient. You shouldn't be.
 ## Running it
 
 Open `index.html` in a browser (double-click, or `python3 -m http.server` and
-visit `http://localhost:8000`). Everything renders to a 320x180 canvas scaled
-3x, `image-rendering: pixelated`, all art drawn procedurally in code — the
+visit `http://localhost:8000`). Everything renders to a 320x180 grid on a
+960x540 canvas (3x internal resolution, `image-rendering: pixelated`):
+the pixel-art stays deliberately chunky while every glyph of text is
+rasterized sharp at 27px, all art drawn procedurally in code — the
 camera rides close to the hero (1.5× zoom, roughly 27×15 tiles on screen) and
 darkness gathers in the screen corners, thinning toward the middle. On touch
 devices the game auto-enters fullscreen when you begin (the **FS** chip in the
