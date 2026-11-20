@@ -21,6 +21,8 @@ ctx.imageSmoothingEnabled = false;
 
 const W = 320, H = 180, T = 8;
 const VW = 40, VH = 22;
+const camZ = 2;
+const VWz = Math.ceil(VW/camZ), VHz = Math.ceil(VH/camZ), Wz = W/camZ, Hz = H/camZ;
 
 /* ---------------- utils ---------------- */
 function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
@@ -394,13 +396,13 @@ function drawTownfolk(camX,camY){
   if (!game.townfolk) return;
   for (const wk of game.townfolk){
     const sx=(wk.x-camX)*T, sy=(wk.y-camY)*T;
-    if (sx<-12||sx>W+10||sy<-14||sy>H) continue;
+    if (sx<-6||sx>Wz+8||sy<-8||sy>Hz) continue;
     const moving=wk.path && wk.i<wk.path.length;
     const bob= moving? (worldTick%24<12?0:1) : 0;
     ctx.fillStyle="#2a2028"; ctx.fillRect(sx+3,sy+6+bob,2,3);
     ctx.fillStyle=wk.col; ctx.fillRect(sx+2,sy+2+bob,4,4);
     ctx.fillStyle="#d9c9a8"; ctx.fillRect(sx+3,sy+bob,2,2);
-    if (!game.ui.mode && !game.combat) hit(sx-4,sy-8,T+8,T+12,()=>talkTownfolk(wk));
+    if (!game.ui.mode && !game.combat) hit((sx-4)*camZ,(sy-8)*camZ,(T+8)*camZ,(T+12)*camZ,()=>talkTownfolk(wk));
   }
 }
 
@@ -2652,10 +2654,11 @@ function drawBase(){
   ctx.fillStyle="#171219"; ctx.fillRect(0,0,W,H);
   if (!cityGrid) cityGrid=buildCity();
   const b=game.base;
-  const camX=clamp(b.px-Math.floor(VW/2),0,CW-VW), camY=clamp(b.py-Math.floor(VH/2),0,CH-VH);
-  for (let y=0;y<VH;y++){
+  const camX=clamp(b.px-Math.floor(VWz/2),0,CW-VWz), camY=clamp(b.py-Math.floor(VHz/2),0,CH-VHz);
+  ctx.save(); ctx.scale(camZ,camZ);
+  for (let y=0;y<VHz;y++){
     const wy=y+camY; if (wy>=CH) continue;
-    for (let x=0;x<VW;x++){
+    for (let x=0;x<VWz;x++){
       const wx=x+camX; if (wx>=CW) continue;
       const c=cityGrid[wy][wx];
       let col=PAL.floor;
@@ -2675,7 +2678,7 @@ function drawBase(){
   for (const bl of BUILDINGS){
     if (bl.home && !game.player.house) continue;
     const sx=(bl.x-camX)*T, sy=(bl.y-camY)*T;
-    if (sx>W||sy>H||sx<-200||sy<-80) continue;
+    if (sx>Wz||sy>Hz||sx<-200||sy<-80) continue;
     drawBuilding(bl, sx, sy);
     if (bl.id==="tavern"||bl.id==="market"){
       const dxp=(bl.x+Math.floor(bl.w/2)-camX)*T, dyp=(bl.y+bl.h-1-camY)*T;
@@ -2686,15 +2689,15 @@ function drawBase(){
   if (!game.ui.mode){
     hit(0,0,W,H,(gx,gy)=>{
       if (game.state!=="base" || game.ui.mode) return;
-      const wx=clamp(Math.floor(gx/T)+camX,0,CW-1), wy=clamp(Math.floor(gy/T)+camY,0,CH-1);
+      const wx=clamp(Math.floor(gx/(T*camZ))+camX,0,CW-1), wy=clamp(Math.floor(gy/(T*camZ))+camY,0,CH-1);
       if (citySolid(wx,wy)) return;
       walkTo(wx,wy,null, (x,y)=>!citySolid(x,y), CW, CH);
     });
     for (const bl of BUILDINGS){
       if (bl.home && !game.player.house) continue;
       const sx=(bl.x-camX)*T, sy=(bl.y-camY)*T;
-      if (sx>W||sy>H||sx+b.w*T<0||sy+b.h*T<0) continue;
-      hit(Math.max(0,sx), Math.max(0,sy), bl.w*T, bl.h*T, ()=>{
+      if (sx>Wz||sy>Hz||sx+b.w*T<0||sy+b.h*T<0) continue;
+      hit(Math.max(0,sx)*camZ, Math.max(0,sy)*camZ, bl.w*T*camZ, bl.h*T*camZ, ()=>{
         if (game.state!=="base" || game.ui.mode) return;
         if (nearBuilding(bl, game.base.px, game.base.py)){ stopWalk(); enterBuilding(bl); return; }
         const cands=[];
@@ -2738,6 +2741,7 @@ function drawBase(){
     const fy=26+fb*52+Math.sin(worldTick/110+fb*2.1)*7;
     ctx.fillStyle="rgba(150,165,185,0.045)"; ctx.fillRect(0,fy,W,16);
   }
+  ctx.restore();
   const p=game.player;
   box(0,0,148,38,"rgba(8,6,10,0.92)");
   txt(p.name+"  "+Math.floor(game.week/52)+"y  "+fmt(p.gold),3,3,PAL.gold);
@@ -2757,10 +2761,11 @@ function drawStairs(x,y,down){
 function drawDungeon(){
   const d=game.dungeon, f=curFloor();
   ctx.fillStyle="#060409"; ctx.fillRect(0,0,W,H);
-  const camX=clamp(d.px-Math.floor(VW/2),0,f.w-VW), camY=clamp(d.py-Math.floor(VH/2),0,f.h-VH);
-  for (let y=0;y<VH;y++){
+  const camX=clamp(d.px-Math.floor(VWz/2),0,f.w-VWz), camY=clamp(d.py-Math.floor(VHz/2),0,f.h-VHz);
+  ctx.save(); ctx.scale(camZ,camZ);
+  for (let y=0;y<VHz;y++){
     const wy=y+camY; if (wy>=f.h) continue;
-    for (let x=0;x<VW;x++){
+    for (let x=0;x<VWz;x++){
       const wx=x+camX; if (wx>=f.w) continue;
       if (!f.seen.has(wx+","+wy)) continue;
       const c=f.grid[wy][wx];
@@ -2812,9 +2817,10 @@ function drawDungeon(){
       ctx.globalAlpha=1;
     }
   }
+  drawHero((d.px-camX)*T,(d.py-camY)*T,false);
+  ctx.restore();
   const tint=d.opening.tint||[100,95,115];
   ctx.fillStyle="rgba("+tint[0]+","+tint[1]+","+tint[2]+",0.07)"; ctx.fillRect(0,0,W,H);
-  drawHero((d.px-camX)*T,(d.py-camY)*T,false);
   const flick=Math.sin(worldTick/13)*4+Math.sin(worldTick/7)*3;
   const g=ctx.createRadialGradient(W/2,H/2-10,60+flick,W/2,H/2,190+flick*2);
   g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(2,1,4,0.8)");
@@ -2844,7 +2850,7 @@ function drawDungeon(){
   hit(0,0,W,H,(gx,gy)=>{
     const f2=curFloor(), d2=game.dungeon;
     if (!f2 || !d2) return;
-    const wx=clamp(Math.floor(gx/T)+camX,0,f2.w-1), wy=clamp(Math.floor(gy/T)+camY,0,f2.h-1);
+    const wx=clamp(Math.floor(gx/(T*camZ))+camX,0,f2.w-1), wy=clamp(Math.floor(gy/(T*camZ))+camY,0,f2.h-1);
     if (!f2.seen.has(wx+","+wy)) return;
     if (f2.grid[wy][wx]==="#") return;
     walkTo(wx,wy,null, dungPass, f2.w, f2.h);
@@ -2947,6 +2953,10 @@ function drawJuice(){
     ctx.fillStyle="rgba(110,34,48,"+pa+")";
     ctx.fillRect(0,0,W,H);
   }
+  const vg=ctx.createRadialGradient(W/2,H/2,H*0.42,W/2,H/2,H*0.95);
+  vg.addColorStop(0,"rgba(1,0,3,0)");
+  vg.addColorStop(1,"rgba(1,0,3,0.55)");
+  ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
   ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
   for (const f of floats){
     ctx.globalAlpha=clamp(1-f.t/90,0,1);

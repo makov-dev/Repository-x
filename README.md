@@ -11,7 +11,9 @@ patient. You shouldn't be.
 
 Open `index.html` in a browser (double-click, or `python3 -m http.server` and
 visit `http://localhost:8000`). Everything renders to a 320x180 canvas scaled
-3x, `image-rendering: pixelated`, all art drawn procedurally in code. On touch
+3x, `image-rendering: pixelated`, all art drawn procedurally in code — the
+camera rides close to the hero (2× zoom, roughly 20×11 tiles on screen) and
+darkness gathers in the screen corners, thinning toward the middle. On touch
 devices the game auto-enters fullscreen when you begin (the **FS** chip in the
 top-right corner toggles it manually). City buildings are drawn as pixel-art
 façades: lit windows, doors, striped awnings, guild banners, the tavern's
