@@ -108,3 +108,72 @@ Findings:
    (~30–50% of lines should survive, not ~20%).
 7. Optional: household income (cellar salvage) is 4–11g/week — a liveable
    floor rates.
+
+## 12) Two ways to live — persona runs (rig: `/tmp/personas.js`, 50 runs each)
+
+Bots play the *real* game loop (real rooms, real stairs, real shop ladder,
+real 55% yard drills, real dice with skill-based "caught sixes" emulated:
+chaser .8, mender .4). No game code was changed for this run.
+
+**The Door-Chasers** (story chasing players: train, gear, descend, chase truths):
+
+| metric | result |
+|---|---|
+| died in the dark | 41/50 |
+| reached the Gate | 0/50 |
+| deepest depth | median 6, max 9 (ninth depth witnessed) |
+| lore fragments | median 2, max 6/9 |
+| great horrors | 25/50 killed ≥1, 4/50 killed all three, 50/50 died to one |
+| average death age | ~18 (nobody retires from this) |
+| marriage | 13/50 — always instrumental ("Needed, not wanted: the Gate counts children") |
+
+Findings: the chase is nearly a suicide pact — the five Gate conditions
+outlive 18-year-old bodies, which is exactly the intended cosmology for the
+endgame's rarity. The graveyard curve: most chasers die at depth 3–9 to the
+very horrors they study; killing all three apexes and still being alive is a
+roughly 1-in-12 talent event. The ninth depth is reachable with a Bone Saw,
+Yes-Plate and STR 8; without the training arc it is a death sentence.
+
+**The Roof-Menders** (sidequest players: cautious dives, court, build, tithe):
+
+| metric | result |
+|---|---|
+| died | 13/50 (the rest ended their errand list, no beggar's exit) |
+| deepest depth | median 0 — they never go below one |
+| married | 25/50 — the race bites: suitors (ropers, ferrymen, debt-holders) outrun half of them |
+| houses owned | 29/50  upgrades median 5  (leak → door → hearth → cellar) |
+| Bones Game wins | median 3 |
+| born children | 22 in 50 lives |
+
+Findings: the sidequest life is survivable *if you buy iron first* (13 died vs
+41 chasers) but wealth still comes only from the openings — the couple that
+stays home stays poor. The courtship race produced genuine near-runs:
+three roses, then "Mira married a smuggler off the Tar Docks" while the
+player was under the city.
+
+**Most interesting Door-Chaser runs (from the rig's own chronicles):**
+
+- **#10** (age 18, d9, 6 truths, 2/3 horrors): Host killed at 17, yards her way
+  to STR 8 on a door-chaser's arithmetic, kills the Wound-Warden at 18 with 3hp
+  left, marries Mira "for the child the Gate counts", reads gild/notheaven/
+  keeper/mother at the ninth depth — then dies at 18 to a second
+  Hundred-Handed Host. Six truths and no successor.
+- **#43** (age 22, d9, 6 truths, 2/3): the diligent version — eleven weeks at
+  the yard (six bought nothing), Kill Host at 17y9, walks out with 1hp twice,
+  marries Sergeant at 18y7, kills Wound-Warden at 18, Sixtongue by title,
+  needs one more funeral and a grown child: died at 22, two documents short.
+- **#5** (age 17, d9, 6 truths, 2/3): the prodigy — all four depth-fragments at
+  17y3, Host killed at 17y3, Sixtongue at 17y8 after killing the Wound-Warden,
+  dead at 17y9 to The Long Mother, one season after Sixtongue. The city
+  never heard the fragment it won from her.
+
+**Most interesting Roof-Mender runs:**
+
+- **#43** (age 26): buys a house with winnings from a Bones Game, courts Mira
+  with roses across four years while the city weds everyone else around her
+  (Yeva to her debt-holder, Liss to a tallow merchant, Hesta to Brother Ansel);
+  the run ends mid-courthouse, still un-married, the roses falling behind her body.
+- **#14** (age 26): the good one — bought the house, met Mira at the Lamp,
+  rose after rose ("weeks are the clock"), won the Bones Game twice,
+  cellar upgrade by 20y10, and the bellhymn fragment at the thirteenth candle.
+  The exception the city allows.
