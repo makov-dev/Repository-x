@@ -26,10 +26,12 @@ additively onto the stones, and the hero, the townfolk, monsters and even
 corpses each cast a foot-shadow on the ground. The delve is lit to be read:
 a lantern-glow follows you, seen floors stay visible, stairs down blaze with a
 pulsing gold rim and a **▼ compass** in the HUD points to the nearest one,
-and each opening's Gate arch burns with its own light. **Depth changes the
+and each opening's Gate arch burns with its own light. Each opening **hums its
+own drone**, and the drone sinks lower and darker the deeper you go. **Depth changes the
 air** — deeper floors shift from cold blue-violet through bruised purple to a
 deep red mine-gloom. In a fight **the music is your heartbeat**: a slow calm
-lub-dub when you are whole, pounding faster with every wound, easing
+lub-dub when you are whole, pounding faster with every wound and **skipping a beat whenever steel or claw
+actually finds you**, easing
 noticeably back to calm after a kill, and stopping dead the instant you do.
 And Jericho
 breathes: pigeons flap along
