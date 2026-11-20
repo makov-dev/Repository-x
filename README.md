@@ -17,7 +17,9 @@ top-right corner toggles it manually). City buildings are drawn as pixel-art
 façades: lit windows, doors, striped awnings, guild banners, the tavern's
 swinging lantern, chimney smoke, and the arched Gate of Openings. And Vharn
 breathes: pigeons flap along
-the rooftops, fog rolls off the avenue, and the whole thing hums.
+the rooftops, fog rolls off the avenue, and the whole thing hums. Something
+can creak, too: each floor hides a thing that never announces itself — the
+closer you stray, the more the walls grumble about it.
 
 The streets are **inhabited**: named folk with a trade and a family line walk
 purposefully from one door to another and slip inside. Tap one to get a look —
@@ -43,6 +45,8 @@ your view. No virtual pad; the canvas is the only control surface.
 - **BAG** chip (top-right) opens your pack anywhere: wield/weapons, wear/armor,
   eat food, drop items, or just read what everything is. Bought weapons and
   armor go into your pack and auto-equip; the old ones drop in beside them.
+- **Options you can't take don't exist**: no rope, no "use rope"; no antitoxin,
+  no "drink antitoxin" — menus only ever offer what is actually on the table.
 - In a delve: on-screen chips **DESCEND / ASCEND / CLIMB OUT**, **MENU**,
   **MAP**; **SAV** quicksave and **FS** fullscreen live in the top-right corner.
 - **SND** chip (top-right, next to SAV/FS) toggles all sound.
@@ -126,14 +130,18 @@ an auto-walk in progress.
    Finish it humanely, and it costs exactly one Will. And at the
    stairs, if rooms are still unemptied, the dark leans close and
    recites the gambler's whole liturgy: *one more room, one more
-   room.* Below the fifth depth, everything pays time-and-a-half —
+   room* — and if you refuse, it lets you out while the out is still
+   open: you climb back to Vharn right then and there. Below the fifth
+   depth, everything pays time-and-a-half —
    the dark wants you deep. Greed is a stat here; it just reads as
    stamina.
 
 4. **Combat.** Turn-based: Strike, Cut Deep (risky), Guard, Bandage/Ration,
    Flee (AGI check). Damage from weapon dice + STR; wounds are applied when
    you're badly hurt and each one penalizes every skill check until a
-   flesh-setter (or a devoted spouse) deals with it.
+   flesh-setter (or a devoted spouse) deals with it. Kills land
+   hard: the room dims, the world holds a beat — **IT STOPS.** — and
+   crit kills come apart in gold.
 
    **The dice.** Attacks, Cut Deep and Flee roll two live d6 on screen —
    they spin at different speeds; catch each one with a tap (or Z / X).

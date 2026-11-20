@@ -1377,6 +1377,8 @@ function genFloor(d){
   if (tierNow>1 && irnd(3)===0){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"shrine"}); }
   if (irnd(4)===0){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"bait"}); }
   if (irnd(10)===0){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"whimper"}); }
+  const lt=freeTiles.length? freeTiles[freeTiles.length-1] : null;
+  if (lt) floor.lurker={ x:lt[0], y:lt[1] };
   d.floors.push(floor);
   d.floorIx=d.floors.length-1;
   d.px=start.cx; d.py=start.cy;
@@ -1486,11 +1488,10 @@ function obstacleEvent(ev){
             if (check("agi",10)) say(["You pick a line between the teeth. Across."]);
             else hurt(4,"A spike finds the meat of your calf.");
             saveGame(); } },
-        { t:"Use Rope & Hook", fn:()=>{ ev.done=true;
-            if (countItem("Rope & Hook")){ useFromInv("Rope & Hook",1);
-              say(["You rig a line and cross like a sane person."]); }
-            else { say(["No rope. Definitely a problem now."]); stepBack(); }
-            saveGame(); } },
+        ...(countItem("Rope & Hook")? [{ t:"Use Rope & Hook", fn:()=>{ ev.done=true;
+            useFromInv("Rope & Hook",1);
+            say(["You rig a line and cross like a sane person."]);
+            saveGame(); } }]:[]),
         { t:"Back off", fn:()=>{ ev.done=true; stepBack(); } }
       ]);
     });
@@ -1501,22 +1502,20 @@ function obstacleEvent(ev){
             if (check("wll",10)) say(["You refuse the air's opinion. Through."]);
             else { hurt(3,"Your lungs will remember this for days."); p.stam=clamp(p.stam-20,0,maxStam()); }
             saveGame(); } },
-        { t:"Drink Antitoxin", fn:()=>{ ev.done=true;
-            if (countItem("Antitoxin")){ useFromInv("Antitoxin",1);
-              say(["Bitter. Effective. Through."]); }
-            else { say(["Nothing in your pack but regret."]); stepBack(); }
-            saveGame(); } },
+        ...(countItem("Antitoxin")? [{ t:"Drink Antitoxin", fn:()=>{ ev.done=true;
+            useFromInv("Antitoxin",1);
+            say(["Bitter. Effective. Through."]);
+            saveGame(); } }]:[]),
         { t:"Back off", fn:()=>{ ev.done=true; stepBack(); } }
       ]);
     });
   } else {
     showText(["The floor simply ends. Below: a wind that rises from somewhere with intent."], ()=>{
       showMenu("CHASM", [
-        { t:"Use Rope & Hook", fn:()=>{ ev.done=true;
-            if (countItem("Rope & Hook")){ useFromInv("Rope & Hook",1);
-              say(["Anchor, swing, land, breathe."]); }
-            else { say(["No rope, no wings. Hmm."]); stepBack(); }
-            saveGame(); } },
+        ...(countItem("Rope & Hook")? [{ t:"Use Rope & Hook", fn:()=>{ ev.done=true;
+            useFromInv("Rope & Hook",1);
+            say(["Anchor, swing, land, breathe."]);
+            saveGame(); } }]:[]),
         { t:"Jump (Agility)", fn:()=>{ ev.done=true;
             if (check("agi",11)) say(["You fly like a frightened, beautiful idiot. Across."]);
             else hurt(8,"You hit the far lip badly. The wind laughs in a mammal way.");
@@ -1571,12 +1570,11 @@ function puzzleEvent(ev){
             const l=rollLoot(d.tierNow,2);
             say(["You open your palm over the basin. It drinks. The bars lift, slow as eyelids."], ()=>{
               l.forEach(it=>addItem(it.n,it.v,it.kind)); }); saveGame(); } },
-        { t:"Fill a vial (needs Bileglass Vial)", fn:()=>{ ev.done=true;
-            if (countItem("Bileglass Vial")){ useFromInv("Bileglass Vial",1);
-              say(["You bottle a little of the dark. The alcove stays shut, but the vial is heavy beyond its size."], ()=>{
-                addItem("Bottled Dark", 90, "loot"); }); }
-            else say(["You have no vial. The water settles, disappointed."]);
-            saveGame(); } },
+        ...(countItem("Bileglass Vial")? [{ t:"Fill a vial", fn:()=>{ ev.done=true;
+            useFromInv("Bileglass Vial",1);
+            say(["You bottle a little of the dark. The alcove stays shut, but the vial is heavy beyond its size."], ()=>{
+              addItem("Bottled Dark", 90, "loot"); });
+            saveGame(); } }]:[]),
         { t:"Walk away", fn:()=>{ ev.done=true; } }
       ]);
     });
@@ -1634,13 +1632,12 @@ function meetAdventurer(){
   if (kind<0.45){
     showText(["A lantern bobs into view: another delver - "+who+", by the gear, someone who has crawled deeper than you."], ()=>{
       showMenu(who.toUpperCase(), [
-        { t:"Share a ration & trade news", fn:()=>{
-            if (countItem("Ration")){ useFromInv("Ration",1); p.stam=clamp(p.stam+10,0,maxStam());
-              const hint=pick(OPENINGS);
-              say(["You split a ration in the dark. "+who+" trades you a rumor about "+hint.name+".",
-                   "Good company. Rare down here."]); }
-            else say(["You have no ration. "+who+" shrugs: \"Poverty is a door too.\""]);
-            saveGame(); } },
+        ...(countItem("Ration")? [{ t:"Share a ration & trade news", fn:()=>{
+            useFromInv("Ration",1); p.stam=clamp(p.stam+10,0,maxStam());
+            const hint=pick(OPENINGS);
+            say(["You split a ration in the dark. "+who+" trades you a rumor about "+hint.name+".",
+                 "Good company. Rare down here."]);
+            saveGame(); } }]:[]),
         { t:"Trade - sell loot at a good price", fn:()=>{
             const lo=p.inv.filter(i=>i.kind==="loot");
             if (!lo.length){ say(["Nothing worth a trade."]); return; }
@@ -1762,6 +1759,7 @@ function startCombat(enemy){
   if (!p.bestiary[enemy.n]) p.bestiary[enemy.n]={ met:game.week, killed:false };
   const lore=BESTIARY_DESC[enemy.n] || (enemy.human? "A delver with a knife and an argument. Vharn breeds them faster than grief does." : "Something the city never bothered to name twice.");
   const origin= game.state==="base"? "base":"dungeon";
+  if (game.dungeon){ const cf=curFloor(); if (cf && cf.lurker) cf.lurker=null; }
   game.combat={ e:enemy, log:["The "+enemy.n+" comes out of the dark.", lore], turn:"player", choice:0, guard:false, won:false, critKill:false, riposte:false, origin:origin };
   if (!foeKnown(enemy.n)) game.combat.log.push("You have never seen its like up close. Survive it, and you will know it.");
   game.combat.intro = foeKnown(enemy.n)? 0 : 46;
@@ -1990,6 +1988,12 @@ function winCombat(){
   clog("It stops. The dark settles like sediment.");
   clog("+"+fmt(g)+(got.length? ", and "+got.join(", "):""));
   if (c.e.duel && p.weapon.d<6){ p.weapon={n:"Duelist's Blade", d:6}; clog("You also liberate their blade."); }
+  c.kcine = c.critKill? 72 : 46;
+  kicker(c.critKill? 14 : 9);
+  setFlash(c.critKill? "#fff3d0" : "#6b5c50", c.critKill? 7 : 4);
+  sfx("kill");
+  sparkBurst(W/2, 46, c.critKill? "#e8c76a" : "#b65f4a", c.critKill? 36 : 18, c.critKill? 1.9 : 1.3);
+  if (c.critKill) clog("You hit it like an ending.");
   c.won=true; c.turn="won";
   checkTitles();
   saveGame();
@@ -2042,6 +2046,8 @@ function sfx(name){
     case "dud":    beep(140, 0.12, "sawtooth", 0.05, 90); break;
     case "growl":  beep(160, 0.28, "sawtooth", 0.06, 70); break;
     case "bell":   beep(196, 1.0, "sine", 0.07); break;
+    case "kill":   beep(150, 0.5, "sawtooth", 0.07, 38); beep(64, 0.9, "sine", 0.06, 22); setTimeout(()=>beep(310, 0.14, "square", 0.03, 100), 60); break;
+    case "creak":  beep(96+irnd(50), 0.55, "sawtooth", 0.028, 60+irnd(36)); break;
   }
 }
 function toggleSnd(){ sndOn=!sndOn; if (sndOn) sfx("click"); }
@@ -2133,6 +2139,13 @@ function updateAmbience(){
     stopRain();
     const nm=game.dungeon.opening.name;
     if (droneOpen!==nm) startDrone(nm);
+    const fl=curFloor();
+    if (fl && fl.lurker){
+      const dd=game.dungeon;
+      const dist=Math.abs(fl.lurker.x-dd.px)+Math.abs(fl.lurker.y-dd.py);
+      if (dist<=8){ if (worldTick%11===0 && Math.random()<(8-dist)*0.03) sfx("creak"); }
+      else if (worldTick%23===0 && Math.random()<0.02) sfx("creak");
+    }
   } else if (game.state==="base"){
     stopDrone(); startRain();
   } else {
@@ -2286,7 +2299,7 @@ function temptMore(){
         if (t) curFloor().events.push({x:t[0],y:t[1],type:"bait"});
         say(["You go one room past sense. The dark hums the way a lender hums."]);
         saveGame(); } },
-    { t:"No. Out, while the out is open.", fn:()=>{} }
+    { t:"No. Out, while the out is open.", fn:()=>{ leaveDungeon(); } }
   ]);
 }
 function temptClimb(){
@@ -2334,8 +2347,7 @@ function whimperEvent(ev){
   showText(["A wet sound at the edge of the lamplight: a delver folded against the wall, starved down to pure intent.",
     "\"Bread,\" he says. \"Or finish it. I waived pride in the city. I kept some for down here.\""], ()=>{
     showMenu("THE WHIMPER", [
-      { t:"Give a ration", fn:()=>{ ev.done=true;
-          if (!countItem("Ration")){ say(["You pat your pack with a liar's hands. His face does an old, practiced nothing."]); return; }
+      ...(countItem("Ration")? [{ t:"Give a ration", fn:()=>{ ev.done=true;
           useFromInv("Ration",1);
           game.flags.mercy=(game.flags.mercy||0)+1;
           if (Math.random()<0.4) game.player.wll=Math.min(10,game.player.wll+1);
@@ -2343,7 +2355,7 @@ function whimperEvent(ev){
           say([who+" eats like the bread might be a story itself.",
                "\"If I see you up there,\" he says, \"you get the seat nearest the soup.\""]);
           if (Math.random()<0.5) findLore("changed","a starving man's correct prayers");
-          saveGame(); } },
+          saveGame(); } }]:[]),
       { t:"Keep walking", fn:()=>{ ev.done=true;
           game.flags.cruel=(game.flags.cruel||0)+1;
           say(["You keep walking. The sound follows you for exactly one corridor, then the dark eats it.","This city runs on that arithmetic."]);
@@ -2372,7 +2384,7 @@ function foeKnown(n){
   const p=game.player, b=p.bestiary[n];
   return !!(b && (b.killed || hasManeuver("read")));
 }
-function quickActs(){ const base=["strike","heavy","guard","flask","flee"]; const last=game.player.lastAction; return last? ["repeat"].concat(base) : base; }
+function quickActs(){ const base=["strike","heavy","guard","flee"]; if (countItem("Bandage")||countItem("Ration")) base.splice(3,0,"flask"); const last=game.player.lastAction; return last? ["repeat"].concat(base) : base; }
 function actLabel(a){ return a==="repeat"? "Repeat: "+ACT_LABEL[game.player.lastAction] : ACT_LABEL[a]; }
 function statName(s){ return {str:"Strength", agi:"Agility", wit:"Wits", wll:"Will"}[s]; }
 function earnTitle(t){
@@ -3017,9 +3029,21 @@ function renderCombat(){
     }
     txt("twin 6s = crit",156,169,"#5f5868");
   } else if (c.turn==="won"){
-    box(0,116,320,64,"rgba(8,6,10,0.92)");
-    txt("It is over. [Z] / tap to continue.",6,140,PAL.gold);
-    hit(0,116,320,64,()=>pressZ("z"));
+    if (c.kcine>0){
+      ctx.fillStyle="rgba(2,1,4,0.84)"; ctx.fillRect(0,0,W,H);
+      ctx.font="bold 14px 'Courier New',monospace"; ctx.textBaseline="top";
+      const big= c.critKill? "IT COMES APART." : "IT STOPS.";
+      txt(big, Math.round(W/2-ctx.measureText(big).width/2), 58, c.critKill? "#e0b95a" : "#dfd6c2");
+      const sub= c.critKill? "steel at full force - the dark takes note" : "the opening keeps its counsel";
+      ctx.font="bold 8px 'Courier New',monospace";
+      txt(sub, Math.round(W/2-ctx.measureText(sub).width/2), 78, "#7a7183");
+      txt("it is over. [Z] / tap", 116, 152, PAL.gold);
+      hit(0,0,W,H,()=>{ c.kcine=1; });
+    } else {
+      box(0,116,320,64,"rgba(8,6,10,0.92)");
+      txt("It is over. [Z] / tap to continue.",6,140,PAL.gold);
+      hit(0,116,320,64,()=>pressZ("z"));
+    }
   }
   cornerChips();
 }
@@ -3145,14 +3169,13 @@ function updateDungeon(){
     return;
   }
   showMenu("DELVE", [
-        { t:"Camp (eat a ration, restore)", fn:()=>{
-            if (countItem("Ration")){ useFromInv("Ration",1);
-              game.player.stam=clamp(game.player.stam+45,0,maxStam());
-              game.player.hp=clamp(game.player.hp+4,0,game.player.maxhp);
-              advanceWeeks(1);
-              say(["Cold food, colder company. The dark watches you chew.","Stamina +45, HP +4."]); }
-            else say(["No rations. The dark suggests alternatives. You decline."]);
-            mapOpen=false; saveGame(); } },
+        ...(countItem("Ration")? [{ t:"Camp (eat a ration, restore)", fn:()=>{
+            useFromInv("Ration",1);
+            game.player.stam=clamp(game.player.stam+45,0,maxStam());
+            game.player.hp=clamp(game.player.hp+4,0,game.player.maxhp);
+            advanceWeeks(1);
+            say(["Cold food, colder company. The dark watches you chew.","Stamina +45, HP +4."]);
+            mapOpen=false; saveGame(); } }]:[]),
         { t:"Study the walls (map)", fn:()=>{ mapOpen=true; } },
         { t:"Feel your wounds", fn:()=>{
             const p=game.player;
@@ -3189,6 +3212,7 @@ function updateCombat(){
     if (tap("arrowdown")||tap("s")) c.choice=(c.choice+1)%acts.length;
     if (yesTap()) combatPlayerAction(acts[c.choice]);
   } else if (c.turn==="won"){
+    if (c.kcine>0){ c.kcine--; if (yesTap()) c.kcine=Math.min(c.kcine,3); return; }
     if (yesTap()) endCombat();
   }
 }
