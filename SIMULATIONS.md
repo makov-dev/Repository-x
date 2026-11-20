@@ -14,7 +14,7 @@ real economy math. No game code was changed for this run — numbers first, tuni
 
 Findings:
 - **Flee never fails** (0 deaths in 7,200 fights). The 5th option is a free exit:
-  nothing in Vharn can kill you if you are willing to run. All lethal risk lives
+  nothing in Jericho can kill you if you are willing to run. All lethal risk lives
   *outside* combat (obstacles, hunger, bleed).
 - Tier 2 is where gear matters (6% → 87%). Tier 3 gates hard: even veterans only win ~half.
 
@@ -67,7 +67,7 @@ Findings:
   at ~31–33y.
 - With the fixed NPC pool, heirs almost always find **nobody left to marry** —
   after 15 domestic years at 0.5%/week marry-off, every other NPC is wed or dead.
-  Generational turnover (new young faces drifting into Vharn) fixes succession.
+  Generational turnover (new young faces drifting into Jericho) fixes succession.
 
 ## Candidate tuning → applied & still open
 
@@ -76,7 +76,7 @@ Findings:
 3. ✅ **Courtship stakes** — the `p.partner` exemption was dropped; the race is
    real (see updated section 3).
 4. ✅ **Fresh faces** — arrivals are wired into `simulateNPCs`: roughly once a
-   year a new 18–25y NPC drifts into Vharn (fixed arrival name pool, realia
+   year a new 18–25y NPC drifts into Jericho (fixed arrival name pool, realia
    descs: debt, flight, the hunted, the unexplained), announced by news, roster
    capped at 12. Dynasty experiment re-run against the real code (20 lines):
 
@@ -90,7 +90,7 @@ Findings:
    (section 2: 570g of estate through ~50%-lethal dives) remains the bottleneck,
    not the marriage market.
 6. ✅ **NPC realia pass** — the courtable pool grew from 3 generic figures to 6
-   people with reasons to be in Vharn: guild debt (Mira), a discharge from the
+   people with reasons to be in Jericho: guild debt (Mira), a discharge from the
    bread riot (Osk), an inherited debt settled in bodies (Yeva), a cutpurse
    hunted by the Kindly Fellows (Corsvine), plague-ash exile (Liss), and a widow
    whose husband's door has been a grave for eleven months (Hesta Wren).

@@ -1,10 +1,10 @@
-# OPENINGS — Delvings of Old Vharn (draft)
+# OPENINGS — Delvings of Old Jericho (draft)
 
 A gritty, pixel-art fantasy life-and-delve game in a single self-contained
 `index.html` — no dependencies, no build step. Open the file in any modern
 browser to play.
 
-Dead hazards, dead spouses' lamps still lit, and no time limits. Vharn is
+Dead hazards, dead spouses' lamps still lit, and no time limits. Jericho is
 patient. You shouldn't be.
 
 ## Running it
@@ -17,7 +17,7 @@ darkness gathers in the screen corners, thinning toward the middle. On touch
 devices the game auto-enters fullscreen when you begin (the **FS** chip in the
 top-right corner toggles it manually). City buildings are drawn as pixel-art
 façades: lit windows, doors, striped awnings, guild banners, the tavern's
-swinging lantern, chimney smoke, and the arched Gate of Openings. And Vharn
+swinging lantern, chimney smoke, and the arched Gate of Openings. And Jericho
 breathes: pigeons flap along
 the rooftops, a steady drizzle crosshatches the streets and the rain checks
 the rooftops, fog rolls off the avenue, and the whole thing hums. Something
@@ -36,7 +36,7 @@ purposefully from one door to another and slip inside. Tap one to get a look —
 name, age, trade, and what they think of you. At first you are furniture with
 pockets; kept at it, they glance, nod, eventually say "Morning, [your name]",
 and in time greet you by title. They **age**: elderly townfolk can die
-mid-errand, the news spreads, and the Church of Cinders will bury them.
+mid-errand, the news spreads, and the Church of the Holy Gate will bury them.
 
 The city itself is **alive around you**: the folk come from somewhere and go
 somewhere. **The Stacks** (four grim tenements) house them, and the
@@ -81,7 +81,7 @@ an auto-walk in progress.
 
 ## The loop
 
-1. **The city (your base).** Vharn's drizzly streets hold the facilities:
+1. **The city (your base).** Jericho's drizzly streets hold the facilities:
    - **Guild Hall** — rumors of what waits below (5g), the Wall of Names.
    - **Grave-Market** — sell your loot, buy rations/bandages/rope/antitoxin,
      and the ironmonger's rack: Surgeon's Scalpel, Iron Shard, Crude Spear,
@@ -90,7 +90,7 @@ an auto-walk in progress.
      Openings.
    - **Flesh-Setter** — pay to have wounds sewn shut.
    - **The Flayed Lamp** (tavern) — hot meals, rumors, and 6 NPCs
-     you can court Princess-Maker-2-style: talk, gift, declare intent,
+     you can court life-sim style: talk, gift, declare intent,
      marry (needs a Bone Ring, affection, and *a house*). None of them
      are here by choice: debts, notes held by the Kindly Fellows, a
      charge ordered at the bread riot, ash-field exile, one lamp still
@@ -108,7 +108,7 @@ an auto-walk in progress.
    - **Grave-Market: packs.** Carry **10** items; buy a **Satchel (35g,
      +3)** or **Expedition pack (90g, +6)** up to 19. Items stack, slots
      don't; the deep-cellar widens the chest instead.
-   - **Church of Cinders** — pray for free (sincerity optional; results
+   - **Church of the Holy Gate** — pray for free (sincerity optional; results
      vary by Will), light a candle for the dead (+2 HP), renew vows —
      and **pay for funerals**. When city-folk die the news says who
      wasn't buried; thirty gold at the Church closes their graves and
@@ -147,7 +147,7 @@ an auto-walk in progress.
    other adventurers will look at you like arithmetic.
 
    **Greedy hands.** The dark owns a lender's patience. It plants
-   **glints** in the rubble (Vharn-purple, tempting) that are honest
+   **glints** in the rubble (Jericho-purple, tempting) that are honest
    double-loot more often than not — and *waiting* the rest of the
    time. It leaves **whimpers**: starved delvers who beg for a ration
    you can spare or can't. Feed one and half the Lamp might raise a
@@ -156,7 +156,7 @@ an auto-walk in progress.
    stairs, if rooms are still unemptied, the dark leans close and
    recites the gambler's whole liturgy: *one more room, one more
    room* — and if you refuse, it lets you out while the out is still
-   open: you climb back to Vharn right then and there. Below the fifth
+   open: you climb back to Jericho right then and there. Below the fifth
    depth, everything pays time-and-a-half —
    the dark wants you deep. Greed is a stat here; it just reads as
    stamina.
@@ -195,7 +195,7 @@ an auto-walk in progress.
    tone that belongs to old bone, the Cathedral under the roots
    breathes a near-subsonic cathedral pitch — detuned saws and sines,
    wobbling slowly through a lowpass, fading in as you arrive and away
-   when you climb out. Back in Vharn the street-ambience is a soft
+   when you climb out. Back in Jericho the street-ambience is a soft
    looped rain hiss under the lamp haze. New things in the dark get a
    **cinematic entrance**: screen darkens, the thing drawn large and
    twice its fight size, its lore written across the dark — *- SOMETHING
@@ -207,7 +207,7 @@ an auto-walk in progress.
    the broker's coins **cascade** out one by one — worthier hauls ring
    longer, relics spark out violet with their banner. Training arcs
    bright when a stat rises and lands flat and sour when the week
-   buys nothing. Weddings toll the Cinders bell three times; funerals
+   buys nothing. Weddings toll the Holy Gate bell three times; funerals
    twice; and when you die, three long tolls walk you under.
 
    **After the fight:** killed foes are carved into your bestiary — first
@@ -250,7 +250,7 @@ an auto-walk in progress.
 8. **Family.** Court one of six NPCs (affection from talk, gifts — the
    true gifts are Bone Rings and Pale Roses), own a house, marry, install
    the nursery, try for a child, name is rolled from the leftovers of
-   Vharn's naming customs. Children grow (spark grows when you teach them).
+   Jericho's naming customs. Children grow (spark grows when you teach them).
    Resting at home with spouse and hearth heals more.
 
    **Courtship is a race.** While you dawdle above ground or loot below
@@ -260,28 +260,28 @@ an auto-walk in progress.
    buys four times the speed.
 
    **The city keeps filling up.** Roughly once a year someone new drifts
-   into Vharn with the carts: debtors, the hunted, people out of
+   into Jericho with the carts: debtors, the hunted, people out of
    alternatives, people who will not say why. New faces keep the Lamp
    from emptying out — and give grown heirs somebody left to court.
 
-   **NPC life simulation:** Vharn does not pause when you go underground.
+   **NPC life simulation:** Jericho does not pause when you go underground.
    NPCs age week by week; ignore someone and the odds are they wed someone
    else and have children of their own; past ~55 they start dying of age.
    Births, weddings and funerals reach you as news from the surface — at
    the Lamp's door, when you climb out of a delve, and with the morning
    soup after a week's rest. Neglect is a choice, and the city keeps score.
 
-9. **The hidden history.** Nobody in Vharn knows what the Openings are
+9. **The hidden history.** Nobody in Jericho knows what the Openings are
    — the city stands on something that used to be divine, opened its
    own doors to heaven, found no heaven there, and died of it. The
-   Church of Cinders preaches **fragments it does not understand**:
+   Church of the Holy Gate preaches **fragments it does not understand**:
    bones of the first sinners, promised gardens, a parable about
    vigilance. The truth is found **only by delving**: kneel at old
    shrines, search dead men's packs, listen to the wrong stories told
    right in the Lamp, push to the fifth, seventh, and ninth depths,
    kill the great horrors, light the thirteenth candle for no one,
    pay for the city's graves. Each fragment discovered shows, side by
-   side, *what Cinders sings* and *what the dark says* — at the Guild
+   side, *what the Holy Gate sings* and *what the dark says* — at the Guild
    Hall or the Church. Nine fragments exist. The city will never say
    any of them aloud.
 
@@ -312,7 +312,7 @@ an auto-walk in progress.
 - Stats: STR/AGI/WIT/WLL; checks are d10 + stat − wounds vs difficulty.
 - Stamina economy gates everything: delving, training, burial.
 - Aging: no time limits, but years pass as you train, delve, and rest;
-  max HP declines past 40. Vharn keeps the receipts.
+  max HP declines past 40. Jericho keeps the receipts.
 - Inventory is slot-capped; the Deep Cellar upgrade adds 8 slots and lets
   a spouse trickle in salvage coin.
 - Saves: localStorage (`openings_save`), wiped on death *unless a grown

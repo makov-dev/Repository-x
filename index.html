@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>OPENINGS - Delvings of Old Vharn</title>
+<title>OPENINGS - Delvings of Old Jericho</title>
 <style>
   html,body{margin:0;padding:0;background:#0a0709;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:monospace;touch-action:manipulation;}
   canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:960px;max-width:100vw;height:auto;aspect-ratio:16/9;box-shadow:0 0 60px #000;background:#0d0b10;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
@@ -184,13 +184,13 @@ const PAL = {
 const OPENINGS = [
   { name:"The Weeping Cessgate", tier:1, desc:"Storm-drains beneath the tannery quarter. Things grow fat in the dark water.", tint:[80,120,105] },
   { name:"Ossuary of the Gilded Ward", tier:2, desc:"An old burial district the city built over. The gold stayed with the dead.", tint:[150,120,70] },
-  { name:"The Cathedral Under Roots", tier:3, desc:"A temple older than Vharn. The roots drink something that is not water.", tint:[110,85,150] }
+  { name:"The Cathedral Under Roots", tier:3, desc:"A temple older than Jericho. The roots drink something that is not water.", tint:[110,85,150] }
 ];
 
 const SECRET_OPENINGS=[
   { name:"The Maw Behind Plaster", tier:2, desc:"Between two ruined tenements the plaster hangs like skin over a mouth. It was always there. Now it is a door.", tint:[150,95,80] },
   { name:"The Debt Vaults", tier:3, desc:"A counting-house went down whole - ledgers, debtors, and all. The interest has never stopped compounding.", tint:[120,105,150] },
-  { name:"The Ninth Seam", tier:3, desc:"Where the ninth seam opens, the city's arithmetic ends. Cinders sings it wrong on purpose.", tint:[95,110,140] }
+  { name:"The Ninth Seam", tier:3, desc:"Where the ninth seam opens, the city's arithmetic ends. The Holy Gate sings it wrong on purpose.", tint:[95,110,140] }
 ];
 const SEC_BY_NAME=n=>SECRET_OPENINGS.find(o=>o.name===n);
 
@@ -206,7 +206,7 @@ const LOOT = [
   { n:"Bileglass Vial", v:28, w:3 },
   { n:"Tongue of a Saint", v:85, w:1 },
   { n:"Tangled Gold Wire", v:22, w:3 },
-  { n:"Skin-Map of Vharn", v:75, w:1 }
+  { n:"Skin-Map of Jericho", v:75, w:1 }
 ];
 const ITEM_DESC={
   "Molar Crown":"A ring of teeth too even to be animal. Sold as jewelry; bought as warning.",
@@ -220,7 +220,7 @@ const ITEM_DESC={
   "Bileglass Vial":"Green and slow. Worth distilling; not worth asking what fed it.",
   "Tongue of a Saint":"It talks in its sleep. Nothing it says should be true, and yet.",
   "Tangled Gold Wire":"Grown, not woven. The dark makes its own jewelry and prices it honestly.",
-  "Skin-Map of Vharn":"Streets and wards inked on hide. Two alleys on it do not exist. One of them is load-bearing.",
+  "Skin-Map of Jericho":"Streets and wards inked on hide. Two alleys on it do not exist. One of them is load-bearing.",
   "Ration":"Tallow-hard bread, city-stamped. Dignity in wax paper.",
   "Bandage":"Woven tight enough to argue with a wound and win.",
   "Rope & Hook":"For the gaps the city forgot to bridge and the dark forgot to fill.",
@@ -308,11 +308,11 @@ function openChest(){
 }
 
 /* ----- the base city breathes: walkers, pigeons ----- */
-/* ----- the people of Vharn: real, aging, going somewhere ----- */
+/* ----- the people of Jericho: real, aging, going somewhere ----- */
 const WALK_COLS=["#8f8878","#7a6a5a","#9a8478","#6b7a6b","#8a7a8a","#a09080"];
 const TOWN_NAMES=["Ebba","Corvo","Junie","Marrow","Pell","Tansy","Brek","Hess","Ivo","Ruthie","Colm","Dagny","Sparrow","Wenna","Odo","Greet","Fitch","Marn"];
 const TOWN_OCC=[
-  "a candle-dipper for Cinders; insists true black is impossible",
+  "a candle-dipper for the Holy Gate; insists true black is impossible",
   "a rope-walker between the ward roofs, insured by no one",
   "the night-soil man; greets dawn without looking at it",
   "a pawn-counter's nephew; can value anything except himself",
@@ -329,7 +329,7 @@ const TOWN_OCC=[
 ];
 const TOWN_LINES=[
   "\"You eat yet? I ask everybody. It's the only question with a real answer.\"",
-  "\"Vharn is fine if you never look up. Never look up.\"",
+  "\"Jericho is fine if you never look up. Never look up.\"",
   "\"I wasn't always here. Nobody was. That's the thing.\"",
   "\"The bells mean nothing. I find that restful.\"",
   "\"I knew your predecessor. Decent sort. The city ate him by Tuesday.\"",
@@ -506,14 +506,14 @@ const NPC_BASE = [
   { name:"Mira of the Bonecandle Shop", desc:"Candlemaker. Her wicks are dipped in tallow that is not all from animals.", age:22,
     talks:[
       "\"The Tallow Guild holds the notes on my shop. Fourteen more years at the current rate. I counted. On bad weeks, I count twice.\"",
-      "\"A candle for the dead costs a Penny of Cinders. A candle for the living costs more. It is cheaper to die here. Some nights that helps.\"",
+      "\"A candle for the dead costs a Penny of the Gate. A candle for the living costs more. It is cheaper to die here. Some nights that helps.\"",
       "\"I came up from the salt farms with a dowry and a debt. The dowry went first. The debt stayed.\"",
       "\"Down there, keep your hands where the dark can see them.\""
     ]},
   { name:"Sergeant Osk", desc:"Discharged wall-sergeant. Ordered the charge at the Ward Nine bread riot, then drank her memory of it. The Lamp pours for her free.", age:24,
     talks:[
       "\"I did three things in that riot I will not set down. The Lamp lets me drink free. That is the whole arithmetic.\"",
-      "\"Everyone in Vharn arrived running from something. The ones who say otherwise are still running.\"",
+      "\"Everyone in Jericho arrived running from something. The ones who say otherwise are still running.\"",
       "\"If you die down there, I will not mourn pretty. I'll be angry.\"",
       "\"Guarding is easy. It is the evenings that require discipline.\""
     ]},
@@ -527,7 +527,7 @@ const NPC_BASE = [
   { name:"Corsvine, late of the Kinder Knives", desc:"Cutpurse lying low in the one city where being hunted is a kind of anonymity.", age:26,
     talks:[
       "\"The Kindly Fellows hold my notes from three cities. If they ever find me here, do me the kindness of drowning me first.\"",
-      "\"I could leave Vharn. So could a fish. Neither of us would get far.\"",
+      "\"I could leave Jericho. So could a fish. Neither of us would get far.\"",
       "\"I stole a wedding ring once. Sold it within the hour. Now look at me. Courting like an honest woman.\"",
       "\"Trust knives over promises. A knife is honest about its edge.\""
     ]},
@@ -536,19 +536,19 @@ const NPC_BASE = [
       "\"The city does not care who you were. That struck me as mercy, the day I arrived. I ration the mercy nightly.\"",
       "\"Out there the end was the fields going grey. In here the end has a face, and a queue.\"",
       "\"I stopped planning for later years ago. Now I plan for Tuesdays.\"",
-      "\"Nobody comes to Vharn because they want it. They come because the alternative stopped arguing.\""
+      "\"Nobody comes to Jericho because they want it. They come because the alternative stopped arguing.\""
     ]},
   { name:"Hesta Wren", desc:"Chandler's widow. Her husband went into the openings eleven months ago. His lamp still burns on her sill.", age:29,
     talks:[
       "\"Eleven months. The Guild says past a year the door is considered a grave. The paper for that costs more than the words.\"",
       "\"I will not ask you to quit the openings. I will ask you to tell me the true count of the days you are gone.\"",
       "\"The lamp on my sill is not hope. It is bookkeeping. But I keep it fed.\"",
-      "\"Twice-widowed women in Vharn are considered a caution. I consider it experience.\""
+      "\"Twice-widowed women in Jericho are considered a caution. I consider it experience.\""
     ]}
 ];
 const GENERIC_TALKS = [
   "\"Marry me someday and I'll still make you wash before bed.\"",
-  "\"Vharn keeps nobody but keeps everybody. Think on that over your soup.\"",
+  "\"Jericho keeps nobody but keeps everybody. Think on that over your soup.\"",
   "\"The city grinds fine. We are the grit in it.\""
 ];
 const NPC_ARRIVAL_NAMES = [
@@ -562,7 +562,7 @@ const NPC_ARRIVAL_DESCS = [
   "Took a burden-lash sentence for another person's theft. Walks with the truth of it in her shoulder.",
   "Ex-clerk of a toll-house that burned. The fire took the ledgers and, with them, who owed what.",
   "Her caravan never made the pass. She did. She has not explained further.",
-  "Came to be where nobody knows her name. Vharn obliged within a week.",
+  "Came to be where nobody knows her name. Jericho obliged within a week.",
   "Owes the Kindly Fellows a sum she rounds down out of pride.",
   "Stands at the pier most dawns, counting the boats that come back."
 ];
@@ -747,7 +747,7 @@ const BUILDINGS = [
   { id:"clinic",  x:36, y:3,  w:10, h:6, label:"FLESH-SETTER",   roof:"#4d655a" },
   { id:"tavern",  x:5,  y:13, w:12, h:7, label:"THE FLAYED LAMP",roof:"#664041" },
   { id:"office",  x:27, y:12, w:9,  h:5, label:"HOUSING OFFICE", roof:"#556483" },
-  { id:"church",  x:48, y:3,  w:9,  h:6, label:"CHURCH OF CINDERS", roof:"#4f5562" },
+  { id:"church",  x:48, y:3,  w:9,  h:6, label:"CHURCH OF THE HOLY GATE", roof:"#4f5562" },
   { id:"yard",    x:36, y:13, w:10, h:7, label:"TRAINING YARD",  roof:"#42523d", yard:true },
   { id:"gate",    x:50, y:13, w:6,  h:9, label:"GATE OF OPENINGS",roof:"#3a2f42", gate:true },
   { id:"home",    x:20, y:23, w:9,  h:6, label:"YOUR HOME",      roof:"#5d4a37", home:true, door:[24,28] },
@@ -957,7 +957,7 @@ function buyPack(cost, add){
 }
 function gearMenu(){
   showMenu("IRONMONGER - into your pack; equip from BAG", [
-    { t:"Surgeon's Scalpel, dmg 3 (22g)", d:"Curiously clean. Nothing this clean stays that way in Vharn.", fn:()=>buyWeapon("Surgeon's Scalpel",3,22) },
+    { t:"Surgeon's Scalpel, dmg 3 (22g)", d:"Curiously clean. Nothing this clean stays that way in Jericho.", fn:()=>buyWeapon("Surgeon's Scalpel",3,22) },
     { t:"Iron Shard, dmg 4 (45g)", d:"A better edge than hope.", fn:()=>buyWeapon("Iron Shard",4,45) },
     { t:"Crude Spear, dmg 5 (70g)", d:"A knife, a pole, and necessity. It keeps the reach the dark dislikes.", fn:()=>buyWeapon("Crude Spear",5,70) },
     { t:"Bone Saw of the surgeons, dmg 6 (80g)", d:"It hums.", fn:()=>buyWeapon("Bone Saw",6,80) },
@@ -1020,7 +1020,7 @@ function openClinic(){
 
 function openChurch(){
   const p=game.player;
-  const intro=["The Church of Cinders: beeswax smoke, a bowl of grave-dirt, pews worn smooth by people praying against the same weather.",
+  const intro=["The Church of the Holy Gate: beeswax smoke, a bowl of grave-dirt, pews worn smooth by people praying against the same weather.",
                "Funerals are taken here. So are the almost-dead."];
   const news=drainNews();
   say(news.length? intro.concat(news) : intro, ()=>{
@@ -1049,7 +1049,7 @@ function openChurch(){
           p.gold-=30; advanceWeeks(1);
           game.flags.unburied=[];
           game.flags.funerals=(game.flags.funerals||0)+1;
-          setBanner(["FUNERAL AT CINDERS","You saw them under: "+names.slice(0,42)+"."]);
+          setBanner(["FUNERAL AT THE HOLY GATE","You saw them under: "+names.slice(0,42)+"."]);
           sfx("bell"); setTimeout(()=>sfx("bell"), 700);
           if (p.wounds.length){ p.wounds.splice(0,1);
             say(["Bells. Grave-dirt. Somebody's real tears, maybe yours.","Grief-work closes a wound of your own. ("+names+")"], ()=>openChurch()); }
@@ -1063,9 +1063,9 @@ function openChurch(){
     if (p.spouse) opts.push({ t:"Renew your vows with "+p.spouse.name.split(" ")[0], fn:()=>{
         p.stam=clamp(p.stam+15,0,maxStam());
         say(["Old words, older dust, both rings warmed by the same candle.","You walk out lighter than the mathematics of it explains."], ()=>openChurch()); saveGame(); } });
-    opts.push({ t:"Read the ash-scriptures (what Cinders keeps, badly)", fn:openCodex });
+    opts.push({ t:"Read the ash-scriptures (what the Holy Gate keeps, badly)", fn:openCodex });
     opts.push({ t:"Leave", fn:()=>{} });
-    showMenu("CHURCH OF CINDERS", opts);
+    showMenu("CHURCH OF THE HOLY GATE", opts);
   });
 }
 
@@ -1377,7 +1377,7 @@ function advanceWeeks(n){
     p.gold+=4+irnd(8);
   simulateNPCs(n);
 }
-/* Vharn does not wait for you. NPCs age, wed, multiply, and die. */
+/* Jericho does not wait for you. NPCs age, wed, multiply, and die. */
 function simulateNPCs(n){
   const p=game.player;
   game.flags.news = game.flags.news||[];
@@ -1418,7 +1418,7 @@ function simulateNPCs(n){
       const age=18+irnd(8);
       game.npcs.push({ name:nm, desc:pick(NPC_ARRIVAL_DESCS), age:age, ageWeeks:age*52, talks:GENERIC_TALKS.slice(),
         marriedTo:null, dead:false, widowed:false, kids:0, parentOfYou:false, aff:0, met:false });
-      game.flags.news.push(nm.split(" ")[0]+" drifted into Vharn. Nobody asked her business; that is the custom.");
+      game.flags.news.push(nm.split(" ")[0]+" drifted into Jericho. Nobody asked her business; that is the custom.");
     }
   }
 }
@@ -1900,7 +1900,7 @@ function hurt(n, msg){
   lines.push("(-"+n+" HP. "+p.hp+"/"+p.maxhp+")");
   if (p.hp<=0){
     if (p.gatekeeper){ p.hp=1; say(["The Gate refuses. Whatever finished you, it was not enough.","(+held at 1 HP)"]); }
-    else { die("Something in "+(game.dungeon? game.dungeon.opening.name : "Vharn")+" finished you."); return; }
+    else { die("Something in "+(game.dungeon? game.dungeon.opening.name : "Jericho")+" finished you."); return; }
   }
   if (p.hp<=p.maxhp*0.3 && Math.random()<0.4){
     const limb=pick(["arm","ribs","leg","hand","eye"]);
@@ -1922,7 +1922,7 @@ function die(cause){
   if (p.child && p.child.weeks>=728){
     ep.push("But blood remembers: "+p.child.name+", "+Math.floor(p.child.weeks/52)+" years old, old enough to hate the doors and grown enough to open them.");
     ep.push("What is inherited: the house and its improvements, " + (p.weapon.d>2? "your "+p.weapon.n+", ":"") + "the leanings of your body, and a spark of "+p.child.spark+".");
-    ep.push("The save stands. Vharn shrugs. The lamp is relit.");
+    ep.push("The save stands. Jericho shrugs. The lamp is relit.");
     ep.push("[ENTER] take up the knife as "+p.child.name+".");
     game.state="legacy";
     game.flags.epilogue=ep;
@@ -1934,7 +1934,7 @@ function die(cause){
     ep.push(p.spouse? p.spouse.name+" keeps the lamp lit for a child too young to hate the doors yet. The house leans. The city waits."
                     : "Your child will be told you drowned. In water, in dark - the story grows teeth either way.");
   } else if (p.spouse){
-    ep.push(p.spouse.name+" sells your kit, keeps the house, and tells the Lamp you died rich. Widows survive Vharn. She will.");
+    ep.push(p.spouse.name+" sells your kit, keeps the house, and tells the Lamp you died rich. Widows survive Jericho. She will.");
   } else {
     ep.push("No family, no legend. The wall in the Guild Hall gains a name it will lose in a month's rain.");
   }
@@ -1951,7 +1951,7 @@ function startCombat(enemy){
   enemy.maxhp=enemy.mhp||enemy.hp;
   const p=game.player;
   if (!p.bestiary[enemy.n]) p.bestiary[enemy.n]={ met:game.week, killed:false };
-  const lore=BESTIARY_DESC[enemy.n] || (enemy.human? "A delver with a knife and an argument. Vharn breeds them faster than grief does." : "Something the city never bothered to name twice.");
+  const lore=BESTIARY_DESC[enemy.n] || (enemy.human? "A delver with a knife and an argument. Jericho breeds them faster than grief does." : "Something the city never bothered to name twice.");
   const origin= game.state==="base"? "base":"dungeon";
   if (game.dungeon){ const cf=curFloor(); if (cf && cf.lurker) cf.lurker=null; }
   game.combat={ e:enemy, log:["The "+enemy.n+" comes out of the dark.", lore], turn:"player", choice:0, guard:false, won:false, critKill:false, riposte:false, origin:origin };
@@ -2146,7 +2146,7 @@ function afterEnemyTurn(){
   c.guard=false;
   if (p.hp<=0){
     if (p.gatekeeper){ p.hp=1; clog("The Gate refuses. It is not done with you."); }
-    else { die(game.dungeon? "Torn apart in the "+game.dungeon.opening.name : "Slain in Vharn"); return; }
+    else { die(game.dungeon? "Torn apart in the "+game.dungeon.opening.name : "Slain in Jericho"); return; }
   }
   c.turn="player";
 }
@@ -2371,7 +2371,7 @@ function lootRarity(v){
 }
 
 /* ----- reputation: the titles the city gives you ----- */
-/* ----- the hidden history: what nobody in Vharn knows ----- */
+/* ----- the hidden history: what nobody in Jericho knows ----- */
 const LORE_FRAG=[
   { id:"ribs", church:"Doctrine says: the world's floor is the bones of the first sinners, cursed to bear us.",
     truth:"They were not sinners. The streets do not stand on bones. The bones hold up the thing the city refuses to name: a torso, city-wide, and the Openings are its entry wounds." },
@@ -2387,7 +2387,7 @@ const LORE_FRAG=[
     truth:"The Mother is the carcass's warmth. The warmth is a lure, the lure is a throat, and the story about fifty hands is the only part anyone has compared notes on." },
   { id:"notheaven", church:"Doctrine says: beyond the Gate waits a garden filled with every name you ever mourned.",
     truth:"Beyond the Gate there is no heaven. There is a hall, there is a door, and on the door there is a duty. That is the whole of the hereafter." },
-  { id:"bellhymn", church:"Doctrine says: the Cinders bell was cast from a conquered idol's crown, and its toll protects.",
+  { id:"bellhymn", church:"Doctrine says: the Holy Gate's bell was cast from a conquered idol's crown, and its toll protects.",
     truth:"The bell-hymn is sung incorrectly on purpose. An older copy writes it from a hymn the changing ones sang while they changed. Sung right, it quiets them. Sung right, it also answers." },
   { id:"keeper", church:"Doctrine says: the Gatekeeper is a parable about vigilance. Only that. Only ever that.",
     truth:"A gate needs a keeper as a wound needs a watcher. They made a keeper out of one of their own and set him in the hall. He is still there. He would like to be relieved." }
@@ -2421,7 +2421,7 @@ function gateConditions(){
     { l:"know six truths the city has forgotten ("+Math.min(fl.length,6)+"/6)", ok:fl.length>=6 },
     { l:"give the three great horrors of the deep their deaths ("+apex+"/3)", ok:apex>=3 },
     { l:"stand at the ninth depth, where the stone forgets ("+Math.min(p.deep||0,9)+"/9)", ok:(p.deep||0)>=9 },
-    { l:"pay Cinders for five graves the city left open ("+Math.min(game.flags.funerals||0,5)+"/5)", ok:(game.flags.funerals||0)>=5 },
+    { l:"pay the Holy Gate for five graves the city left open ("+Math.min(game.flags.funerals||0,5)+"/5)", ok:(game.flags.funerals||0)>=5 },
     { l:"leave blood behind: a child who outlives you", ok:!!p.child }
   ];
 }
@@ -2435,9 +2435,9 @@ function openCodex(){
   const fl=game.flags.lore||[];
   const recent=fl.slice(-2).map(id=>LORE_BY_ID[id]).filter(Boolean);
   const lines=["What the Church sings, and what you have read in the dark. "+fl.length+" of "+LORE_FRAG.length+" fragments."];
-  if (!fl.length) lines.push("\"The Lights are good,\" Cinders teaches. You have no reason to doubt it. Yet.");
+  if (!fl.length) lines.push("\"The Lights are good,\" the Holy Gate teaches. You have no reason to doubt it. Yet.");
   for (const fr of recent){
-    lines.push("Cinders sings: "+fr.church.slice(0,100));
+    lines.push("The Holy Gate sings: "+fr.church.slice(0,100));
     lines.push("The dark says: "+fr.truth.slice(0,100));
   }
   say(lines, ()=>{ if (fl.length>=4) thresholdMenu(); });
@@ -2445,7 +2445,7 @@ function openCodex(){
 function openTheGate(){
   const p=game.player;
   showText(["The stairs do not step. They open.",
-    "Below the ninth depth there is a hall you have seen in the corners of every fresco Cinders ever mislabeled.",
+    "Below the ninth depth there is a hall you have seen in the corners of every fresco the Holy Gate ever mislabeled.",
     "And on the far side of it, the Gate. Holding it: something that used to be a person, holding it the way a jaw holds a scream.",
     "It sees you. Its face does something you have not seen on anything down here. It is \*relieved\*."], ()=>{
     showMenu("THE GATE", [
@@ -2455,7 +2455,7 @@ function openTheGate(){
           game.flags.lore=LORE_FRAG.map(f=>f.id);
           game.flags.gatekept=true;
           earnTitle("the Gatekeeper");
-          setBanner(["THE GATE IS KEPT","Vharn prays on, unaware of who is listening."]);
+          setBanner(["THE GATE IS KEPT","Jericho prays on, unaware of who is listening."]);
           sfx("bell"); setTimeout(()=>sfx("bell"),700); setTimeout(()=>sfx("bell"),1400);
           game.dungeon=null; game.state="base";
           saveGame(); } },
@@ -3305,7 +3305,7 @@ function renderTitle(){
   ctx.fillRect(80,56,160,66);
   ctx.textAlign="center";
   txt("O P E N I N G S",W/2,24,PAL.gold,true);
-  txt("delvings of old Vharn",W/2,36,"#8f8878");
+  txt("delvings of old Jericho",W/2,36,"#8f8878");
   txt("a gritty pixel life-in-the-depths sim (draft)",W/2,50,"#5f5868");
   ctx.textAlign="left";
   if (Math.floor(titleTick/30)%2===0) txt("[ENTER] or tap to begin",96,148,PAL.bone);
@@ -3326,7 +3326,7 @@ function renderDead(){
   let y=32;
   for (const s of rows.slice(deadPage*per,(deadPage+1)*per)){ txt(s,12,y,"#b9b0a0"); y+=10; }
   if (deadPage<pages-1) txt("tap / ENTER >",262,168,"#7a7183");
-  else txt("[ENTER] or tap - Vharn waits.",76,164,"#6e6678");
+  else txt("[ENTER] or tap - Jericho waits.",76,164,"#6e6678");
   hit(0,0,W,H,()=>pressZ("Enter"));
 }
 
@@ -3337,7 +3337,7 @@ let mapOpen=false;
 function updateTitle(){
   if (yesTap()){ newGame(); cityGrid=buildCity(); game.state="base";
     if (("ontouchstart" in window) || (window.matchMedia && window.matchMedia("(pointer:coarse)").matches)) toggleFS();
-    say(["Vharn does not greet you. Vharn does not notice you.",
+    say(["Jericho does not greet you. Jericho does not notice you.",
          "You are one more body that owns a knife and an appetite. Unless you become more."]); }
 }
 function updateBase(){
@@ -3428,7 +3428,7 @@ function updateDungeon(){
         { t:"Feel your wounds", fn:()=>{
             const p=game.player;
             say(p.wounds.length? ["Your "+p.wounds.join(" and your ")+((p.wounds.length>1)?" throb":" throbs")+" in time with your pulse. A flesh-setter would be wise."]
-                               : ["Holding together. For Vharn, that is a good day."]); } },
+                               : ["Holding together. For Jericho, that is a good day."]); } },
         { t:"Nothing", fn:()=>{} }
       ]);
 }
@@ -3436,7 +3436,7 @@ function leaveDungeon(){
   game.dungeon=null; mapOpen=false; game.state="base";
   advanceWeeks(1);
   const p=game.player;
-  const lines=["You climb out into Vharn drizzle. The city resumes ignoring you, which is its way of saying hello.",
+  const lines=["You climb out into Jericho drizzle. The city resumes ignoring you, which is its way of saying hello.",
        "Delves: "+p.delves+"  |  kills: "+p.kills+"  |  purse: "+fmt(p.gold)];
   const news=drainNews();
   if (news.length) lines.push("Word from the surface:", ...news);
