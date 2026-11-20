@@ -187,6 +187,13 @@ const OPENINGS = [
   { name:"The Cathedral Under Roots", tier:3, desc:"A temple older than Vharn. The roots drink something that is not water.", tint:[110,85,150] }
 ];
 
+const SECRET_OPENINGS=[
+  { name:"The Maw Behind Plaster", tier:2, desc:"Between two ruined tenements the plaster hangs like skin over a mouth. It was always there. Now it is a door.", tint:[150,95,80] },
+  { name:"The Debt Vaults", tier:3, desc:"A counting-house went down whole - ledgers, debtors, and all. The interest has never stopped compounding.", tint:[120,105,150] },
+  { name:"The Ninth Seam", tier:3, desc:"Where the ninth seam opens, the city's arithmetic ends. Cinders sings it wrong on purpose.", tint:[95,110,140] }
+];
+const SEC_BY_NAME=n=>SECRET_OPENINGS.find(o=>o.name===n);
+
 const LOOT = [
   { n:"Molar Crown", v:55, w:2 },
   { n:"Jar of Rendered Fat", v:18, w:4 },
@@ -223,7 +230,11 @@ const ITEM_DESC={
   "Iron Shard":"A better edge than hope.",
   "Bone Saw":"It hums against your hip. Unpleasant. Effective.",
   "Widow's Mail":"The widow sold it gladly. It is warmer inside than physics explains.",
-  "Yes-Plate":"It has never said no. You can barely hear the city in it. That is the point."
+  "Yes-Plate":"It has never said no. You can barely hear the city in it. That is the point.",
+  "Surgeon's Scalpel":"Effortless, sterile, wrong. Made for the same trade you practice below, on easier patients.",
+  "Crude Spear":"A knife, a pole, and necessity. The tip is new. The stains beneath it are not, yet.",
+  "Balanced Hand Axe":"Somebody balanced it with patience and counted swings. It opens doors, crates, arguments, and everything attached to them.",
+  "Wardriver Maul":"The wall-sergeants order these by the dozen. That alone should tell you what the streets are bracing for."
 };
 function itemDesc(it){
   return ITEM_DESC[it.n]
@@ -946,8 +957,12 @@ function buyPack(cost, add){
 }
 function gearMenu(){
   showMenu("IRONMONGER - into your pack; equip from BAG", [
+    { t:"Surgeon's Scalpel, dmg 3 (22g)", d:"Curiously clean. Nothing this clean stays that way in Vharn.", fn:()=>buyWeapon("Surgeon's Scalpel",3,22) },
     { t:"Iron Shard, dmg 4 (45g)", d:"A better edge than hope.", fn:()=>buyWeapon("Iron Shard",4,45) },
+    { t:"Crude Spear, dmg 5 (70g)", d:"A knife, a pole, and necessity. It keeps the reach the dark dislikes.", fn:()=>buyWeapon("Crude Spear",5,70) },
     { t:"Bone Saw of the surgeons, dmg 6 (80g)", d:"It hums.", fn:()=>buyWeapon("Bone Saw",6,80) },
+    { t:"Balanced Hand Axe, dmg 7 (130g)", d:"It opens doors, crates, arguments, and everything attached to them.", fn:()=>buyWeapon("Balanced Hand Axe",7,130) },
+    { t:"Wardriver Maul, dmg 8 (190g)", d:"The wall-sergeants order these by the dozen. That alone tells you something.", fn:()=>buyWeapon("Wardriver Maul",8,190) },
     { t:"Widow's Mail, armor 2 (60g)", d:"The widow sold it gladly.", fn:()=>buyArmor("Widow's Mail",2,60) },
     { t:"Yes-Plate, armor 3 (140g)", d:"It has never said no.", fn:()=>buyArmor("Yes-Plate",3,140) },
     { t:"Back", fn:openMarket }
@@ -1092,7 +1107,7 @@ function openTavern(){
           say(["Grease, onions, mystery. You feel like a person again."], ()=>openTavern()); } },
       { t:"The Bones Game (stake 10g)", fn:()=>bonesGame(10) },
       { t:"Buy a round, listen to the room (8g)", fn:listenTavern },
-      { t:"Who is here tonight?", fn:rosterMenu }
+      { t:"Who is here tonight? (court here)", fn:rosterMenu }
     ];
     if (p.partner) opts.push({ t:"Court "+p.partner.name.split(" ")[0], fn:courtWith });
     if (p.spouse) opts.push({ t:"Sit with "+p.spouse.name.split(" ")[0], fn:spouseScene });
@@ -1112,9 +1127,32 @@ function rosterMenu(){
     else if (np.marriedTo!==null) st="wed to "+np.marriedTo+(np.kids? " ("+np.kids+" children)":"");
     else if (np.parentOfYou) st="your parent, still pouring one for your old life";
     else st="unattached";
-    return { t:np.name.split(" ")[0]+" - "+age+"y - "+st, fn:()=>{ voiceSfx(np.name); openTavern(); } };
+    return { t:np.name.split(" ")[0]+" - "+age+"y - "+st, fn:()=>aboutNpc(np) };
   });
   showMenu("THE ROOM TONIGHT", rows.concat([{t:"Back", fn:openTavern}]));
+}
+function aboutNpc(np){
+  const p=game.player;
+  np.met=true; voiceSfx(np.name);
+  say([np.name+" ("+Math.floor(np.ageWeeks/52)+"y): "+np.desc,
+       "\"" +pick(np.talks)+"\""], ()=>{
+    if (np.dead){ say([np.name+" is past all courting. The Lamp keeps their stool anyway."], rosterMenu); return; }
+    if (np===p.spouse){
+      showMenu(np.name.toUpperCase(), [
+        { t:"Sit with "+np.name.split(" ")[0], fn:spouseScene },
+        { t:"Back to the room", fn:rosterMenu }
+      ], rosterMenu);
+      return;
+    }
+    if (np!==p.partner && np.marriedTo!==null){
+      say([np.name+" is wed, in the way of this city: for debt, for luck, or once by accident. Nobody asks which."], rosterMenu);
+      return;
+    }
+    showMenu(np.name.toUpperCase(), [
+      { t:(np===p.partner? "Court "+np.name.split(" ")[0]+" again":"Begin courting "+np.name.split(" ")[0]), fn:()=>{ p.partner=np; np.met=true; courtWith(); } },
+      { t:"Back to the room", fn:rosterMenu }
+    ], rosterMenu);
+  });
 }
 function listenTavern(){
   const p=game.player;
@@ -1394,11 +1432,13 @@ function drainNews(){
 function openGate(){
   say(["South of the tanneries, the city is cracked like old bread. The cracks breathe.",
        "Adventurers call the cracks Openings. The city calls them nothing at all."], ()=>{
-    const opts=OPENINGS.map(o=>({
+    const known=OPENINGS.concat((game.flags.secrets||[]).map(SEC_BY_NAME).filter(Boolean));
+    const opts=known.map(o=>({
       t:o.name+"  (danger "+"|".repeat(o.tier)+")",
       d:o.desc,
       fn:()=>launchDelve(o)
     }));
+    if ((game.flags.secrets||[]).length) opts.push({ t:"(the chalked doors you found below are yours now)", fn:()=>{} });
     opts.push({ t:"Not today", fn:()=>{} });
     showMenu("GATE OF OPENINGS - choose a crack in the world", opts);
   });
@@ -1475,6 +1515,7 @@ function genFloor(d){
   if (tierNow>1 && irnd(3)===0){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"shrine"}); }
   if (irnd(4)===0){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"bait"}); }
   if (irnd(10)===0){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"whimper"}); }
+  if (irnd(7)===0){ const t=nextFree(); if(t) evs.push({x:t[0],y:t[1],type:"secret", kind:irnd(2)? "stair":"door"}); }
   const lt=freeTiles.length? freeTiles[freeTiles.length-1] : null;
   if (lt) floor.lurker={ x:lt[0], y:lt[1] };
   d.floors.push(floor);
@@ -1560,7 +1601,63 @@ function triggerEvent(ev){
     case "shrine": shrineEvent(ev); break;
     case "bait": baitEvent(ev); break;
     case "whimper": whimperEvent(ev); break;
+    case "secret": secretEvent(ev); break;
   }
+}
+function secretEvent(ev){
+  const d=game.dungeon;
+  if (ev.kind==="stair"){
+    showText(["A stair that should not exist: a sealed run of steps behind a wall of veined plaster, going down past the bottom of anyone's map."], ()=>{
+      showMenu("A SEALED STAIR", [
+        { t:"Break it open (Strength)", fn:()=>{ ev.done=true;
+            if (check("str",10)){ fallThrough(d); }
+            else { hurt(4,"The plaster holds. Your shoulder pays first."); saveGame(); } } },
+        ...(countItem("Rope & Hook")? [{ t:"Descend with Rope & Hook", fn:()=>{ ev.done=true;
+            useFromInv("Rope & Hook",1); fallThrough(d); } }]:[]),
+        { t:"Leave the wall as it is", fn:()=>{ ev.done=true; stepBack(); } }
+      ]);
+    });
+  } else {
+    const undiscovered=SECRET_OPENINGS.filter(o=>!game.flags.secrets || game.flags.secrets.indexOf(o.name)<0);
+    const sec= undiscovered.length? pick(undiscovered) : pick(SECRET_OPENINGS);
+    showText(["A door with no wall around it, set into the dark itself. The seams around it breathe.","Beyond it, something vast counts slowly, like a ledger."], ()=>{
+      showMenu("A DOOR OUT OF THE MAP", [
+        { t:"Force your way in (Will)", fn:()=>{ ev.done=true;
+            if (check("wll",11)){ addSecret(sec,false); startFresh(sec); }
+            else { hurt(3,"The door declines you politely, like a club with standards."); saveGame(); } } },
+        { t:"Mark the door. Come back with more.", fn:()=>{ ev.done=true; addSecret(sec,true); saveGame(); } },
+        { t:"Leave it unlit", fn:()=>{ ev.done=true; stepBack(); } }
+      ]);
+    });
+  }
+}
+function fallThrough(d){
+  d.depth+=2;
+  game.player.deep=Math.max(game.player.deep,d.depth);
+  maybeDepthLore(d.depth);
+  genFloor(d);
+  advanceWeeks(1);
+  say(["The stair goes down and keeps going. You skip a level the city would have charged you for.",
+       "Deeper now. Two floors, paid for with one step."]);
+  saveGame();
+}
+function addSecret(sec, mark){
+  if (!sec) return;
+  if (!game.flags.secrets) game.flags.secrets=[];
+  const fresh=game.flags.secrets.indexOf(sec.name)<0;
+  if (fresh) game.flags.secrets.push(sec.name);
+  sfx("bell");
+  if (mark){
+    setBanner(["A HIDDEN OPENING MARKED", sec.name+" is chalked into your map of the Gate."]);
+    if (fresh) findLore("bellhymn","a door the city mislaid");
+    say(["You chalk the seam and step away quietly.","The Gate will remember it. The Gate remembers everything."]);
+  } else {
+    setBanner(["YOU FOUND A HIDDEN OPENING", "Behind a door with no wall: "+sec.name+"."]);
+  }
+}
+function startFresh(sec){
+  game.dungeon=null; walkPath=null; walkCb=null;
+  launchDelve(sec);
 }
 function obstacleEvent(ev){
   const p=game.player;
@@ -2915,6 +3012,11 @@ function drawDungeon(){
         if (ev.type==="loot"){ ctx.fillStyle=PAL.gold; ctx.fillRect(x*T+3,y*T+3,2,2); }
         else if (ev.type==="bait"){ ctx.fillStyle=(worldTick%20<10)? PAL.gold : "#c99df5"; ctx.fillRect(x*T+3,y*T+3,2,2); }
         else if (ev.type==="whimper"){ ctx.fillStyle="#6b6f78"; ctx.fillRect(x*T+2,y*T+4,3,2); ctx.fillRect(x*T+3,y*T+2,1,2); }
+        else if (ev.type==="secret"){
+          ctx.fillStyle="#241a2e"; ctx.fillRect(x*T+1,y*T+1,6,6);
+          ctx.fillStyle=(worldTick%46<18)? "#a06fd0" : "#5f4479";
+          ctx.fillRect(x*T+3,y*T+1,1,6); ctx.fillRect(x*T+2,y*T+3,3,1);
+        }
         else if (ev.type==="corpse"){ ctx.fillStyle=PAL.boneDim; ctx.fillRect(x*T+2,y*T+3,4,1); ctx.fillRect(x*T+3,y*T+4,3,1); }
         else if (ev.type==="shrine"){ ctx.fillStyle=PAL.bone; ctx.fillRect(x*T+2,y*T+2,1,3); ctx.fillRect(x*T+4,y*T+2,1,3); ctx.fillStyle=PAL.gold; ctx.fillRect(x*T+3,y*T+3,1,1); }
         else if (ev.type==="puzzle"){ ctx.fillStyle="#6b5d7a"; ctx.fillRect(x*T+1,y*T+1,5,5); ctx.fillStyle="#0a0810"; ctx.fillRect(x*T+2,y*T+2,3,3); }
@@ -3038,8 +3140,8 @@ function renderUI(){
     }
     for (const i of rows)
       hit(4,126+(i-start)*10,312,10,()=>{ m.sel=i; pressZ("z"); });
-    if (m.opts.length>start+4) txt("▼",307,169,"#c8963f");
-    if (start>0) txt("▲",307,118,"#c8963f");
+    if (m.opts.length>start+4){ txt("▼",307,169,"#c8963f"); hit(300,163,20,17,()=>{ m.sel=(m.sel+1)%m.opts.length; }); }
+    if (start>0){ txt("▲",307,118,"#c8963f"); hit(300,116,20,12,()=>{ m.sel=(m.sel-1+m.opts.length)%m.opts.length; }); }
     const cur=m.opts[m.sel];
     if (cur && cur.d) txt(". "+wrap(cur.d,54)[0],6,169,"#8f8878");
     txt("X back",272,119,"#5f5868");

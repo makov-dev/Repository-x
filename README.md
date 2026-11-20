@@ -24,6 +24,13 @@ the rooftops, fog rolls off the avenue, and the whole thing hums. Something
 can creak, too: each floor hides a thing that never announces itself — the
 closer you stray, the more the walls grumble about it.
 
+Rooms keep **screws loose in the world**: now and then a floor holds a
+**sealed stair** (break it open on Strength, or rig it with Rope & Hook and
+drop two levels in one step) or a **door with no wall around it** — a way
+into hidden Openings you can force open if your Will holds, or chalk and
+wake up later. Chalked doors appear at the Gate of Openings, forever after:
+**The Maw Behind Plaster**, **The Debt Vaults**, and **The Ninth Seam**.
+
 The streets are **inhabited**: named folk with a trade and a family line walk
 purposefully from one door to another and slip inside. Tap one to get a look —
 name, age, trade, and what they think of you. At first you are furniture with
@@ -77,8 +84,10 @@ an auto-walk in progress.
 1. **The city (your base).** Vharn's drizzly streets hold the facilities:
    - **Guild Hall** — rumors of what waits below (5g), the Wall of Names.
    - **Grave-Market** — sell your loot, buy rations/bandages/rope/antitoxin,
-     and the ironmonger's weapons and armor. Money only comes from what
-     you drag out of the Openings.
+     and the ironmonger's rack: Surgeon's Scalpel, Iron Shard, Crude Spear,
+     Bone Saw, Balanced Hand Axe, Wardriver Maul (dmg 3→8), plus Widow's
+     Mail and Yes-Plate. Money only comes from what you drag out of the
+     Openings.
    - **Flesh-Setter** — pay to have wounds sewn shut.
    - **The Flayed Lamp** (tavern) — hot meals, rumors, and 6 NPCs
      you can court Princess-Maker-2-style: talk, gift, declare intent,
@@ -87,8 +96,10 @@ an auto-walk in progress.
      charge ordered at the bread riot, ash-field exile, one lamp still
      lit for a husband eleven months gone. Each tells her own story
      when you talk.
-     **"Who is here tonight?"** shows the whole room: ages, who is wed
-     to whom, who died.
+     **"Who is here tonight? (court here)"** shows the whole room: ages,
+     who is wed to whom, who died — and picking anyone tells you their
+     story and, if they are unattached, lets you **Begin courting** them
+     on the spot.
    - **Housing Office** — buy the Leaning Tenement (250g), then upgrade it:
      leakproofing, warm hearth, nursery, deep cellar, reinforced door. Home
      has **the chest**: storage that holds more things than any pack (24
