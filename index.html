@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>OPENINGS - Delvings of Old Jericho</title>
 <style>
-  html,body{margin:0;padding:0;background:#0a0709;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:monospace;touch-action:manipulation;}
+  html,body{margin:0;padding:0;background:#171322;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:monospace;touch-action:manipulation;}
   canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:960px;max-width:100vw;height:auto;aspect-ratio:16/9;box-shadow:0 0 60px #000;background:#0d0b10;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
 </style>
 </head>
@@ -107,7 +107,7 @@ function chip(label,x,y,w,fn,en){
   ctx.strokeStyle= en? "#7d6f4c" : "#2a2233";
   ctx.strokeRect(x+.5,y+.5,w-1,12);
   const tw=ctx.measureText(label).width;
-  txt(label,x+Math.max(1,Math.floor((w-tw)/2)),y+2, en? "#d8cba8" : "#57506a");
+  txt(label,x+Math.max(1,Math.floor((w-tw)/2)),y+2, en? "#d8cba8" : "#685f76");
   if (en) hit(x,y,w,13,fn);
 }
 CVS.addEventListener("pointerdown", e=>{
@@ -175,8 +175,8 @@ function walkTo(tx,ty,cb,pass,w,h){
 
 /* ---------------- palette ---------------- */
 const PAL = {
-  void:"#0d0b10", wall:"#241d26", wallHi:"#372c3a", floor:"#1b151c", floorHi:"#241c26",
-  blood:"#6e2230", bloodHi:"#8a2f3d", flesh:"#6e2f38", bone:"#c7bfae", boneDim:"#8f8878",
+  void:"#0d0b10", wall:"#2f2735", wallHi:"#463949", floor:"#251d2c", floorHi:"#31293c",
+  blood:"#6e2230", bloodHi:"#8a2f3d", flesh:"#6e2f38", bone:"#c7bfae", boneDim:"#a09a8c",
   gold:"#c9a24a", coin:"#e0b95a", stone:"#3b3540", rust:"#7a4a2e", green:"#3f6a3a",
   skin:"#b98a6f", ink:"#161018"
 };
@@ -310,7 +310,7 @@ function openChest(){
 
 /* ----- the base city breathes: walkers, pigeons ----- */
 /* ----- the people of Jericho: real, aging, going somewhere ----- */
-const WALK_COLS=["#8f8878","#7a6a5a","#9a8478","#6b7a6b","#8a7a8a","#a09080"];
+const WALK_COLS=["#a09a8c","#7a6a5a","#9a8478","#6b7a6b","#8a7a8a","#a09080"];
 const TOWN_NAMES=["Ebba","Corvo","Junie","Marrow","Pell","Tansy","Brek","Hess","Ivo","Ruthie","Colm","Dagny","Sparrow","Wenna","Odo","Greet","Fitch","Marn"];
 const TOWN_OCC=[
   "a candle-dipper for the Holy Gate; insists true black is impossible",
@@ -2784,7 +2784,7 @@ function drawBuilding(bl, sx, sy){
   ctx.fillStyle="rgba(0,0,0,0.4)"; ctx.fillRect(sx,sy+9,w,1);
   if (bl.id==="market"||bl.id==="tavern"){
     for (let x=sx,i=0;x<sx+w-2;x+=6,i++){
-      ctx.fillStyle= i%2? "#4a3226" : "#8f8878";
+      ctx.fillStyle= i%2? "#4a3226" : "#a09a8c";
       ctx.fillRect(x,sy+10,3,3);
     }
   }
@@ -2862,7 +2862,7 @@ function drawBuilding(bl, sx, sy){
   }
 }
 function drawBase(){
-  ctx.fillStyle="#171219"; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="#201a26"; ctx.fillRect(0,0,W,H);
   if (!cityGrid) cityGrid=buildCity();
   const b=game.base;
   const camX=clamp(b.px-Math.floor(VWz/2),0,CW-VWz), camY=clamp(b.py-Math.floor(VHz/2),0,CH-VHz);
@@ -2873,15 +2873,15 @@ function drawBase(){
       const wx=x+camX; if (wx>=CW) continue;
       const c=cityGrid[wy][wx];
       let col=PAL.floor;
-      if (c==="r") col="#4a4148";
-      else if (c==="o") col="#3d3742";
-      else if (c==="y") col="#313d2c";
-      else if (c==="B") col="#3c3038";
+      if (c==="r") col="#57505f";
+      else if (c==="o") col="#4b4352";
+      else if (c==="y") col="#3e4b39";
+      else if (c==="B") col="#4b3d48";
       else if (c==="D") col=PAL.rust;
       else if (c==="G") col=PAL.void;
       ctx.fillStyle=col;
       ctx.fillRect(x*T,y*T,T,T);
-      if (c==="."){ ctx.fillStyle="#1e1720"; ctx.fillRect(x*T,y*T,1,1); }
+      if (c==="."){ ctx.fillStyle="#292030"; ctx.fillRect(x*T,y*T,1,1); }
       if (c==="D"){ ctx.fillStyle="#2c1e14"; ctx.fillRect(x*T+1,y*T+1,4,6); }
       if (c==="G"){ ctx.fillStyle="#c8963f"; ctx.fillRect(x*T+3,y*T+3,1,1); }
     }
@@ -2939,7 +2939,7 @@ function drawBase(){
   ctx.restore();
   for (let pi=0;pi<3;pi++){
     const bpx=(worldTick*0.3+pi*107)%(W+40)-20, bpy=38+pi*13+Math.sin(worldTick/23+pi*2)*6;
-    ctx.fillStyle="#4a4152";
+    ctx.fillStyle="#5b5163";
     ctx.fillRect(bpx,bpy,3,1);
     const flap=((worldTick/6|0)+pi)%2;
     ctx.fillRect(bpx-1,bpy-flap,1,1); ctx.fillRect(bpx+3,bpy-flap,1,1);
@@ -2987,8 +2987,8 @@ function drawDungeon(){
       let col;
       if (c==="#") col=(wx+wy)%2? PAL.wall:PAL.wallHi;
       else if (c==="<"||c===">") col="#3d3141";
-      else if (inR) col=(wx+wy)%2? "#2e2438":"#352b44";
-      else col=(wx+wy)%2? "#151019":"#1a1420";
+      else if (inR) col=(wx+wy)%2? "#3b3049":"#483c59";
+      else col=(wx+wy)%2? "#201827":"#261e30";
       ctx.fillStyle=col;
       ctx.fillRect(x*T,y*T,T,T);
       if (c==="#"){ ctx.fillStyle=PAL.wallHi; ctx.fillRect(x*T,y*T,T,2); }
@@ -2998,7 +2998,7 @@ function drawDungeon(){
         const hsc=((wx*73856093)^(wy*19349663)^f.seed)>>>0;
         if (!inR && hsc%5<2){ ctx.fillStyle="#0d0911"; ctx.fillRect(x*T+2,y*T+2,1,1); ctx.fillRect(x*T+5,y*T+4,1,1); }
         const m=hsc%19;
-        if (m===0){ ctx.fillStyle="#8f8878"; ctx.fillRect(x*T+2,y*T+5,1,1); ctx.fillRect(x*T+4,y*T+4,1,1); ctx.fillRect(x*T+5,y*T+3,1,1); }
+        if (m===0){ ctx.fillStyle="#a09a8c"; ctx.fillRect(x*T+2,y*T+5,1,1); ctx.fillRect(x*T+4,y*T+4,1,1); ctx.fillRect(x*T+5,y*T+3,1,1); }
         else if (m===1){ ctx.fillStyle="#4b4349"; ctx.fillRect(x*T+1,y*T+2,2,1); ctx.fillRect(x*T+3,y*T+3,1,1); }
         else if (m===2){ ctx.fillStyle="#0d0a10"; ctx.fillRect(x*T+1,y*T+3,3,1); ctx.fillRect(x*T+3,y*T+4,1,1); }
         else if (m===3){
@@ -3036,7 +3036,7 @@ function drawDungeon(){
       ctx.globalAlpha=1;
     }
   }
-  ctx.strokeStyle="rgba(201,162,74,0.25)";
+  ctx.strokeStyle="rgba(201,162,74,0.38)";
   for (const r of f.rooms){
     if (r.x+r.w<=camX || r.x>camX+VWz || r.y+r.h<=camY || r.y>camY+VHz) continue;
     ctx.strokeRect((r.x-camX)*T+0.5,(r.y-camY)*T+0.5,r.w*T-1,r.h*T-1);
@@ -3047,7 +3047,7 @@ function drawDungeon(){
   ctx.fillStyle="rgba("+tint[0]+","+tint[1]+","+tint[2]+",0.07)"; ctx.fillRect(0,0,W,H);
   const flick=Math.sin(worldTick/13)*4+Math.sin(worldTick/7)*3;
   const g=ctx.createRadialGradient(W/2,H/2-10,60+flick,W/2,H/2,190+flick*2);
-  g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(2,1,4,0.8)");
+  g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(2,1,4,0.52)");
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
   const wg=ctx.createRadialGradient(W/2,H/2-16,18,W/2,H/2-16,120);
   wg.addColorStop(0,"rgba(255,150,44,0.055)"); wg.addColorStop(1,"rgba(255,150,44,0)");
@@ -3096,12 +3096,12 @@ function drawMinimap(){
     if (!f.seen.has(x+","+y)) continue;
     const c=f.grid[y][x];
     const inR=f.rooms.some(r=>x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h);
-    ctx.fillStyle = c==="#"? "#241d2a" : (c==="<"||c===">")? PAL.gold : inR? "#4a4152" : "#322a3a";
+    ctx.fillStyle = c==="#"? "#241d2a" : (c==="<"||c===">")? PAL.gold : inR? "#5b5163" : "#433945";
     ctx.fillRect(ox+x*s,oy+y*s,s,s);
   }
   ctx.fillStyle="#efe7d4";
   ctx.fillRect(ox+d.px*s-1,oy+d.py*s-1,s+2,s+2);
-  txt("tap to close",26,152,"#7a7183");
+  txt("tap to close",26,152,"#8c8494");
   hit(20,14,280,152,()=>pressZ("m"));
 }
 
@@ -3122,7 +3122,7 @@ function renderUI(){
     for (const l of u.dialog.lines[u.dialog.i].split("\n")) wrapped.push.apply(wrapped, wrap(l,56));
     let y=120;
     for (const l of wrapped){ txt(l,6,y); y+=10; }
-    txt("tap / Z >",261,169,"#7a7183");
+    txt("tap / Z >",261,169,"#8c8494");
     if (u.dialog.i<u.dialog.lines.length-1)
       txt("▼",311,168,"#c8963f");
     hit(0,116,320,64,()=>pressZ("z"));
@@ -3144,8 +3144,8 @@ function renderUI(){
     if (m.opts.length>start+4){ txt("▼",307,169,"#c8963f"); hit(300,163,20,17,()=>{ m.sel=(m.sel+1)%m.opts.length; }); }
     if (start>0){ txt("▲",307,118,"#c8963f"); hit(300,116,20,12,()=>{ m.sel=(m.sel-1+m.opts.length)%m.opts.length; }); }
     const cur=m.opts[m.sel];
-    if (cur && cur.d) txt(". "+wrap(cur.d,54)[0],6,169,"#8f8878");
-    txt("X back",272,119,"#5f5868");
+    if (cur && cur.d) txt(". "+wrap(cur.d,54)[0],6,169,"#a09a8c");
+    txt("X back",272,119,"#726a7c");
     hit(262,117,56,12,()=>pressZ("x"));
   }
 }
@@ -3153,12 +3153,12 @@ function drawGambleBoard(){
   const d=gDice, j=worldTick%2;
   box(68,58,184,104,"rgba(10,7,12,0.96)",PAL.gold);
   txt("THE BONES GAME",126,62,PAL.gold);
-  txt("stake "+fmt(d.stake)+" - win "+fmt(d.stake*3),74,76,"#8f8878");
+  txt("stake "+fmt(d.stake)+" - win "+fmt(d.stake*3),74,76,"#a09a8c");
   drawDie(94+(d.st1?0:j),94,d.v1,d.st1);
   drawDie(152+(d.st2?0:(1-j)),94,d.v2,d.st2);
   if (!d.st1) hit(94,94,26,28,()=>{ if (!d.st1) d.st1=true; });
   if (!d.st2) hit(152,94,26,28,()=>{ if (!d.st2) d.st2=true; });
-  txt("catch both sixes - Z / X or tap",74,150,"#7a7183");
+  txt("catch both sixes - Z / X or tap",74,150,"#8c8494");
 }
 function drawJuice(){
   for (const f of floats){ f.t++; f.y-=0.4; }
@@ -3180,7 +3180,7 @@ function drawJuice(){
   }
   const vg=ctx.createRadialGradient(W/2,H/2,H*0.42,W/2,H/2,H*0.95);
   vg.addColorStop(0,"rgba(1,0,3,0)");
-  vg.addColorStop(1,"rgba(1,0,3,0.55)");
+  vg.addColorStop(1,"rgba(1,0,3,0.30)");
   ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
   ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
   for (const f of floats){
@@ -3225,8 +3225,8 @@ function renderCombat(){
     let lore=String(c.log[1]||e.n);
     const lw=wrap(lore,52).concat(c.log[2]? wrap("*"+c.log[2],52) : []);
     let iy=114;
-    for (let li=0; li<lw.length && li<5; li++){ txt(lw[li].replace(/^\*/,""),8,iy, lw[li].charAt(0)==="*"? "#7a7183":"#a89d90"); iy+=10; }
-    txt("tap or Z to steel yourself",96,166,"#7a7183");
+    for (let li=0; li<lw.length && li<5; li++){ txt(lw[li].replace(/^\*/,""),8,iy, lw[li].charAt(0)==="*"? "#8c8494":"#a89d90"); iy+=10; }
+    txt("tap or Z to steel yourself",96,166,"#8c8494");
     hit(0,0,W,H,()=>{ c.intro=0; });
     cornerChips();
     return;
@@ -3241,9 +3241,9 @@ function renderCombat(){
   ctx.fillStyle="#33131c"; ctx.fillRect(96,73,128,4);
   if (known){
     ctx.fillStyle=PAL.bloodHi; ctx.fillRect(96,73,Math.round(128*w),4);
-    txt(e.hp+"/"+e.maxhp,196,64,"#8f8878");
+    txt(e.hp+"/"+e.maxhp,196,64,"#a09a8c");
   } else {
-    txt("vitals unknown",196,64,"#5f5868");
+    txt("vitals unknown",196,64,"#726a7c");
   }
   box(0,74,320,42,"rgba(8,6,10,0.88)");
   let logRows=[];
@@ -3259,7 +3259,7 @@ function renderCombat(){
     drawDie(169+(d.st2?0:(1-j)),136,d.v2,d.st2);
     if (!d.st1) hit(115,136,26,28,()=>stopDie(d,0));
     if (!d.st2) hit(169,136,26,28,()=>stopDie(d,1));
-    txt(game.player.hp<=game.player.maxhp*0.25? "LAST STAND - dice crawl slow" : "roll both dice - Z / X / tap",104,168,"#7a7183");
+    txt(game.player.hp<=game.player.maxhp*0.25? "LAST STAND - dice crawl slow" : "roll both dice - Z / X / tap",104,168,"#8c8494");
   } else if (c.turn==="player"){
     box(0,116,150,64,"rgba(8,6,10,0.92)");
     const acts=quickActs();
@@ -3268,7 +3268,7 @@ function renderCombat(){
       txt((i===c.choice?"> ":"  ")+actLabel(acts[i]),6,120+i*sp, i===c.choice?PAL.coin:PAL.bone);
       hit(0,117+i*sp,150,sp,()=>{ c.choice=i; pressZ("z"); });
     }
-    txt("twin 6s = crit",156,169,"#5f5868");
+    txt("twin 6s = crit",156,169,"#726a7c");
   } else if (c.turn==="won"){
     if (c.kcine>0){
       ctx.fillStyle="rgba(2,1,4,0.84)"; ctx.fillRect(0,0,W,H);
@@ -3277,7 +3277,7 @@ function renderCombat(){
       txt(big, Math.round(W/2-ctx.measureText(big).width/2), 58, c.critKill? "#e0b95a" : "#dfd6c2");
       const sub= c.critKill? "steel at full force - the dark takes note" : "the opening keeps its counsel";
       ctx.font="bold 8px 'Courier New',monospace";
-      txt(sub, Math.round(W/2-ctx.measureText(sub).width/2), 78, "#7a7183");
+      txt(sub, Math.round(W/2-ctx.measureText(sub).width/2), 78, "#8c8494");
       txt("it is over. [Z] / tap", 116, 152, PAL.gold);
       hit(0,0,W,H,()=>{ c.kcine=1; });
     } else {
@@ -3292,11 +3292,11 @@ function renderCombat(){
 /* ----- title & death ----- */
 let titleTick=0;
 function renderTitle(){
-  ctx.fillStyle="#0b0810"; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="#141020"; ctx.fillRect(0,0,W,H);
   titleTick++;
   for (let i=0;i<40;i++){
     const bx=(i*37)%W, bh=20+((i*53)%50);
-    ctx.fillStyle=i%3? "#141019":"#191420";
+    ctx.fillStyle=i%3? "#201a28":"#272030";
     ctx.fillRect(bx,H-bh,14,bh);
     if ((i*29+Math.floor(titleTick/60))%7<2){ ctx.fillStyle="#2e2433"; ctx.fillRect(bx+3,H-bh+6,3,4); }
   }
@@ -3306,11 +3306,11 @@ function renderTitle(){
   ctx.fillRect(80,56,160,66);
   ctx.textAlign="center";
   txt("O P E N I N G S",W/2,24,PAL.gold,true);
-  txt("delvings of old Jericho",W/2,36,"#8f8878");
-  txt("a gritty pixel life-in-the-depths sim (draft)",W/2,50,"#5f5868");
+  txt("delvings of old Jericho",W/2,36,"#a09a8c");
+  txt("a gritty pixel life-in-the-depths sim (draft)",W/2,50,"#726a7c");
   ctx.textAlign="left";
   if (Math.floor(titleTick/30)%2===0) txt("[ENTER] or tap to begin",96,148,PAL.bone);
-  txt("the city is patient - arrows move, Z confirms",40,162,"#4d4453");
+  txt("the city is patient - arrows move, Z confirms",40,162,"#615868");
   hit(0,0,W,H,()=>pressZ("Enter"));
 }
 let deadPage=0;
@@ -3326,8 +3326,8 @@ function renderDead(){
   txt("THE BOOK OF THE GATE",W/2-52,18,PAL.gold,true);
   let y=32;
   for (const s of rows.slice(deadPage*per,(deadPage+1)*per)){ txt(s,12,y,"#b9b0a0"); y+=10; }
-  if (deadPage<pages-1) txt("tap / ENTER >",262,168,"#7a7183");
-  else txt("[ENTER] or tap - Jericho waits.",76,164,"#6e6678");
+  if (deadPage<pages-1) txt("tap / ENTER >",262,168,"#8c8494");
+  else txt("[ENTER] or tap - Jericho waits.",76,164,"#7f778a");
   hit(0,0,W,H,()=>pressZ("Enter"));
 }
 
