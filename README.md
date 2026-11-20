@@ -16,8 +16,15 @@ devices the game auto-enters fullscreen when you begin (the **FS** chip in the
 top-right corner toggles it manually). City buildings are drawn as pixel-art
 façades: lit windows, doors, striped awnings, guild banners, the tavern's
 swinging lantern, chimney smoke, and the arched Gate of Openings. And Vharn
-breathes: umbrellas bob down the streets when it drizzles, pigeons flap along
+breathes: pigeons flap along
 the rooftops, fog rolls off the avenue, and the whole thing hums.
+
+The streets are **inhabited**: named folk with a trade and a family line walk
+purposefully from one door to another and slip inside. Tap one to get a look —
+name, age, trade, and what they think of you. At first you are furniture with
+pockets; kept at it, they glance, nod, eventually say "Morning, [your name]",
+and in time greet you by title. They **age**: elderly townfolk can die
+mid-errand, the news spreads, and the Church of Cinders will bury them.
 
 ## Controls — mouse or touch, no overlays
 
