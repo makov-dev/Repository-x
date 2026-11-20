@@ -312,7 +312,9 @@ const TOWN_OCC=[
   "a lamplighter afraid of street-level; never looks down",
   "a seamstress of funeral clothes. Her customers do not repeat.",
   "a water-carrier from the Gilded Ward; counts everything, twice",
-  "a knife-sharpener whose stall sits too close to the Openings"
+  "a knife-sharpener whose stall sits too close to the Openings",
+  "a washerwoman; knows what everyone's sheets say about them",
+  "a bone-carver; patient about anatomy, less about clients"
 ];
 const TOWN_LINES=[
   "\"You eat yet? I ask everybody. It's the only question with a real answer.\"",
@@ -336,18 +338,46 @@ function computeDoorTiles(){
   }
   return doors;
 }
+function resList(){ return BUILDINGS.filter(b=>b.res); }
+function workList(){ return BUILDINGS.filter(b=>b.work); }
+function bldDoor(bl){
+  const cands=[];
+  for (let x=bl.x;x<bl.x+bl.w;x++){ cands.push([x,bl.y+bl.h]); cands.push([x,bl.y-1]); }
+  for (let y=bl.y;y<bl.y+bl.h;y++){ cands.push([bl.x-1,y]); cands.push([bl.x+bl.w,y]); }
+  const okc=cands.filter(c=>c[0]>=1&&c[1]>=1&&c[0]<CW-1&&c[1]<CH-1&&!citySolid(c[0],c[1]));
+  return okc.length? okc[irnd(okc.length)] : null;
+}
+const RES_LINES=[
+  "a stairwell of soap-boil and mildew. The banister is polished by exactly one pair of hands a day.",
+  "somebody is always crying on the third floor, and somebody is always cooking onions on top of it.",
+  "a landlady who counts footsteps. Rent comes in coin or in favors. She prefers favors.",
+  "the ceiling was patched last winter with positivity. It is holding, the way apologies hold.",
+  "nine keys for seven doors, historically. Nobody discusses the arithmetic."
+];
+const WORK_LINES={
+  wash:"steam, lye, and gossip pressed into careful folds. Every other bundle hums a name.",
+  carver:"bone-dust drifting in slanted light. A half-finished knee clamps in the vise, waiting.",
+  tallow:"fat going to candlelight, hour by hour. The whole block burns its own dead, most nights.",
+  pawn:"everything somebody sold to stay another week, priced accordingly. The clerk nods without greeting."
+};
 function spawnTownfolk(){
   if (!game.doorTiles || !game.doorTiles.length) game.doorTiles=computeDoorTiles();
   const dt=game.doorTiles;
   if (dt.length<2) return;
   if (!game.townPool || !game.townPool.length) game.townPool=TOWN_NAMES.slice();
   const name=game.townPool.splice(irnd(game.townPool.length),1)[0];
-  const from=dt[irnd(dt.length)];
-  const to=dt[irnd(dt.length)];
+  const home=resList().length? pick(resList()) : null;
+  const work=workList().length? pick(workList()) : null;
+  const both=[home,work].filter(Boolean);
+  const toB= both.length? both[irnd(both.length)] : null;
+  const atB= toB===home? work : (both.length>1? home : null);
+  const from=(atB && bldDoor(atB)) || dt[irnd(dt.length)];
+  const to=(toB && bldDoor(toB)) || dt[irnd(dt.length)];
   const path=bfsPath(from[0],from[1],to[0],to[1],(x,y)=>!citySolid(x,y),CW,CH)||[];
   game.townfolk.push({ name:name, occ:pick(TOWN_OCC), line:pick(TOWN_LINES),
     age0:17+irnd(48), born:game.week, x:from[0], y:from[1], path:path, i:0,
-    t:20+irnd(30), lastW:game.week, col:pick(WALK_COLS) });
+    t:20+irnd(30), lastW:game.week, col:pick(WALK_COLS),
+    homeId:home?home.id:null, workId:work?work.id:null, atId:atB?atB.id:null, toId:toB?toB.id:null, inside:0 });
 }
 function townAge(wk){ return Math.floor(wk.age0+(game.week-wk.born)/52); }
 function updTownfolk(){
@@ -367,6 +397,22 @@ function updTownfolk(){
         continue;
       }
     }
+    if (wk.inside>0){
+      wk.inside--;
+      if (wk.inside<=0){
+        if (!game.doorTiles || !game.doorTiles.length) game.doorTiles=computeDoorTiles();
+        const at=BUILDINGS.find(bb=>bb.id===wk.atId);
+        const fr=(at && bldDoor(at)) || game.doorTiles[irnd(game.doorTiles.length)];
+        wk.x=fr[0]; wk.y=fr[1];
+        const nid= wk.atId===wk.homeId? wk.workId : wk.homeId;
+        const nb=BUILDINGS.find(bb=>bb.id===nid);
+        const to=(nb && bldDoor(nb)) || game.doorTiles[irnd(game.doorTiles.length)];
+        wk.toId=nid;
+        wk.path=bfsPath(wk.x,wk.y,to[0],to[1],(x,y)=>!citySolid(x,y),CW,CH)||[];
+        wk.i=0; wk.t=20+irnd(30);
+      }
+      continue;
+    }
     wk.t--;
     if (wk.t>0) continue;
     wk.t=11+irnd(9);
@@ -375,8 +421,12 @@ function updTownfolk(){
       wk.x=st[0]; wk.y=st[1]; wk.i++;
     } else {
       game.flags.lastArrived=wk.name;
-      game.townfolk.splice(i,1);
-      if (Math.random()<0.85) spawnTownfolk();
+      if (wk.toId) wk.atId=wk.toId;
+      wk.inside=140+irnd(220);
+      if (Math.random()<0.12){
+        game.townfolk.splice(i,1);
+        if (Math.random()<0.85) spawnTownfolk();
+      }
     }
   }
 }
@@ -389,12 +439,16 @@ function talkTownfolk(wk){
     : wk.fam>=3? "A nod, weighed out to the gram."
     : wk.fam>=1? "They catch your eye, then find somewhere better for it."
     : "You are furniture with pockets.";
-  say([wk.name+", "+townAge(wk)+" - "+wk.occ, g, wk.line]);
+  const lines=[wk.name+", "+townAge(wk)+" - "+wk.occ, g, wk.line];
+  const dst=BUILDINGS.find(bb=>bb.id===(wk.toId||wk.homeId));
+  if (dst) lines.push("Bound for "+dst.label+". The errand is theirs, and they keep it.");
+  say(lines);
   saveGame();
 }
 function drawTownfolk(camX,camY){
   if (!game.townfolk) return;
   for (const wk of game.townfolk){
+    if (wk.inside>0) continue;
     const sx=(wk.x-camX)*T, sy=(wk.y-camY)*T;
     if (sx<-6||sx>Wz+8||sy<-8||sy>Hz) continue;
     const moving=wk.path && wk.i<wk.path.length;
@@ -685,7 +739,15 @@ const BUILDINGS = [
   { id:"church",  x:48, y:3,  w:9,  h:6, label:"CHURCH OF CINDERS", roof:"#4f5562" },
   { id:"yard",    x:36, y:13, w:10, h:7, label:"TRAINING YARD",  roof:"#42523d", yard:true },
   { id:"gate",    x:50, y:13, w:6,  h:9, label:"GATE OF OPENINGS",roof:"#3a2f42", gate:true },
-  { id:"home",    x:20, y:23, w:9,  h:6, label:"YOUR HOME",      roof:"#5d4a37", home:true, door:[24,28] }
+  { id:"home",    x:20, y:23, w:9,  h:6, label:"YOUR HOME",      roof:"#5d4a37", home:true, door:[24,28] },
+  { id:"ten_a",   x:2,  y:24, w:6,  h:5, label:"THE STACKS A",   roof:"#5a4a3a", res:true },
+  { id:"ten_b",   x:10, y:24, w:6,  h:5, label:"THE STACKS B",   roof:"#554542", res:true },
+  { id:"ten_c",   x:32, y:24, w:6,  h:5, label:"THE STACKS C",   roof:"#504040", res:true },
+  { id:"ten_d",   x:49, y:24, w:6,  h:5, label:"THE STACKS D",   roof:"#4a4046", res:true },
+  { id:"wash",    x:2,  y:31, w:6,  h:4, label:"WASHHOUSE",      roof:"#3c5560", work:true },
+  { id:"carver",  x:10, y:31, w:6,  h:4, label:"BONE CARVER",    roof:"#61536b", work:true },
+  { id:"tallow",  x:25, y:31, w:6,  h:4, label:"TALLOWWORKS",    roof:"#6b5a35", work:true },
+  { id:"pawn",    x:49, y:31, w:6,  h:4, label:"PAWNBROKER",     roof:"#5d4351", work:true }
 ];
 
 function buildCity(){
@@ -774,6 +836,18 @@ function enterBuilding(b){
     case "yard": openYard(); break;
     case "gate": openGate(); break;
     case "home": openHome(); break;
+    default:
+      if (b.res){
+        const fol=game.townfolk.filter(w=>w.homeId===b.id);
+        const names=fol.map(w=>w.name).join(", ");
+        say([b.label+": "+pick(RES_LINES),
+             names? "Living here now: "+names+"." : "No one admits to living here officially. Someone is clearly lying."]);
+      } else if (b.work){
+        const fol=game.townfolk.filter(w=>w.workId===b.id);
+        const names=fol.map(w=>w.name).join(", ");
+        say([b.label+": "+(WORK_LINES[b.id]||"Work happens here. Nobody loves it."),
+             names? "At the benches today: "+names+"." : "The benches are empty. Odd hour, or late debts."]);
+      }
   }
 }
 
@@ -2628,6 +2702,25 @@ function drawBuilding(bl, sx, sy){
     if (lit){ ctx.fillStyle="#f7e08a"; ctx.fillRect(wx0+1,wy0+1,1,1); }
     ctx.fillStyle="rgba(0,0,0,0.45)"; ctx.fillRect(wx0-1,wy0+3,6,1);
   }
+  if (bl.res){
+    ctx.strokeStyle="rgba(58,48,60,0.75)";
+    ctx.beginPath(); ctx.moveTo(sx+5,sy+12); ctx.lineTo(sx+w-5,sy+12); ctx.stroke();
+    const cloth=["#7a5a68","#4a6078","#6a7a52"];
+    for (let i=0;i<3;i++){
+      const cx=sx+6+i*(Math.max(4,Math.floor((w-14)/3))), flap=((worldTick/9|0)+i)%2;
+      ctx.fillStyle=cloth[(i+bl.y)%3];
+      ctx.fillRect(cx, sy+13+flap, 2, 3);
+    }
+  }
+  if (bl.work){
+    const ix0=sx+Math.floor(w/2)-8;
+    ctx.fillStyle="#141016"; ctx.fillRect(ix0,sy+11,16,6);
+    ctx.strokeStyle="#7d6f4c"; ctx.strokeRect(ix0+0.5,sy+11.5,15,5);
+    if (bl.id==="wash"){ ctx.fillStyle="#8fb7c9"; ctx.fillRect(ix0+4,sy+13,2,2); ctx.fillRect(ix0+9,sy+12,2,2); }
+    else if (bl.id==="carver"){ ctx.fillStyle="#c7bfae"; ctx.fillRect(ix0+4,sy+13,6,2); ctx.fillRect(ix0+3,sy+12,2,1); ctx.fillRect(ix0+9,sy+14,2,1); }
+    else if (bl.id==="tallow"){ ctx.fillStyle="#e8d07a"; ctx.fillRect(ix0+7,sy+12,2,4); ctx.fillStyle="#f7e08a"; ctx.fillRect(ix0+7,sy+11,2,1); }
+    else { ctx.fillStyle="#e0b95a"; ctx.fillRect(ix0+6,sy+13,3,3); }
+  }
   if (bl.id==="guild"){
     for (let i=0;i<2;i++){
       const bxp=sx+9+i*(w-24);
@@ -3378,7 +3471,7 @@ window.__openings={
   earnTitle, checkTitles, foeKnown, hasManeuver, quickActs, actLabel, bonesGame, addr,
   openChurch, maybeMugged, openTavern, voiceSfx, coinCascade, updateAmbience,
   findLore, openCodex, gateConditions, openTheGate, LORE_FRAG, openBag, equipItem, openChest, buyPack, itemDesc, invCap, storageCap, invUsed,
-  talkTownfolk, spawnTownfolk, updTownfolk, townAge, takeOne, takeMany,
+  talkTownfolk, spawnTownfolk, updTownfolk, townAge, takeOne, takeMany, enterBuilding,
   MANEUVERS, BUILDINGS, OPENINGS, sfx, toggleSnd,
   get gDice(){ return gDice; }, get bannerMsg(){ return bannerMsg; },
   get droneOpen(){ return droneOpen; }

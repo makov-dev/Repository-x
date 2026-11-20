@@ -31,6 +31,15 @@ pockets; kept at it, they glance, nod, eventually say "Morning, [your name]",
 and in time greet you by title. They **age**: elderly townfolk can die
 mid-errand, the news spreads, and the Church of Cinders will bury them.
 
+The city itself is **alive around you**: the folk come from somewhere and go
+somewhere. **The Stacks** (four grim tenements) house them, and the
+**Washhouse, Bone Carver, Tallowworks and Pawnbroker** employ them — each
+walker is assigned a home and a bench, and spends the day commuting between
+them, disappearing inside for a while, then emerging on the opposite errand.
+Tenements hang their laundry in the drizzle; workshops show a painted trade
+sign. Walk up to any of them and go in: you'll be told what the place smells
+like and exactly who lives or labours there today.
+
 ## Controls — mouse or touch, no overlays
 
 The whole game is played **directly on the screen** — nothing else matters up
