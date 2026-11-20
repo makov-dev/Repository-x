@@ -12,13 +12,14 @@ patient. You shouldn't be.
 Open `index.html` in a browser (double-click, or `python3 -m http.server` and
 visit `http://localhost:8000`). Everything renders to a 320x180 canvas scaled
 3x, `image-rendering: pixelated`, all art drawn procedurally in code — the
-camera rides close to the hero (2× zoom, roughly 20×11 tiles on screen) and
+camera rides close to the hero (1.5× zoom, roughly 27×15 tiles on screen) and
 darkness gathers in the screen corners, thinning toward the middle. On touch
 devices the game auto-enters fullscreen when you begin (the **FS** chip in the
 top-right corner toggles it manually). City buildings are drawn as pixel-art
 façades: lit windows, doors, striped awnings, guild banners, the tavern's
 swinging lantern, chimney smoke, and the arched Gate of Openings. And Vharn
 breathes: pigeons flap along
+the rooftops, a steady drizzle crosshatches the streets and the rain checks
 the rooftops, fog rolls off the avenue, and the whole thing hums. Something
 can creak, too: each floor hides a thing that never announces itself — the
 closer you stray, the more the walls grumble about it.
@@ -47,6 +48,8 @@ your view. No virtual pad; the canvas is the only control surface.
 - **BAG** chip (top-right) opens your pack anywhere: wield/weapons, wear/armor,
   eat food, drop items, or just read what everything is. Bought weapons and
   armor go into your pack and auto-equip; the old ones drop in beside them.
+  The carry limit is hard: when a find won't fit, the game asks what to
+  **drop for it** — nothing vanishes without your say-so.
 - **Options you can't take don't exist**: no rope, no "use rope"; no antitoxin,
   no "drink antitoxin" — menus only ever offer what is actually on the table.
 - In a delve: on-screen chips **DESCEND / ASCEND / CLIMB OUT**, **MENU**,

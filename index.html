@@ -21,7 +21,7 @@ ctx.imageSmoothingEnabled = false;
 
 const W = 320, H = 180, T = 8;
 const VW = 40, VH = 22;
-const camZ = 2;
+const camZ = 1.5;
 const VWz = Math.ceil(VW/camZ), VHz = Math.ceil(VH/camZ), Wz = W/camZ, Hz = H/camZ;
 
 /* ---------------- utils ---------------- */
@@ -593,6 +593,28 @@ function addItem(n, v, kind, qty){
   return true;
 }
 function countItem(n){ const p=game.player; let c=0; for (const it of p.inv) if (it.n===n) c+=it.qty; return c; }
+function takeOne(it, per, next){
+  const p=game.player;
+  const hasSpace = p.inv.some(o=>o.n===it.n && o.kind===it.kind) || p.inv.length<invCap();
+  if (hasSpace){
+    if (addItem(it.n,it.v,it.kind)){ if (per) per(it); }
+    if (next) next();
+    return;
+  }
+  if (!p.inv.length){ if (next) next(); return; }
+  showMenu("PACK FULL - the "+it.n+" wants in",
+    p.inv.map((o,ix)=>({
+      t:"Drop "+o.n+(o.qty>1?" x"+o.qty:""),
+      fn:()=>{ p.inv.splice(ix,1);
+        if (addItem(it.n,it.v,it.kind)){ if (per) per(it); }
+        if (next) next(); }
+    })).concat([{ t:"Leave "+it.n+" in the dark", fn:()=>{ if (next) next(); } }])
+  );
+}
+function takeMany(list, per, done){
+  if (!list.length){ if (done) done(); return; }
+  takeOne(list[0], per, ()=>takeMany(list.slice(1), per, done));
+}
 function useFromInv(n, qty){
   qty=qty||1; const p=game.player;
   let left=qty;
@@ -1446,18 +1468,17 @@ function triggerEvent(ev){
     case "loot": {
       ev.done=true;
       const got=[];
-      for (const it of ev.items){
-        if (game.dungeon && game.dungeon.depth>=5) it.v=Math.round(it.v*1.5);
-        if (addItem(it.n,it.v,it.kind)){
+      if (game.dungeon && game.dungeon.depth>=5) ev.items.forEach(it=>{ it.v=Math.round(it.v*1.5); });
+      takeMany(ev.items, (it)=>{
           got.push(it.n);
           const r=lootRarity(it.v);
           addFloat(it.n+" - "+r.t, r.col, W/2+(irnd(96)-48), 76);
           sfx("loot"); sparkBurst(W/2, 76, r.col, 10, 1.1);
           if (r.t==="RELIC"){ kicker(8); setBanner(["A RELIC FROM THE DARK","The "+it.n+". Word of it will reach the market."]); sparkBurst(W/2, 76, "#c99df5", 30, 1.8); }
-        }
-      }
-      if (got.length){ say(["Wedged in the dark: "+got.join(", ")+"."], ()=>temptMore()); }
-      else { say(["Something worth taking, but your pack says otherwise."]); temptMore(); }
+        }, ()=>{
+          if (got.length){ say(["Wedged in the dark: "+got.join(", ")+"."], ()=>temptMore()); }
+          else { temptMore(); }
+        });
       break; }
     case "obstacle": obstacleEvent(ev); break;
     case "puzzle": puzzleEvent(ev); break;
@@ -1535,7 +1556,7 @@ function puzzleEvent(ev){
       showMenu("IT WANTS AN ANSWER", r.a.map((ans,i)=>({
         t:ans, fn:()=>{ ev.done=true;
           if (i===r.c){
-            say(["The door unhinges - politely, this once."], ()=>{ if(!addItem(pick(LOOT).n, 45, "loot")){} });
+            say(["The door unhinges - politely, this once."], ()=>{ takeOne({n:pick(LOOT).n, v:45, kind:"loot"}, null); });
           } else {
             say(["Wrong. The vertebrae tighten like a fist. You lose breath, blood, and pride.",
                  "The door relents eventually."], ()=>{ hurt(3,null); game.player.stam=clamp(game.player.stam-15,0,maxStam()); });
@@ -1558,7 +1579,7 @@ function puzzleEvent(ev){
         t:lab, fn:()=>{ ev.done=true;
           if (i===correct){ const l=rollLoot(d.tierNow,1);
             say(["Something heavy unbolts in the wall. A cavity opens."], ()=>{
-              l.forEach(it=>addItem(it.n,it.v,it.kind)); }); }
+              takeMany(l, null); }); }
           else say(["A slam, a hiss. Darts. A lesson in humility and bleeding."], ()=>hurt(3,null));
           saveGame();
         }
@@ -1571,11 +1592,11 @@ function puzzleEvent(ev){
             game.player.hp=Math.max(1,game.player.hp-5);
             const l=rollLoot(d.tierNow,2);
             say(["You open your palm over the basin. It drinks. The bars lift, slow as eyelids."], ()=>{
-              l.forEach(it=>addItem(it.n,it.v,it.kind)); }); saveGame(); } },
+              takeMany(l, null); }); saveGame(); } },
         ...(countItem("Bileglass Vial")? [{ t:"Fill a vial", fn:()=>{ ev.done=true;
             useFromInv("Bileglass Vial",1);
             say(["You bottle a little of the dark. The alcove stays shut, but the vial is heavy beyond its size."], ()=>{
-              addItem("Bottled Dark", 90, "loot"); });
+              takeOne({n:"Bottled Dark", v:90, kind:"loot"}, null); });
             saveGame(); } }]:[]),
         { t:"Walk away", fn:()=>{ ev.done=true; } }
       ]);
@@ -1591,7 +1612,7 @@ function corpseEvent(ev){
             const l=rollLoot(game.dungeon.tierNow,1);
             if (Math.random()<0.25) findLore("gild","a dead man's ledgers");
             say(["You strip the pack. \"Sorry,\" you say. The corpse's jaw hangs a little lower."], ()=>{
-              l.forEach(it=>addItem(it.n,it.v,it.kind)); }); }
+              takeMany(l, null); }); }
           else if (roll<0.8){
             showText(["The fingers close. It was not as dead as advertised. It stands.","Of course it stands."], ()=>{
               ev.done=true; startCombat(tierEnemy()); }); }
@@ -1618,7 +1639,7 @@ function shrineEvent(ev){
           saveGame(); } },
       { t:"Snuff it for the votive fat (loot)", fn:()=>{ ev.done=true;
           const l=rollLoot(game.dungeon.tierNow,1);
-          say(["Greedy, but warm-handed. You pocket the fat."], ()=>{ l.forEach(it=>addItem(it.n,it.v,it.kind)); });
+          say(["Greedy, but warm-handed. You pocket the fat."], ()=>{ takeMany(l, null); });
           saveGame(); } },
       { t:"Leave it burning", fn:()=>{ ev.done=true; } }
     ]);
@@ -1978,27 +1999,26 @@ function winCombat(){
   const l=rollLoot(tilt, Math.random()<0.4?2:1);
   if (game.dungeon && game.dungeon.depth>=5) l.forEach(it=>{ it.v=Math.round(it.v*1.5); });
   const got=[];
-  for (const it of l){
-    if (addItem(it.n,it.v,it.kind)){
+  takeMany(l, (it)=>{
       got.push(it.n);
       const r=lootRarity(it.v);
       addFloat(it.n+" - "+r.t, r.col, W/2+(irnd(96)-48), 68);
       sfx("loot"); sparkBurst(W/2, 70, r.col, 10, 1.1);
       if (r.t==="RELIC"){ kicker(8); setBanner(["A RELIC FROM THE DARK","The "+it.n+". Word of it will reach the market."]); sparkBurst(W/2, 70, "#c99df5", 30, 1.8); }
-    }
-  }
-  clog("It stops. The dark settles like sediment.");
-  clog("+"+fmt(g)+(got.length? ", and "+got.join(", "):""));
-  if (c.e.duel && p.weapon.d<6){ p.weapon={n:"Duelist's Blade", d:6}; clog("You also liberate their blade."); }
-  c.kcine = c.critKill? 72 : 46;
-  kicker(c.critKill? 14 : 9);
-  setFlash(c.critKill? "#fff3d0" : "#6b5c50", c.critKill? 7 : 4);
-  sfx("kill");
-  sparkBurst(W/2, 46, c.critKill? "#e8c76a" : "#b65f4a", c.critKill? 36 : 18, c.critKill? 1.9 : 1.3);
-  if (c.critKill) clog("You hit it like an ending.");
-  c.won=true; c.turn="won";
-  checkTitles();
-  saveGame();
+    }, ()=>{
+      clog("It stops. The dark settles like sediment.");
+      clog("+"+fmt(g)+(got.length? ", and "+got.join(", "):""));
+      if (c.e.duel && p.weapon.d<6){ p.weapon={n:"Duelist's Blade", d:6}; clog("You also liberate their blade."); }
+      c.kcine = c.critKill? 72 : 46;
+      kicker(c.critKill? 14 : 9);
+      setFlash(c.critKill? "#fff3d0" : "#6b5c50", c.critKill? 7 : 4);
+      sfx("kill");
+      sparkBurst(W/2, 46, c.critKill? "#e8c76a" : "#b65f4a", c.critKill? 36 : 18, c.critKill? 1.9 : 1.3);
+      if (c.critKill) clog("You hit it like an ending.");
+      c.won=true; c.turn="won";
+      checkTitles();
+      saveGame();
+    });
 }
 function endCombat(){
   const og=game.combat && game.combat.origin;
@@ -2337,7 +2357,7 @@ function baitEvent(ev){
           } else {
             const l=rollLoot(game.dungeon.tierNow,2);
             l.forEach(it=>{ it.v=Math.round(it.v*1.4); });
-            say(["The glint was honest. Greedy hands, honest glint - double take.","You take it all, and take it fast, before the sentence that offered it can change its mind."], ()=>{ l.forEach(it=>addItem(it.n,it.v,it.kind)); });
+            say(["The glint was honest. Greedy hands, honest glint - double take.","You take it all, and take it fast, before the sentence that offered it can change its mind."], ()=>{ takeMany(l, null); });
           }
           saveGame(); } },
       { t:"Hands off", fn:()=>{ ev.done=true;
@@ -2725,6 +2745,7 @@ function drawBase(){
     }
   }
   drawTownfolk(camX,camY);
+  ctx.restore();
   for (let pi=0;pi<3;pi++){
     const bpx=(worldTick*0.3+pi*107)%(W+40)-20, bpy=38+pi*13+Math.sin(worldTick/23+pi*2)*6;
     ctx.fillStyle="#4a4152";
@@ -2732,16 +2753,15 @@ function drawBase(){
     const flap=((worldTick/6|0)+pi)%2;
     ctx.fillRect(bpx-1,bpy-flap,1,1); ctx.fillRect(bpx+3,bpy-flap,1,1);
   }
-  ctx.strokeStyle="rgba(120,140,165,0.15)";
-  for (let di=0; di<26; di++){
-    const dxr=((di*97 + worldTick*(2+(di%3)))%330)-5, dyr=((worldTick*2.6 + di*31)%195)-6;
-    ctx.beginPath(); ctx.moveTo(dxr,dyr); ctx.lineTo(dxr-1.4,dyr+7); ctx.stroke();
+  ctx.strokeStyle="rgba(150,170,195,0.30)";
+  for (let di=0; di<46; di++){
+    const dxr=((di*97 + worldTick*(2+(di%4)))%(W+12))-6, dyr=((worldTick*2.9 + di*29)%(H+16))-8;
+    ctx.beginPath(); ctx.moveTo(dxr,dyr); ctx.lineTo(dxr-1.2,dyr+7); ctx.stroke();
   }
   for (let fb=0; fb<3; fb++){
     const fy=26+fb*52+Math.sin(worldTick/110+fb*2.1)*7;
-    ctx.fillStyle="rgba(150,165,185,0.045)"; ctx.fillRect(0,fy,W,16);
+    ctx.fillStyle="rgba(150,165,185,0.05)"; ctx.fillRect(0,fy,W,16);
   }
-  ctx.restore();
   const p=game.player;
   box(0,0,148,38,"rgba(8,6,10,0.92)");
   txt(p.name+"  "+Math.floor(game.week/52)+"y  "+fmt(p.gold),3,3,PAL.gold);
@@ -3349,7 +3369,7 @@ window.__openings={
   earnTitle, checkTitles, foeKnown, hasManeuver, quickActs, actLabel, bonesGame, addr,
   openChurch, maybeMugged, openTavern, voiceSfx, coinCascade, updateAmbience,
   findLore, openCodex, gateConditions, openTheGate, LORE_FRAG, openBag, equipItem, openChest, buyPack, itemDesc, invCap, storageCap, invUsed,
-  talkTownfolk, spawnTownfolk, updTownfolk, townAge,
+  talkTownfolk, spawnTownfolk, updTownfolk, townAge, takeOne, takeMany,
   MANEUVERS, BUILDINGS, OPENINGS, sfx, toggleSnd,
   get gDice(){ return gDice; }, get bannerMsg(){ return bannerMsg; },
   get droneOpen(){ return droneOpen; }
