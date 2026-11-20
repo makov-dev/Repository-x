@@ -2320,13 +2320,31 @@ function stopRain(){
   } catch(e){} }
   rainNodes=null;
 }
+/* the fight's music is your own heart: calm when you are whole,
+   pounding as you bleed, easing slowly after a kill, silent at death */
+const hbM={ on:false, iv:66, acc:0, tail:0 };
+function heartIv(){
+  const frac=clamp(game.player.hp/game.player.maxhp,0,1);
+  return 20+46*frac*frac;
+}
 function updateBattleMusic(){
-  if (!game || !sndOn || game.state!=="combat") return;
-  const low=game.player.hp<=game.player.maxhp*0.25;
-  const step= low? 5 : 8;
-  if (worldTick%step===0) beep(low? 82: 98, 0.09, "square", 0.05);
-  else if (worldTick%step===3) beep(147+((worldTick/step|0)%4)*7, 0.05, "sawtooth", 0.024);
-  if (game.combat && game.combat.dice && worldTick%(step*2)===1) beep(660, 0.04, "triangle", 0.02);
+  if (!game || !sndOn){ hbM.on=false; return; }
+  if (game.state==="dead"){ hbM.on=false; return; }
+  const c=game.combat;
+  const fighting= game.state==="combat" && c && c.turn!=="won";
+  if (fighting){ hbM.on=true; hbM.tail=0; }
+  else if (hbM.on){ hbM.tail++; if (hbM.tail>260){ hbM.on=false; return; } }
+  else return;
+  const want= fighting? heartIv() : 66;
+  hbM.iv += (want-hbM.iv)*(fighting? 0.035 : 0.010);
+  const vol= fighting? 0.065+0.045*(1-clamp(game.player.hp/game.player.maxhp,0,1))
+                     : Math.max(0, 0.085*(1-hbM.tail/260));
+  hbM.acc++;
+  if (hbM.acc>=Math.round(hbM.iv)){
+    hbM.acc=0;
+    beep(58, 0.11, "sine", vol);
+    setTimeout(()=>beep(47, 0.12, "sine", vol*0.75), 105);
+  }
 }
 function updateAmbience(){
   if (!game || !sndOn){ stopDrone(); stopRain(); return; }
@@ -2795,8 +2813,10 @@ function drawBuilding(bl, sx, sy){
     const ph=(Math.floor(worldTick/9)%23);
     ctx.fillStyle= ph<7? PAL.gold : "#8a6f2e";
     ctx.fillRect(sx+8+ph, sy+10+((ph*5)%22), 2, 2);
-    ctx.fillStyle="rgba(200,150,63,0.16)";
+    const ap=0.5+0.5*Math.sin(worldTick/17);
+    ctx.fillStyle="rgba(224,185,90,"+(0.22+0.22*ap).toFixed(3)+")";
     ctx.fillRect(sx+7,sy+8,w-14,h-8);
+    glow(sx+w/2, sy+h/2+2, 30+w*0.4, [224,185,90], 0.10+0.06*ap);
     return;
   }
   ctx.fillStyle="#2e2530"; ctx.fillRect(sx,sy,w,h);
@@ -3001,14 +3021,34 @@ function drawBase(){
 
 /* ----- dungeon render ----- */
 function drawStairs(x,y,down){
-  ctx.fillStyle="#5a4d60";
-  for (let i=0;i<3;i++) ctx.fillRect(x+1+i,y+2+i*2,T-2-i*2,1);
-  ctx.fillStyle= down? PAL.gold : PAL.bone;
-  ctx.fillRect(x+3,y+3,2,2);
+  ctx.fillStyle="#080510"; ctx.fillRect(x+1,y+1,T-2,T-2);
+  const steps= down? ["#7a686f","#66555f","#524352","#3e3145"] : ["#8d8190","#79707f","#665d6e","#534b5d"];
+  for (let i=0;i<4;i++){ ctx.fillStyle=steps[i]; ctx.fillRect(x+1,y+2+Math.floor(i*1.5),T-2,1); }
+  const hot=(worldTick%14<7);
+  ctx.fillStyle= hot? (down? "#ffe08a":PAL.bone) : (down? PAL.coin:"#c7bfae");
+  if (down){
+    ctx.fillRect(x+3,y+1,2,1);
+    ctx.fillRect(x+2,y+2,1,1); ctx.fillRect(x+5,y+2,1,1);
+    ctx.fillRect(x+3,y+2,2,4);
+    ctx.fillRect(x+2,y+4,1,1); ctx.fillRect(x+5,y+4,1,1);
+    ctx.fillRect(x+2,y+5,4,1);
+  } else {
+    ctx.fillRect(x+3,y+5,2,1);
+    ctx.fillRect(x+3,y+2,2,3);
+    ctx.fillRect(x+2,y+2,1,1); ctx.fillRect(x+5,y+2,1,1);
+    ctx.fillRect(x+3,y+1,2,1);
+  }
+}
+function depthAir(dep){
+  if (dep<=1) return { bg:"#060409", tint:[26,22,52],  a:0.06 };
+  if (dep===2) return { bg:"#050610", tint:[20,30,62], a:0.10 };
+  if (dep===3) return { bg:"#060310", tint:[60,22,58], a:0.13 };
+  if (dep===4) return { bg:"#040609", tint:[18,48,56], a:0.16 };
+  return       { bg:"#070405", tint:[70,18,26],  a:0.19 };
 }
 function drawDungeon(){
   const d=game.dungeon, f=curFloor();
-  ctx.fillStyle="#060409"; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=depthAir(d.depth).bg; ctx.fillRect(0,0,W,H);
   const camX=clamp(d.px-Math.floor(VWz/2),0,f.w-VWz), camY=clamp(d.py-Math.floor(VHz/2),0,f.h-VHz);
   ctx.save(); ctx.scale(camZ,camZ);
   for (let y=0;y<VHz;y++){
@@ -3018,7 +3058,7 @@ function drawDungeon(){
       if (!f.seen.has(wx+","+wy)) continue;
       const c=f.grid[wy][wx];
       const dist=Math.hypot(wx-d.px,wy-d.py);
-      const dim=clamp(1-(dist-1.5)/5.2,0.12,1);
+      const dim=clamp(1-(dist-1.5)/7.4,0.24,1);
       ctx.globalAlpha=dim;
       const inR=f.rooms.some(r=>wx>=r.x&&wx<r.x+r.w&&wy>=r.y&&wy<r.y+r.h);
       let col;
@@ -3030,7 +3070,13 @@ function drawDungeon(){
       ctx.fillRect(x*T,y*T,T,T);
       if (c==="#"){ ctx.fillStyle=PAL.wallHi; ctx.fillRect(x*T,y*T,T,2); }
       if (c==="<") drawStairs(x*T,y*T,false);
-      if (c===">") drawStairs(x*T,y*T,true);
+      if (c===">"){
+        const pul=(0.10+0.10*Math.sin(worldTick/7+wx*1.3)).toFixed(3);
+        ctx.fillStyle="rgba(224,185,90,"+pul+")";
+        ctx.fillRect(x*T-1,y*T-1,T+2,T+2);
+        glow(x*T+4,y*T+3,18,[224,185,90],0.11);
+        drawStairs(x*T,y*T,true);
+      }
       else if (c!=="#"){
         const hsc=((wx*73856093)^(wy*19349663)^f.seed)>>>0;
         if (!inR && hsc%5<2){ ctx.fillStyle="#0d0911"; ctx.fillRect(x*T+2,y*T+2,1,1); ctx.fillRect(x*T+5,y*T+4,1,1); }
@@ -3083,10 +3129,13 @@ function drawDungeon(){
     ctx.fillRect(tx,ty-2,1,2);
     glow(tx,ty-1, 24, [255,172,64], 0.13);
   }
+  glow((d.px-camX)*T+4,(d.py-camY)*T+3,30,[255,190,110],0.09);
   drawHero((d.px-camX)*T,(d.py-camY)*T,false);
   ctx.restore();
   const tint=d.opening.tint||[100,95,115];
   ctx.fillStyle="rgba("+tint[0]+","+tint[1]+","+tint[2]+",0.07)"; ctx.fillRect(0,0,W,H);
+  const air=depthAir(d.depth);
+  ctx.fillStyle="rgba("+air.tint[0]+","+air.tint[1]+","+air.tint[2]+","+air.a+")"; ctx.fillRect(0,0,W,H);
   const flick=Math.sin(worldTick/13)*4+Math.sin(worldTick/7)*3;
   const g=ctx.createRadialGradient(W/2,H/2-10,60+flick,W/2,H/2,190+flick*2);
   g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(2,1,4,0.52)");
@@ -3110,6 +3159,13 @@ function drawDungeon(){
   box(0,0,196,38,"rgba(6,4,9,0.9)");
   txt(d.opening.name.slice(0,34)+" d"+d.depth+" (dgr "+d.tierNow+")",3,3,PAL.gold);
   txt("HP "+p.hp+"/"+p.maxhp+" STAM "+Math.floor(p.stam)+" "+fmt(p.gold),3,14);
+  let st=null, stn=1e9;
+  for (let y2=0;y2<f.h;y2++) for (let x2=0;x2<f.w;x2++){
+    if (f.grid[y2][x2]!==">" || !f.seen.has(x2+","+y2)) continue;
+    const dd=Math.abs(x2-d.px)+Math.abs(y2-d.py);
+    if (dd>0 && dd<stn){ stn=dd; st=[x2,y2]; }
+  }
+  if (st && stn<30) txt("\u25bc "+(st[0]>d.px? (st[0]-d.px)+"E":(d.px-st[0])+"W")+" "+(st[1]>d.py? (st[1]-d.py)+"S":(d.py-st[1])+"N"), 204,3, PAL.gold);
   if (p.wounds.length) txt("wounds: "+p.wounds.join(","),3,25,PAL.bloodHi);
   const onUp = f.grid[d.py][d.px]==="<", onDown = f.grid[d.py][d.px]===">";
   if (!game.combat){
@@ -3494,10 +3550,7 @@ function updateCombat(){
     else c.intro--;
     return;
   }
-  if (c.dice){
-    if (game.player.hp<=game.player.maxhp*0.25 && worldTick%26===0) sfx("heart");
-    rollDiceFrame(); return;
-  }
+  if (c.dice){ rollDiceFrame(); return; }
   if (c.turn==="player"){
     const acts=quickActs();
     if (tap("arrowup")||tap("w")) c.choice=(c.choice+acts.length-1)%acts.length;
@@ -3637,7 +3690,8 @@ window.__openings={
   talkTownfolk, spawnTownfolk, updTownfolk, townAge, takeOne, takeMany, enterBuilding,
   MANEUVERS, BUILDINGS, OPENINGS, LAMPS, sfx, toggleSnd,
   get gDice(){ return gDice; }, get bannerMsg(){ return bannerMsg; },
-  get droneOpen(){ return droneOpen; }
+  get droneOpen(){ return droneOpen; },
+  get heart(){ return hbM; }
 };
 </script>
 </body>

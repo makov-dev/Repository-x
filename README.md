@@ -23,7 +23,15 @@ swinging lantern, chimney smoke, and the arched Gate of Openings. It keeps its
 own **shadow and light**: every building drops a soft shadow, street lamps
 throw warm flickering pools onto the roads, windows and dungeon torches glow
 additively onto the stones, and the hero, the townfolk, monsters and even
-corpses each cast a foot-shadow on the ground. And Jericho
+corpses each cast a foot-shadow on the ground. The delve is lit to be read:
+a lantern-glow follows you, seen floors stay visible, stairs down blaze with a
+pulsing gold rim and a **▼ compass** in the HUD points to the nearest one,
+and each opening's Gate arch burns with its own light. **Depth changes the
+air** — deeper floors shift from cold blue-violet through bruised purple to a
+deep red mine-gloom. In a fight **the music is your heartbeat**: a slow calm
+lub-dub when you are whole, pounding faster with every wound, easing
+noticeably back to calm after a kill, and stopping dead the instant you do.
+And Jericho
 breathes: pigeons flap along
 the rooftops, a steady drizzle crosshatches the streets and the rain checks
 the rooftops, fog rolls off the avenue, and the whole thing hums. Something
