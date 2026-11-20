@@ -211,7 +211,8 @@ an auto-walk in progress.
    **Sound & fury.** The game hums with procedural square-wave grit:
    dice tick while they spin, a **chime when you catch a six**, a sting
    for crits, thuds for hits, blood-flash on wounds, coin-jingle on
-   payout, a heartbeat during the Last Stand. Crits throw gold sparks
+   payout, and **your own heartbeat leading every fight** (a lub-dub layered
+   into octaves, so even a phone speaker hears it). Crits throw gold sparks
    and **punch the screen** — the whole world lurches and swells around
    the blow. Every flash, shake, and shout can be silenced with the
    SND chip.

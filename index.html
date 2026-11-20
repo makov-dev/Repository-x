@@ -44,6 +44,7 @@ window.addEventListener("keydown", e => {
   keys[k] = true;
   if (k==="f5"){ e.preventDefault(); if (game) saveGame(); }
   if (k==="f9"){ e.preventDefault(); loadGame(); }
+  updSndUnlock();
 });
 window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
 function tap(k){ if (pressed[k]) { pressed[k]=false; return true; } return false; }
@@ -2358,6 +2359,14 @@ function heartJolt(){
   hbM.jolt=30;
   hbM.acc=Math.round(hbM.iv);
 }
+/* a heart ANY speaker can hear: the deep sine thud plus its octaves,
+   because a 58Hz pure tone on a phone speaker is just silence */
+function heartThump(vol){
+  beep(58, 0.11, "sine", vol);
+  beep(116, 0.11, "sine", vol*0.55);
+  beep(174, 0.08, "triangle", vol*0.3);
+  setTimeout(()=>{ beep(47, 0.12, "sine", vol*0.75); beep(94, 0.12, "sine", vol*0.4); beep(141, 0.09, "triangle", vol*0.22); }, 105);
+}
 function updateBattleMusic(){
   if (!game || !sndOn){ hbM.on=false; return; }
   if (game.state==="dead"){ hbM.on=false; return; }
@@ -2369,14 +2378,13 @@ function updateBattleMusic(){
   let want= fighting? heartIv() : 66;
   if (hbM.jolt>0){ hbM.jolt--; want*=0.55; }
   hbM.iv += (want-hbM.iv)*(hbM.jolt>0? 0.35 : (fighting? 0.035 : 0.010));
-  const vol= fighting? 0.065+0.045*(1-clamp(game.player.hp/game.player.maxhp,0,1))
+  const vol= fighting? 0.078+0.05*(1-clamp(game.player.hp/game.player.maxhp,0,1))
                      : Math.max(0, 0.085*(1-hbM.tail/260));
   hbM.acc++;
   if (hbM.acc>=Math.round(hbM.iv)){
     hbM.acc=0;
     hbThrob=6;
-    beep(58, 0.11, "sine", vol);
-    setTimeout(()=>beep(47, 0.12, "sine", vol*0.75), 105);
+    heartThump(vol);
   }
 }
 function drawHeartVignette(){
@@ -2415,7 +2423,8 @@ function updateTreasureEcho(){
     heartEcho.acc=0;
     const vol=0.016+0.02*(1-best/8);
     beep(84, 0.09, "sine", vol);
-    setTimeout(()=>beep(63, 0.1, "sine", vol*0.7), 90);
+    beep(168, 0.09, "sine", vol*0.55);
+    setTimeout(()=>{ beep(63, 0.1, "sine", vol*0.7); beep(126, 0.1, "sine", vol*0.4); }, 90);
   }
 }
 function updateAmbience(){
