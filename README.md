@@ -33,11 +33,20 @@ deep red mine-gloom. In a fight **the music is your heartbeat**: a slow calm
 lub-dub when you are whole, pounding faster with every wound and **skipping a beat whenever steel or claw
 actually finds you**, easing
 noticeably back to calm after a kill, and stopping dead the instant you do.
+You can see the heart too: **with every beat the edges of the world pulse a
+thin blood-dark**, subtler at full health, tightening as you bleed.
 In the quiet between fights **greed gets a heartbeat of its own**: a quicker,
 thinner, higher echo that rises in your ears as you close on treasure you can
-see. And the dark can be heard before it is found: **near an undiscovered
+see — and the first time it ever happens, the game tells you so: **your ears
+start to ring. Something worth having is close.** Learn the sound once and it
+is yours forever, the way a gambler knows a coin's weight by ear; the treasure
+answers by **glinting** — a small light snapping off it in time with the ring.
+And the dark can be heard before it is found: **near an undiscovered
 secret wall the drone muffles and thickens**, like walking into wool, and
-clears the moment the hidden thing gives itself up.
+clears the moment the hidden thing gives itself up. And every stair down
+costs the world one breath: **the whole drone falls quiet as you step
+through, then rises again behind you** — the way down announced in stone
+instead of words.
 And Jericho
 breathes: pigeons flap along
 the rooftops, a steady drizzle crosshatches the streets and the rain checks
@@ -163,7 +172,8 @@ an auto-walk in progress.
    Ossuary breathes dry gold, the Cathedral stains everything violet —
    and each one **hums its own buried pitch** while you're inside.
    Bones, rubble, cracks and wet patches mark the floors; loot and
-   shrines pulse faintly; dust drifts, water drips, your lamp flickers
+   shrines pulse faintly, and glint harder the closer you stand when
+   your ears are already ringing; dust drifts, water drips, your lamp flickers
    as you move. Robbery works both ways — walk the streets rich and
    other adventurers will look at you like arithmetic.
 
