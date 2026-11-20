@@ -119,6 +119,7 @@ CVS.addEventListener("pointerdown", e=>{
 let hintMsg=null, hintT=0;
 function showHint(m){ hintMsg=m; hintT=130; }
 function cornerChips(){
+  chip("BAG", W-178, 2, 32, ()=>{ if (game && !game.combat && !game.ui.mode) openBag(); else if (game && game.ui.mode==="menu") showHint("Finish here first."); });
   chip(sndOn? "SND":"MUTE", W-142, 2, 32, toggleSnd);
   chip("SAV", W-106, 2, 32, ()=>{ if (game) saveGame(); showHint("Chalked into the walls. (saved)"); });
   chip("FS", W-70, 2, 32, toggleFS);
@@ -198,6 +199,143 @@ const LOOT = [
   { n:"Tangled Gold Wire", v:22, w:3 },
   { n:"Skin-Map of Vharn", v:75, w:1 }
 ];
+const ITEM_DESC={
+  "Molar Crown":"A ring of teeth too even to be animal. Sold as jewelry; bought as warning.",
+  "Jar of Rendered Fat":"Grease from something that had opinions while alive. Lamps drink it gratefully.",
+  "Fingerbone Rosary":"Eleven knuckles, strung in penance order.",
+  "Fossilized Tear":"Hard as glass, heavier than physics allows. The market calls it pretty.",
+  "Cured Vermin Pelt":"Warm in the wet way. It is best not to be specific about its previous employment.",
+  "Choirbell Fragment":"Drowned bronze that hums when funerals pass close. The Church would like it back.",
+  "Wet Ledger Page":"Numbers in a dead clerk's hand, still balancing themselves slowly.",
+  "Gilded Femur":"Somebody gilded this in the dark. On purpose. With care.",
+  "Bileglass Vial":"Green and slow. Worth distilling; not worth asking what fed it.",
+  "Tongue of a Saint":"It talks in its sleep. Nothing it says should be true, and yet.",
+  "Tangled Gold Wire":"Grown, not woven. The dark makes its own jewelry and prices it honestly.",
+  "Skin-Map of Vharn":"Streets and wards inked on hide. Two alleys on it do not exist. One of them is load-bearing.",
+  "Ration":"Tallow-hard bread, city-stamped. Dignity in wax paper.",
+  "Bandage":"Woven tight enough to argue with a wound and win.",
+  "Rope & Hook":"For the gaps the city forgot to bridge and the dark forgot to fill.",
+  "Antitoxin":"Bitter as a landlady's goodbye, effective like one.",
+  "Bone Ring":"Carved from something patient. For promises that must outlast you.",
+  "Pale Rose":"A grave-flower that lives in the dark. Courting armor.",
+  "Iron Shard":"A better edge than hope.",
+  "Bone Saw":"It hums against your hip. Unpleasant. Effective.",
+  "Widow's Mail":"The widow sold it gladly. It is warmer inside than physics explains.",
+  "Yes-Plate":"It has never said no. You can barely hear the city in it. That is the point."
+};
+function itemDesc(it){
+  return ITEM_DESC[it.n]
+    || (it.kind==="weapon"? "It has an edge and a history."
+      : it.kind==="armor"? "Salvage, sized wrong for whoever wore it first and close enough for you."
+      : "Taken out of the dark. The dark keeps notes on such things.");
+}
+
+/* ----- the pack: read, equip, drop ----- */
+function openBag(){
+  const p=game.player;
+  if (!game) return;
+  const opts=[];
+  opts.push({ t:"WIELDING: "+p.weapon.n+" (dmg "+p.weapon.d+")", d:itemDesc(p.weapon), fn:()=>{} });
+  opts.push({ t:"WEARING: "+p.armor.n+" (armor "+p.armor.a+")", d:itemDesc(p.armor), fn:()=>{} });
+  p.inv.forEach((it,ix)=>opts.push({
+    t: it.n+(it.qty>1? " x"+it.qty:"")+(it.kind==="weapon"?"  [weapon]":it.kind==="armor"?"  [armor]":"")+" - "+fmt(it.v*(it.qty||1))+"g",
+    d: itemDesc(it),
+    fn:()=>openItem(ix) }));
+  if (!p.inv.length) opts.push({ t:"Your pack is all strap and good intentions.", fn:()=>{} });
+  opts.push({ t:"Back", fn:()=>{} });
+  showMenu("YOUR PACK ("+invUsed()+"/"+invCap()+")", opts);
+}
+function openItem(ix){
+  const p=game.player, it=p.inv[ix];
+  if (!it){ openBag(); return; }
+  const opts=[];
+  if (it.kind==="weapon"||it.kind==="armor")
+    opts.push({ t:(it.kind==="weapon"? "Wield it":"Wear it")+" (swaps out the current one)", fn:()=>{ equipItem(ix); openBag(); } });
+  if (it.kind==="food")
+    opts.push({ t:"Eat it now (stamina +30)", fn:()=>{ useFromInv(it.n,1); game.player.stam=clamp(game.player.stam+30,0,maxStam());
+        say(["Trail crumbs from your own hand. It helps, in the way bread does."], ()=>openBag()); saveGame(); } });
+  opts.push({ t:"Turn it over in your hands (read)", fn:()=>{ say([itemDesc(it)], ()=>{}); } });
+  opts.push({ t:"Leave it behind", fn:()=>{ p.inv.splice(ix,1);
+      say(["You set it down gently, the way you leave someone else's grief."], ()=>openBag()); saveGame(); } });
+  opts.push({ t:"Back", fn:openBag });
+  showMenu(it.n.toUpperCase(), opts);
+}
+function equipItem(ix){
+  const p=game.player, it=p.inv[ix];
+  if (!it) return;
+  if (it.kind==="weapon"){
+    p.inv.splice(ix,1);
+    p.inv.push({ n:p.weapon.n, v:8+p.weapon.d*6, kind:"weapon", qty:1, d:p.weapon.d });
+    p.weapon={ n:it.n, d:it.d||3 };
+    sfx("gain");
+  } else if (it.kind==="armor"){
+    p.inv.splice(ix,1);
+    p.inv.push({ n:p.armor.n, v:8+p.armor.a*6, kind:"armor", qty:1, a:p.armor.a });
+    p.armor={ n:it.n, a:it.a||1 };
+    sfx("gain");
+  }
+  saveGame();
+}
+
+/* ----- the chest at home ----- */
+function chestUsed(){ return (game.player.chest||[]).reduce((a,i)=>a+(i.qty||1),0); }
+function openChest(){
+  const p=game.player;
+  if (!p.chest) p.chest=[];
+  const opts=[];
+  p.inv.forEach((it,ix)=>opts.push({ t:"Store: "+it.n+(it.qty>1? " x"+it.qty:""), fn:()=>{
+      if (chestUsed()+(it.qty||1)>storageCap()){ say(["The chest is packed tight under the floorboards. The cellar upgrade would loosen it."], ()=>openChest()); return; }
+      p.chest.push(it); p.inv.splice(ix,1); sfx("click"); openChest(); } }));
+  p.chest.forEach((it,ix)=>opts.push({ t:"Take: "+it.n+(it.qty>1? " x"+it.qty:""), fn:()=>{
+      if (invUsed()+(it.qty||1)>invCap()){ say(["Your pack argues against it, loudly. Set something down first."], ()=>openChest()); return; }
+      p.inv.push(it); p.chest.splice(ix,1); sfx("click"); openChest(); } }));
+  if (!opts.length) opts.push({ t:"Empty chest, empty pack. Character-building.", fn:()=>{} });
+  opts.push({ t:"Back", fn:openHome });
+  showMenu("THE CHEST ("+chestUsed()+"/"+storageCap()+")", opts);
+}
+
+/* ----- the base city breathes: walkers, pigeons ----- */
+function spawnWalker(){
+  for (let t=0;t<20;t++){
+    const x=2+irnd(CW-4), y=2+irnd(CH-6);
+    if (!citySolid(x,y)){
+      game.walkers.push({ x:x, y:y, dx:0, dy:0, t:10,
+        col:pick(["#8f8878","#7a6a5a","#9a8478","#6b7a6b","#8a7a8a","#a09080"]),
+        umb:Math.random()<0.4 });
+      return;
+    }
+  }
+}
+function updWalkers(){
+  if (!game.walkers) game.walkers=[];
+  if (game.walkers.length<11 && Math.random()<0.06) spawnWalker();
+  for (const wk of game.walkers){
+    wk.t--;
+    if (wk.t>0) continue;
+    wk.t=8+irnd(12);
+    if (wk.dx===0 && wk.dy===0 && irnd(3)!==0){ wk.dx=pick([-1,1]); }
+    if (irnd(3)===0){ wk.dx=0; if (irnd(2)===0) wk.dy=pick([-1,1]); }
+    else if (irnd(3)===1){ wk.dy=0; if (irnd(2)===0) wk.dx=pick([-1,1]); }
+    const nx=wk.x+wk.dx, ny=wk.y+wk.dy;
+    if (nx<1||ny<1||nx>=CW-1||ny>=CH-3||citySolid(nx,ny)){ wk.dx=0; wk.dy=0; }
+    else { wk.x=nx; wk.y=ny; }
+  }
+}
+function drawWalkers(camX,camY){
+  if (!game.walkers) return;
+  for (const wk of game.walkers){
+    const sx=(wk.x-camX)*T, sy=(wk.y-camY)*T;
+    if (sx<-10||sx>W+8||sy<-12||sy>H) continue;
+    const bob=(worldTick%26<13)? 0:1;
+    ctx.fillStyle="#2a2028"; ctx.fillRect(sx+3,sy+6+bob,2,3);
+    ctx.fillStyle=wk.col; ctx.fillRect(sx+2,sy+2+bob,4,4);
+    ctx.fillStyle="#d9c9a8"; ctx.fillRect(sx+3,sy+bob,2,2);
+    if (wk.umb){
+      ctx.fillStyle=wk.col; ctx.beginPath(); ctx.arc(sx+4,sy-2+bob,5,Math.PI,2*Math.PI); ctx.fill();
+      ctx.fillRect(sx+3,sy-2+bob,1,4);
+    }
+  }
+}
 
 const RIDDLES = [
   { q:"A mouth that never eats, a bed that never sleeps. Held, it warms you; dropped, it weeps.", a:["A torch","A heart","A well"], c:0 },
@@ -345,7 +483,9 @@ function maxStam(){
   const p=game.player;
   return 100 + (p.upgrades.indexOf("leak")>=0?15:0);
 }
-function invCap(){ return 10 + (game.player.upgrades.indexOf("cellar")>=0?8:0); }
+function invCap(){ return 10 + (game.player.packs||0)*3; }
+function invUsed(){ let s=0; for (const it of game.player.inv) s+=(it.qty||1); return s; }
+function storageCap(){ return game.player.upgrades.indexOf("cellar")>=0? 24 : 12; }
 function healPerRest(){
   const p=game.player;
   let h=8;
@@ -356,8 +496,13 @@ function healPerRest(){
 
 /* ---------------- UI primitives ---------------- */
 function showText(lines, cb){
+  const pages=[];
+  for (const line of lines){
+    const rows=wrap(String(line),56);
+    for (let i=0;i<rows.length;i+=4) pages.push(rows.slice(i,i+4).join("\n"));
+  }
   game.ui.mode="text";
-  game.ui.dialog={ lines:lines, i:0 };
+  game.ui.dialog={ lines:pages.length?pages:["(silence)"], i:0 };
   game.ui.onclose=cb||null;
 }
 function showMenu(title, opts, oncancel){
@@ -423,6 +568,8 @@ function loadGame(){
       if (typeof Pl.lastAction!=="string") Pl.lastAction=null;
       if (typeof Pl.gatekeeper!=="boolean") Pl.gatekeeper=false;
       if (typeof Pl.deep!=="number") Pl.deep=0;
+      if (typeof Pl.packs!=="number") Pl.packs=0;
+      if (!Array.isArray(Pl.chest)) Pl.chest=[];
       if (!Array.isArray(game.flags.lore)) game.flags.lore=[];
       if (typeof game.flags.funerals!=="number") game.flags.funerals=0;
       if (typeof game.flags.candles!=="number") game.flags.candles=0;
@@ -610,6 +757,8 @@ function supplyMenu(){
     { t:"Antitoxin (12g)", fn:()=>tryBuy("Antitoxin",12,"heal") },
     { t:"Bone Ring (60g) - for a promise", fn:()=>tryBuy("Bone Ring",60,"gift") },
     { t:"Pale Rose (25g) - grave-flower that lives in the dark", fn:()=>tryBuy("Pale Rose",25,"gift") },
+    { t:"Satchel (35g) - carry 3 more", d:"Old leather, honest buckles.", fn:()=>buyPack(35,1) },
+    { t:"Expedition pack (90g) - carry 6 more", d:"Frame, straps, somebody's name scratched inside. It held.", fn:()=>buyPack(90,2) },
     { t:"Back", fn:openMarket }
   ], openMarket);
 }
@@ -620,15 +769,48 @@ function tryBuy(n, cost, kind){
   p.gold-=cost; addItem(n, Math.round(cost*0.5), kind);
   say(["You buy the "+n+"."], ()=>supplyMenu());
 }
-function gearMenu(){
+function buyPack(cost, add){
   const p=game.player;
-  showMenu("IRONMONGER", [
-    { t:"Iron Shard, dmg 4 (45g)", d:"A better edge than hope.", fn:()=>{ if(tryGearBuy(45)){ p.weapon={n:"Iron Shard", d:4}; say(["Cold weight in your fist. Better."], ()=>gearMenu()); } } },
-    { t:"Bone Saw of the surgeons, dmg 6 (80g)", d:"It hums.", fn:()=>{ if(tryGearBuy(80)){ p.weapon={n:"Bone Saw", d:6}; say(["It hums against your hip. Unpleasant. Effective."], ()=>gearMenu()); } } },
-    { t:"Widow's Mail, armor 2 (60g)", d:"The widow sold it gladly.", fn:()=>{ if(tryGearBuy(60)){ p.armor={n:"Widow's Mail", a:2}; say(["Heavier. Warmer, somehow."], ()=>gearMenu()); } } },
-    { t:"Yes-Plate, armor 3 (140g)", d:"It has never said no.", fn:()=>{ if(tryGearBuy(140)){ p.armor={n:"Yes-Plate", a:3}; say(["You can barely hear traffic in it. That is the point."], ()=>gearMenu()); } } },
+  if ((p.packs||0)+add>3){ say(["You are a pack now. Your straps have straps."], ()=>supplyMenu()); return; }
+  if (p.gold<cost){ say(["The vendor pats the pack sympathetically. Neither of you can afford it."], ()=>supplyMenu()); return; }
+  p.gold-=cost; p.packs=(p.packs||0)+add;
+  say(["Straps over straps. Your whole life rides a little easier now. (pack "+invUsed()+"/"+invCap()+")"], ()=>supplyMenu());
+  saveGame();
+}
+function gearMenu(){
+  showMenu("IRONMONGER - into your pack; equip from BAG", [
+    { t:"Iron Shard, dmg 4 (45g)", d:"A better edge than hope.", fn:()=>buyWeapon("Iron Shard",4,45) },
+    { t:"Bone Saw of the surgeons, dmg 6 (80g)", d:"It hums.", fn:()=>buyWeapon("Bone Saw",6,80) },
+    { t:"Widow's Mail, armor 2 (60g)", d:"The widow sold it gladly.", fn:()=>buyArmor("Widow's Mail",2,60) },
+    { t:"Yes-Plate, armor 3 (140g)", d:"It has never said no.", fn:()=>buyArmor("Yes-Plate",3,140) },
     { t:"Back", fn:openMarket }
   ], openMarket);
+}
+function buyWeapon(n,d,cost){
+  const p=game.player;
+  if (p.gold<cost){ say(["The smith looks at your coin, then past it."], ()=>gearMenu()); return; }
+  if (invUsed()+1>invCap()){ say(["No room to carry it. Lighten up or buy a pack."], ()=>gearMenu()); return; }
+  p.gold-=cost;
+  p.inv.push({ n:n, v:Math.round(cost*0.8), kind:"weapon", qty:1, d:d });
+  autoEquip(n);
+  say(["The "+n+" rides your hip, cold and smug. Your old iron drops into the pack."], ()=>gearMenu());
+  saveGame();
+}
+function buyArmor(n,a,cost){
+  const p=game.player;
+  if (p.gold<cost){ say(["The smith looks at your coin, then past it."], ()=>gearMenu()); return; }
+  if (invUsed()+1>invCap()){ say(["You could not carry a chimney. Pack first."], ()=>gearMenu()); return; }
+  p.gold-=cost;
+  p.inv.push({ n:n, v:Math.round(cost*0.8), kind:"armor", qty:1, a:a });
+  autoEquip(n);
+  say(["You buckle it on in the doorway. The old layer goes into the pack."], ()=>gearMenu());
+  saveGame();
+}
+function autoEquip(n){
+  const p=game.player;
+  const ix=p.inv.findIndex(i2=>i2.n===n && (i2.kind==="weapon"||i2.kind==="armor"));
+  if (ix<0) return;
+  equipItem(ix);
 }
 function tryGearBuy(cost){
   const p=game.player;
@@ -929,6 +1111,7 @@ function openHome(){
     if (p.spouse && p.upgrades.indexOf("nursery")>=0 && !p.child && p.tryChild!==1)
       opts.push({ t:"Try for a child", fn:tryForChild });
     if (p.child) opts.push({ t:"Teach "+p.child.name+" ("+cap(childStage(p.child))+")", fn:teachChild });
+    opts.push({ t:"The chest under the floor ("+chestUsed()+"/"+storageCap()+")", fn:openChest });
     opts.push({ t:"Leave", fn:()=>{} });
     showMenu("HOME", opts, ()=>{});
   });
@@ -1867,6 +2050,14 @@ function stopRain(){
   } catch(e){} }
   rainNodes=null;
 }
+function updateBattleMusic(){
+  if (!game || !sndOn || game.state!=="combat") return;
+  const low=game.player.hp<=game.player.maxhp*0.25;
+  const step= low? 5 : 8;
+  if (worldTick%step===0) beep(low? 82: 98, 0.09, "square", 0.05);
+  else if (worldTick%step===3) beep(147+((worldTick/step|0)%4)*7, 0.05, "sawtooth", 0.024);
+  if (game.combat && game.combat.dice && worldTick%(step*2)===1) beep(660, 0.04, "triangle", 0.02);
+}
 function updateAmbience(){
   if (!game || !sndOn){ stopDrone(); stopRain(); return; }
   if (game.state==="dungeon" || (game.state==="combat" && game.dungeon)){
@@ -2449,6 +2640,14 @@ function drawBase(){
       });
     }
   }
+  drawWalkers(camX,camY);
+  for (let pi=0;pi<3;pi++){
+    const bpx=(worldTick*0.3+pi*107)%(W+40)-20, bpy=38+pi*13+Math.sin(worldTick/23+pi*2)*6;
+    ctx.fillStyle="#4a4152";
+    ctx.fillRect(bpx,bpy,3,1);
+    const flap=((worldTick/6|0)+pi)%2;
+    ctx.fillRect(bpx-1,bpy-flap,1,1); ctx.fillRect(bpx+3,bpy-flap,1,1);
+  }
   ctx.strokeStyle="rgba(120,140,165,0.15)";
   for (let di=0; di<26; di++){
     const dxr=((di*97 + worldTick*(2+(di%3)))%330)-5, dyr=((worldTick*2.6 + di*31)%195)-6;
@@ -2596,10 +2795,11 @@ function drawMinimap(){
 
 /* ----- UI & combat render ----- */
 function wrap(s,n){
+  s=String(s);
   if (s.length<=n) return [s];
   let br=s.lastIndexOf(" ",n);
   if (br<0) br=n;
-  return [s.slice(0,br), s.slice(br+1)];
+  return [s.slice(0,br)].concat(wrap(s.slice(br+1,s.length).replace(/^ +/,""), n));
 }
 function renderUI(){
   const u=game.ui;
@@ -2800,6 +3000,7 @@ function updateTitle(){
          "You are one more body that owns a knife and an appetite. Unless you become more."]); }
 }
 function updateBase(){
+  updWalkers();
   if (uiBlocked()){ updateUI(); return; }
   const mv=dirTap();
   if (mv){ stopWalk(); tryBaseMove(mv[0],mv[1]); maybeMugged(); return; }
@@ -2992,6 +3193,7 @@ function frame(){
   worldTick++;
   pollGamepad();
   updateAmbience();
+  updateBattleMusic();
   if (critPulse>0) critPulse--;
   if (gDice){ rollDiceFrame(); }
   else if (!game) updateTitle();
@@ -3043,7 +3245,7 @@ window.__openings={
   curFloor, hurt, die, continueAsChild, saveGame, loadGame,
   earnTitle, checkTitles, foeKnown, hasManeuver, quickActs, actLabel, bonesGame, addr,
   openChurch, maybeMugged, openTavern, voiceSfx, coinCascade, updateAmbience,
-  findLore, openCodex, gateConditions, openTheGate, LORE_FRAG,
+  findLore, openCodex, gateConditions, openTheGate, LORE_FRAG, openBag, equipItem, openChest, buyPack, itemDesc, invCap, storageCap, invUsed,
   MANEUVERS, BUILDINGS, OPENINGS, sfx, toggleSnd,
   get gDice(){ return gDice; }, get bannerMsg(){ return bannerMsg; },
   get droneOpen(){ return droneOpen; }

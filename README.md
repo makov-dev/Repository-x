@@ -15,7 +15,9 @@ visit `http://localhost:8000`). Everything renders to a 320x180 canvas scaled
 devices the game auto-enters fullscreen when you begin (the **FS** chip in the
 top-right corner toggles it manually). City buildings are drawn as pixel-art
 façades: lit windows, doors, striped awnings, guild banners, the tavern's
-swinging lantern, chimney smoke, and the arched Gate of Openings.
+swinging lantern, chimney smoke, and the arched Gate of Openings. And Vharn
+breathes: umbrellas bob down the streets when it drizzles, pigeons flap along
+the rooftops, fog rolls off the avenue, and the whole thing hums.
 
 ## Controls — mouse or touch, no overlays
 
@@ -31,6 +33,9 @@ your view. No virtual pad; the canvas is the only control surface.
 - **Click / tap a menu option** → pick it (**tap / X back** corner = cancel).
 - **Click / tap a combat action** (Strike / Guard / Flee…) → do it.
 - In combat the rolling dice themselves are tappable.
+- **BAG** chip (top-right) opens your pack anywhere: wield/weapons, wear/armor,
+  eat food, drop items, or just read what everything is. Bought weapons and
+  armor go into your pack and auto-equip; the old ones drop in beside them.
 - In a delve: on-screen chips **DESCEND / ASCEND / CLIMB OUT**, **MENU**,
   **MAP**; **SAV** quicksave and **FS** fullscreen live in the top-right corner.
 - **SND** chip (top-right, next to SAV/FS) toggles all sound.
@@ -60,7 +65,13 @@ an auto-walk in progress.
      **"Who is here tonight?"** shows the whole room: ages, who is wed
      to whom, who died.
    - **Housing Office** — buy the Leaning Tenement (250g), then upgrade it:
-     leakproofing, warm hearth, nursery, deep cellar, reinforced door.
+     leakproofing, warm hearth, nursery, deep cellar, reinforced door. Home
+     has **the chest**: storage that holds more things than any pack (24
+     slots with the cellar upgrade) — the place where a career, not a
+     shopping trip, gets parked between delves.
+   - **Grave-Market: packs.** Carry **10** items; buy a **Satchel (35g,
+     +3)** or **Expedition pack (90g, +6)** up to 19. Items stack, slots
+     don't; the deep-cellar widens the chest instead.
    - **Church of Cinders** — pray for free (sincerity optional; results
      vary by Will), light a candle for the dead (+2 HP), renew vows —
      and **pay for funerals**. When city-folk die the news says who
@@ -133,6 +144,11 @@ an auto-walk in progress.
    and **punch the screen** — the whole world lurches and swells around
    the blow. Every flash, shake, and shout can be silenced with the
    SND chip.
+
+   **Combat has a tempo.** The moment a fight starts, a fast square-bass
+   ostinato kicks in with sawtooth stabs climbing a four-note run — and
+   when you drop below a quarter of your vitals it doubles speed and
+   drops an octave, because your own blood now has a drum section.
 
    **The openings have voices too.** Each gate sounds like itself: the
    Cessgate drones a low sewer-note at 55Hz, the Ossuary hums a dry
