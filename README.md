@@ -19,7 +19,11 @@ darkness gathers in the screen corners, thinning toward the middle. On touch
 devices the game auto-enters fullscreen when you begin (the **FS** chip in the
 top-right corner toggles it manually). City buildings are drawn as pixel-art
 façades: lit windows, doors, striped awnings, guild banners, the tavern's
-swinging lantern, chimney smoke, and the arched Gate of Openings. And Jericho
+swinging lantern, chimney smoke, and the arched Gate of Openings. It keeps its
+own **shadow and light**: every building drops a soft shadow, street lamps
+throw warm flickering pools onto the roads, windows and dungeon torches glow
+additively onto the stones, and the hero, the townfolk, monsters and even
+corpses each cast a foot-shadow on the ground. And Jericho
 breathes: pigeons flap along
 the rooftops, a steady drizzle crosshatches the streets and the rain checks
 the rooftops, fog rolls off the avenue, and the whole thing hums. Something
