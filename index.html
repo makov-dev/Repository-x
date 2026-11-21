@@ -3103,7 +3103,7 @@ const FLOOR_BOSSES=[
       "Something in it counts. Nothing in it considers. It counts down, and ends at eat."] },
   { id:"auditor", name:"The Marrow Auditor", kind:"sentient", minTier:1, hp:[14,22,34], atk:[3,4,6],
     lore:"gild", stat:"wit", dc:10, harsh:true,
-    reqText:"it only hears the sound of accounted coin (25g in the purse)",
+    reqText:"it only hears accounted coin (carry 25g)",
     intro:["The room is ruled by a kneeling hall of bone - no: it is a tally standing upright, ribs like ruled columns. The Marrow Auditor keeps count.",
       "It perceives you precisely: a small animal that files itself under a name and dies of arithmetic. It does not despise this. It finds you illiterate."],
     talk:[`"Sleep," it says, and the words arrive one at a time, like coins returned in exact change. "Sleep is settling an account. The dead owe nothing. You are owed so little sleep. It is sad the way small debts are sad."`,
@@ -3120,7 +3120,7 @@ const FLOOR_BOSSES=[
     pact:["The Auditor inclines its columns. In its book you are a line item it has chosen to protect, the way a miser protects one dry coin."] },
   { id:"veins", name:"The Cartographer of Veins", kind:"sentient", minTier:2, hp:[15,24,36], atk:[3,5,6],
     lore:"ribs", stat:"wit", dc:11, harsh:true,
-    reqText:"it maps only those who have left a stain on its world (met 4 monsters)",
+    reqText:"it maps only the stained (know 4 monsters)",
     intro:["A seated figure made of drawings of itself: hide stretched on wire like ruled vellum, pages of it turning with no wind. The Cartographer of Veins is mapping what it sits inside.",
       "It does not map rooms. It maps the body under the city, one vein a decade, and it is certain that humans are herd animals that come down here to scab."],
     talk:["It turns a page of itself toward you, and for a moment you see the Openings its way: not tunnels. Wounds. Not dungeons. Treatment. The city above is the dressing, and everyone who digs is surgery the patient never agreed to.",
@@ -3138,7 +3138,7 @@ const FLOOR_BOSSES=[
     pact:["The Cartographer holds up a new page: it is your outline, drawn generously. It has included a lantern that is not there. It finishes things it draws."] },
   { id:"drowse", name:"The Drowsing Host", kind:"sentient", minTier:2, hp:[20,32,50], atk:[3,5,7],
     lore:"mother", stat:"wll", dc:10, harsh:true,
-    reqText:"it only talks to the nearly-stopped (2 wounds or sicknesses)",
+    reqText:"it talks only to the nearly-stopped (2 wounds or ills)",
     intro:["It fills the room the way heat fills a kettle: fifty hands folded, and a face at the center of the fold like a knuckle remembering. The Drowsing Host has been awake since before Jericho, and it has kept the grudge.",
       "To it, death is sleep - obvious, democratic, enviable. Humans are the blessed animals that get to stop. It watches you the way the starving watch a banquet."],
     talk:[`"You will sleep some night," it says, slow as an avalanche in its own logic. "In a bed. In a house. And wake. You do not understand what wealth that is - borrowed from the deep at no interest. No interest. Nothing Below is given such credit."`,
@@ -3154,7 +3154,7 @@ const FLOOR_BOSSES=[
     pact:["It sighs - a room's worth of sighs - and marks you handed. You are one of the animals that gets to stop, and it has decided you know how to spend it."] },
   { id:"lamp", name:"The Lamp-Bearer Below", kind:"sentient", minTier:1, hp:[10,18,28], atk:[2,3,5],
     lore:"bellhymn", stat:"wit", dc:9, harsh:false,
-    reqText:"bring an offering to the flame (a ration, or 3 candles lit)",
+    reqText:"bring the flame an offering (a ration or 3 candles)",
     intro:["A long figure bows in a doorway, immaculate, made of soot and patience. It carries nothing. It is bowed because of the thing in your hand.",
       "The Lamp-Bearer worships light. To it, humans are sacred animals: the only things Below that carry little suns and refuse to share. It does not understand hunger, sleep, or ownership. It understands flicker."],
     talk:["The conversation spiders happily. It explains, delighted, that fire is the torn hem of the sun; that your lantern is a portable relic; that the bell-hymn was originally a fire-song - sung to keep the changing ones drowsy.",
@@ -4472,6 +4472,33 @@ function wrap(s,n){
   if (br<0) br=n;
   return [s.slice(0,br)].concat(wrap(s.slice(br+1,s.length).replace(/^ +/,""), n));
 }
+function txtFit(s,x,y,col,maxW,big){
+  s=String(s);
+  let px=big? 11:9;
+  ctx.font="bold "+px+"px 'Courier New', monospace";
+  while (px>5 && ctx.measureText(s).width>maxW){ px--; ctx.font="bold "+px+"px 'Courier New', monospace"; }
+  const orig=s;
+  while (s.length>1 && ctx.measureText(s+"…").width>maxW) s=s.slice(0,-1);
+  if (s!==orig) s+="…";
+  ctx.textBaseline="top";
+  ctx.fillStyle="#0a0710";
+  ctx.fillText(s,x+1,y); ctx.fillText(s,x-1,y); ctx.fillText(s,x,y+1); ctx.fillText(s,x,y-1);
+  ctx.fillStyle=col||PAL.bone;
+  ctx.fillText(s,x,y);
+}
+function wrapPx(s,maxW,px){
+  const str=String(s);
+  ctx.font="bold "+px+"px 'Courier New', monospace";
+  if (ctx.measureText(str).width<=maxW) return [str];
+  const lines=[]; let cur="";
+  for (const w of str.split(" ")){
+    const test=cur? cur+" "+w : w;
+    if (!cur || ctx.measureText(test).width<=maxW) cur=test;
+    else { if (cur) lines.push(cur); cur=w; }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
 function renderUI(){
   const u=game.ui;
   ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
@@ -4488,22 +4515,27 @@ function renderUI(){
   } else if (u.mode==="menu" && u.menu){
     const m=u.menu;
     box(0,116,320,64);
-    txt(m.title,6,119,PAL.gold);
-    const start=Math.max(0, m.sel-3);
+    txtFit(m.title,6,119,PAL.gold,250);
+    const start=clamp(Math.max(0, m.sel-2), 0, Math.max(0, m.opts.length-3));
     let y=128;
     const rows=[];
-    for (let i=start;i<Math.min(m.opts.length,start+4);i++){
-      const label=(i===m.sel? "> ":"  ")+m.opts[i].t.slice(0,52);
-      txt(label,4,y, i===m.sel? PAL.coin:PAL.bone);
+    for (let i=start;i<Math.min(m.opts.length,start+3);i++){
+      const label=(i===m.sel? "> ":"  ")+m.opts[i].t;
+      txtFit(label,4,y, i===m.sel? PAL.coin:PAL.bone,294);
       rows.push(i);
       y+=10;
     }
     for (const i of rows)
-      hit(4,126+(i-start)*10,312,10,()=>{ m.sel=i; pressZ("z"); });
-    if (m.opts.length>start+4){ txt("▼",307,169,"#c8963f"); hit(300,163,20,17,()=>{ m.sel=(m.sel+1)%m.opts.length; }); }
-    if (start>0){ txt("▲",307,118,"#c8963f"); hit(300,116,20,12,()=>{ m.sel=(m.sel-1+m.opts.length)%m.opts.length; }); }
+      hit(4,126+(i-start)*10,288,10,()=>{ m.sel=i; pressZ("z"); });
+    if (m.opts.length>start+3){ txtFit("▼",307,148,"#c8963f",12); hit(296,139,24,25,()=>{ m.sel=(m.sel+1)%m.opts.length; }); }
+    if (start>0){ txtFit("▲",307,118,"#c8963f",12); hit(296,114,24,14,()=>{ m.sel=(m.sel-1+m.opts.length)%m.opts.length; }); }
     const cur=m.opts[m.sel];
-    if (cur && cur.d) txt(". "+wrap(cur.d,54)[0],6,169,"#a09a8c");
+    if (cur && cur.d){
+      const drows=wrapPx(cur.d,300,8);
+      const more=drows.length>2;
+      txtFit(". "+drows[0],6,158,"#a09a8c",288);
+      if (drows[1]) txtFit("  "+drows[1]+(more? "…":""),6,168,"#9a9284",288);
+    }
     txt("X back",272,119,"#726a7c");
     hit(262,117,56,12,()=>pressZ("x"));
   }
@@ -4554,12 +4586,15 @@ function drawJuice(){
   }
   ctx.globalAlpha=1;
   if (bannerT>0 && bannerMsg){
-    const bw=210, bx=(W-bw)/2, bh=bannerMsg.length>1?30:20;
+    const bw=210, bx=(W-bw)/2;
+    const brows= bannerMsg.length>1? wrapPx(bannerMsg[1],192,9).slice(0,2) : null;
+    const bh= bannerMsg.length>1? (brows&&brows.length>1? 40:30) :20;
     box(bx,40,bw,bh,"rgba(10,7,12,0.94)",PAL.gold);
     if (bannerMsg.length>1){
-      txt(bannerMsg[0],bx+10,44,PAL.gold);
-      txt(bannerMsg[1].slice(0,46),bx+10,55,"#cfc6b4");
-    } else txt(bannerMsg[0],bx+10,46,PAL.gold);
+      txtFit(bannerMsg[0],bx+10,44,PAL.gold,bw-20);
+      let by=55;
+      for (const r of brows){ txtFit(r,bx+10,by,"#cfc6b4",bw-20); by+=11; }
+    } else txtFit(bannerMsg[0],bx+10,46,PAL.gold,bw-20);
   }
 }
 function drawDie(x,y,v,stopped){
@@ -4586,7 +4621,7 @@ function renderCombat(){
     let lore=String(c.log[1]||e.n);
     const lw=wrap(lore,52).concat(c.log[2]? wrap("*"+c.log[2],52) : []);
     let iy=114;
-    for (let li=0; li<lw.length && li<5; li++){ txt(lw[li].replace(/^\*/,""),8,iy, lw[li].charAt(0)==="*"? "#8c8494":"#a89d90"); iy+=10; }
+    for (let li=0; li<lw.length && li<4; li++){ txt(lw[li].replace(/^\*/,""),8,iy, lw[li].charAt(0)==="*"? "#8c8494":"#a89d90"); iy+=10; }
     txt("tap or Z to steel yourself",96,166,"#8c8494");
     hit(0,0,W,H,()=>{ c.intro=0; });
     cornerChips();
@@ -4596,7 +4631,7 @@ function renderCombat(){
   ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
   if (e.human){ blobShadow(160,45,10,0.4); drawHumanFoe(156,36); }
   else { blobShadow(160,52,36,0.42); drawAbomination(160,22,e.artSeed,1.7); }
-  txt(e.n.slice(0,30),95,80,PAL.bloodHi);
+  txtFit(e.n,95,80,PAL.bloodHi,132);
   const known=foeKnown(e.n);
   const w=clamp(e.hp/e.maxhp,0,1);
   ctx.fillStyle="#33131c"; ctx.fillRect(96,73,128,4);
@@ -4626,7 +4661,7 @@ function renderCombat(){
     const acts=quickActs();
     const sp= acts.length>5? 10:11;
     for (let i=0;i<acts.length;i++){
-      txt((i===c.choice?"> ":"  ")+actLabel(acts[i]),6,120+i*sp, i===c.choice?PAL.coin:PAL.bone);
+      txtFit((i===c.choice?"> ":"  ")+actLabel(acts[i]),6,120+i*sp, i===c.choice?PAL.coin:PAL.bone,138);
       hit(0,117+i*sp,150,sp,()=>{ c.choice=i; pressZ("z"); });
     }
     txt("twin 6s = crit",156,169,"#726a7c");
@@ -4950,9 +4985,11 @@ function frame(){
   if (hintT>0 && hintMsg){
     hintT--;
     ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
-    const hm=hintMsg.slice(0,52), hw=ctx.measureText(hm).width;
-    ctx.fillStyle="rgba(8,6,10,0.92)"; ctx.fillRect(W/2-hw/2-3, 1, hw+6, 14);
-    txt(hm, W/2-hw/2, 3, "#e0b95a");
+    const hrows=wrapPx(hintMsg,300,9).slice(0,2);
+    let hw=0; for (const r of hrows) hw=Math.max(hw,ctx.measureText(r).width);
+    ctx.fillStyle="rgba(8,6,10,0.92)"; ctx.fillRect(W/2-hw/2-3, 1, hw+6, hrows.length>1? 24:14);
+    let hy=3;
+    for (const r of hrows){ txt(r, W/2-ctx.measureText(r).width/2, hy, "#e0b95a"); hy+=10; }
   }
   endFrame();
 }
@@ -4971,7 +5008,7 @@ window.__openings={
   openChurch, maybeMugged, openTavern, voiceSfx, coinCascade, updateAmbience,
   findLore, openCodex, gateConditions, openTheGate, LORE_FRAG, openBag, equipItem, openChest, buyPack, itemDesc, invCap, storageCap, invUsed,
   talkTownfolk, spawnTownfolk, updTownfolk, townAge, takeOne, takeMany, enterBuilding,
-  MANEUVERS, BUILDINGS, OPENINGS, LAMPS, sfx, toggleSnd,
+  MANEUVERS, BUILDINGS, OPENINGS, LAMPS, sfx, toggleSnd, txtFit, wrapPx,
   get gDice(){ return gDice; }, get bannerMsg(){ return bannerMsg; },
   get droneOpen(){ return droneOpen; },
   get droneDepth(){ return droneDepth; },

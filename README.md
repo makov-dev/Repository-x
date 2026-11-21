@@ -92,6 +92,10 @@ like and exactly who lives or labours there today.
 The whole game is played **directly on the screen** — nothing else matters up
 your view. No virtual pad; the canvas is the only control surface.
 
+Every label and description is fit to its box: long option text shrinks
+instead of being cut mid-word, menu descriptions wrap onto a second line,
+and hints wrap rather than truncate — nothing you are offered goes unread.
+
 - Walking rich (70g+ on you, or 80g+ in loot) can attract **muggers of
   your own trade**: pay a tithe, show steel, run, or fight — street
   fights end back in the street.
