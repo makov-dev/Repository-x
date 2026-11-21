@@ -224,9 +224,15 @@ an auto-walk in progress.
      Auditor, death is just an audit that finally balances; to the Drowsing
      Host, sleep is wealth and you are rich beyond blame; the Cartographer
      of Veins is certain humans are herd animals that come down here to
-     scab; the Lamp-Bearer worships your lantern outright. Talk to them —
-     a Wits or Will check opens their world a crack, and a success can
-     hand you a **truth fragment** the surface churches have never had.
+     scab; the Lamp-Bearer worships your lantern outright. None of them
+     is helpful on sight: each **respects a different thing before it
+     will receive you at all** (the Auditor hears accounted coin; the
+     Cartographer those whose passing has stained its world in four
+     places; the Drowsing Host only the nearly-stopped; the Lamp-Bearer
+     an offering set beside the flame). Push an unearned conversation
+     and the odds are the meeting becomes a bout. Once received, a Wits
+     or Will check opens their world a crack, and a success can hand
+     you a **truth fragment** the surface churches have never had.
      They **trade** (wet ledgers, hide-maps, bells and rations all have
      buyers below), assign **errands** (deliver a relic, or put down two
      small deaths and tell your host how it sounded), and if you honor an
