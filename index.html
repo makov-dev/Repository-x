@@ -454,13 +454,20 @@ function spawnTownfolk(){
   const toB= both.length? both[irnd(both.length)] : null;
   const atB= toB===home? work : (both.length>1? home : null);
   const from=(atB && bldDoor(atB)) || dt[irnd(dt.length)];
-  const to=(toB && bldDoor(toB)) || dt[irnd(dt.length)];
+  let to=(toB && bldDoor(toB)) || dt[irnd(dt.length)];
+  let toId=toB?toB.id:null, lingering=false;
+  if (FIRE_SPOTS && FIRE_SPOTS.length && Math.random()<0.3){
+    const fs=FIRE_SPOTS[irnd(FIRE_SPOTS.length)];
+    const tgt=fireSpotTarget(fs);
+    if (tgt){ to=tgt; toId="fire"; lingering=true; }
+  }
   const path=bfsPath(from[0],from[1],to[0],to[1],(x,y)=>!citySolid(x,y),CW,CH)||[];
   const folkOcc= (game.flags.war && Math.random()<0.35)? pick(DESERT_OCC) : pick(TOWN_OCC);
   game.townfolk.push({ name:name, occ:folkOcc, line:pick(TOWN_LINES),
     age0:17+irnd(48), born:game.week, x:from[0], y:from[1], path:path, i:0,
-    t:20+irnd(30), lastW:game.week, col:pick(WALK_COLS),
-    homeId:home?home.id:null, workId:work?work.id:null, atId:atB?atB.id:null, toId:toB?toB.id:null, inside:0 });
+    t:26+irnd(20), lastW:game.week, col:pick(WALK_COLS),
+    homeId:home?home.id:null, workId:work?work.id:null, atId:atB?atB.id:null, toId:toId, inside:0,
+    lingering:lingering, linger:0 });
 }
 function townAge(wk){ return Math.floor(wk.age0+(game.week-wk.born)/52); }
 function updTownfolk(){
@@ -489,19 +496,47 @@ function updTownfolk(){
         wk.x=fr[0]; wk.y=fr[1];
         const nid= wk.atId===wk.homeId? wk.workId : wk.homeId;
         const nb=BUILDINGS.find(bb=>bb.id===nid);
-        const to=(nb && bldDoor(nb)) || game.doorTiles[irnd(game.doorTiles.length)];
-        wk.toId=nid;
+        let to=(nb && bldDoor(nb)) || game.doorTiles[irnd(game.doorTiles.length)];
+        wk.toId=nid; wk.lingering=false;
+        if (FIRE_SPOTS && FIRE_SPOTS.length && Math.random()<0.35){
+          const fs=FIRE_SPOTS[irnd(FIRE_SPOTS.length)];
+          const tgt=fireSpotTarget(fs);
+          if (tgt){ to=tgt; wk.toId="fire"; wk.lingering=true; }
+        }
         wk.path=bfsPath(wk.x,wk.y,to[0],to[1],(x,y)=>!citySolid(x,y),CW,CH)||[];
-        wk.i=0; wk.t=20+irnd(30);
+        wk.i=0; wk.t=26+irnd(20);
+      }
+      continue;
+    }
+    if (wk.linger>0){
+      wk.linger--;
+      if (wk.linger<=0){
+        if (Math.random()<0.35){
+          game.townfolk.splice(i,1);
+          if (Math.random()<0.85) spawnTownfolk();
+        } else {
+          if (!game.doorTiles || !game.doorTiles.length) game.doorTiles=computeDoorTiles();
+          const nid= wk.workId || wk.homeId;
+          const nb=BUILDINGS.find(bb=>bb.id===nid);
+          const to2=(nb && bldDoor(nb)) || game.doorTiles[irnd(game.doorTiles.length)];
+          wk.atId=nb?nb.id:null;
+          wk.toId=nid;
+          wk.path=bfsPath(wk.x,wk.y,to2[0],to2[1],(x,y)=>!citySolid(x,y),CW,CH)||[];
+          wk.i=0; wk.t=26+irnd(20);
+        }
       }
       continue;
     }
     wk.t--;
     if (wk.t>0) continue;
-    wk.t=11+irnd(9);
+    wk.t=26+irnd(20);
     if (wk.path && wk.i<wk.path.length){
       const st=wk.path[wk.i];
       wk.x=st[0]; wk.y=st[1]; wk.i++;
+    } else if (wk.lingering){
+      wk.lingering=false;
+      wk.linger=200+irnd(280);
+      wk.path=null;
     } else {
       game.flags.lastArrived=wk.name;
       if (wk.toId) wk.atId=wk.toId;
@@ -535,7 +570,8 @@ function drawTownfolk(camX,camY){
     const sx=(wk.x-camX)*T, sy=(wk.y-camY)*T;
     if (sx<-6||sx>Wz+8||sy<-8||sy>Hz) continue;
     const moving=wk.path && wk.i<wk.path.length;
-    const bob= moving? (worldTick%24<12?0:1) : 0;
+    const bob= wk.linger>0? (worldTick%70<6?0:1) : (moving? (worldTick%24<12?0:1) : 0);
+    if (wk.linger>0 && !moving) glow(sx+4,sy+5,15,[255,150,60],0.09);
     blobShadow(sx+4,sy+9,5,0.30);
     ctx.fillStyle="#2a2028"; ctx.fillRect(sx+3,sy+6+bob,2,3);
     ctx.fillStyle=wk.col; ctx.fillRect(sx+2,sy+2+bob,4,4);
@@ -1701,12 +1737,43 @@ function genFloor(d){
     if (x<w-1 && grid[y][x+1]!=="#") n++;
     return n===2; });
   shuffle(choke, rg);
-  const nTrap=(tierNow>=2?2:1)+(irnd(2)===0?1:0);
+  const nTrap=(tierNow>=2?3:2)+(irnd(2)===0?1:0);
   const trapKinds=["spikes","spikes","plate","plate","chasm"];
   const placed=[];
+  const separates=(bx,by)=>{
+    // sealing this tile must cut its corridor in two: the open neighbors on
+    // either side must have no other path to each other - a true single-file gate
+    const around=[];
+    for (const q of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=bx+q[0], ny=by+q[1];
+      if (nx>=0&&ny>=0&&nx<w&&ny<h&&grid[ny][nx]!=="#") around.push([nx,ny]);
+    }
+    if (around.length!==2) return false;
+    const seen=new Set([around[0][0]+","+around[0][1]]);
+    const q=[around[0]]; let head=0;
+    while (head<q.length){
+      const c=q[head++];
+      if (c[0]===around[1][0] && c[1]===around[1][1]) return false;
+      for (const d of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const nx=c[0]+d[0], ny=c[1]+d[1], k=nx+","+ny;
+        if (nx<0||ny<0||nx>=w||ny>=h) continue;
+        if (grid[ny][nx]==="#" || (nx===bx&&ny===by) || seen.has(k)) continue;
+        seen.add(k); q.push([nx,ny]);
+      }
+    }
+    return true;
+  };
   for (const t of choke){
     if (placed.length>=nTrap) break;
     if (placed.some(q=>Math.abs(q[0]-t[0])+Math.abs(q[1]-t[1])<3)) continue;
+    if (!separates(t[0],t[1])) continue;   // prefer true single-file gates
+    placed.push(t);
+    evs.push({x:t[0],y:t[1],type:"obstacle", kind:pick(trapKinds)});
+  }
+  for (const t of choke){
+    if (placed.length>=nTrap) break;
+    if (placed.some(q=>Math.abs(q[0]-t[0])+Math.abs(q[1]-t[1])<3)) continue;
+    // fallback: any single-file corridor tile - the trap is the tile you step on
     placed.push(t);
     evs.push({x:t[0],y:t[1],type:"obstacle", kind:pick(trapKinds)});
   }
@@ -1855,6 +1922,19 @@ function startFresh(sec){
   game.dungeon=null; walkPath=null; walkCb=null;
   launchDelve(sec);
 }
+/* the chasm is a decision, not a wall: what you jump you leave behind,
+   what you climb into takes you down a floor - depth is the reward */
+function chasmGo(msgs){
+  const d=game.dungeon;
+  d.depth++;
+  game.player.deep=Math.max(game.player.deep,d.depth);
+  maybeDepthLore(d.depth);
+  droneHush();
+  genFloor(d);
+  advanceWeeks(1);
+  saveGame();
+  say(msgs);
+}
 function obstacleEvent(ev){
   const p=game.player;
   if (ev.kind==="rubble"){
@@ -1914,9 +1994,9 @@ function obstacleEvent(ev){
       ]);
     });
   } else {
-    showText(["The floor simply ends. Below: a wind that rises from somewhere with intent."], ()=>{
+    showText(["The floor simply ends. Below: a wind that rises from somewhere with intent.", "It goes down far enough to be a place."], ()=>{
       showMenu("CHASM", [
-        ...(countItem("Rope & Hook")? [{ t:"Use Rope & Hook", fn:()=>{ ev.done=true;
+        ...(countItem("Rope & Hook")? [{ t:"Use Rope & Hook to cross", fn:()=>{ ev.done=true;
             useFromInv("Rope & Hook",1);
             say(["Anchor, swing, land, breathe."]);
             saveGame(); } }]:[]),
@@ -1924,6 +2004,13 @@ function obstacleEvent(ev){
             if (check("agi",11)) say(["You fly like a frightened, beautiful idiot. Across."]);
             else hurt(8,"You hit the far lip badly. The wind laughs in a mammal way.");
             saveGame(); } },
+        ...(countItem("Rope & Hook")? [{ t:"Climb down into it (Rope & Hook)", fn:()=>{ ev.done=true;
+            useFromInv("Rope & Hook",1);
+            chasmGo(["You feed the line out and go down the way the water would.","The hole was never decoration. One floor of the dark hands you to the next."]); } }]:[]),
+        { t:"Drop down into it (Agility)", fn:()=>{ ev.done=true;
+            if (check("agi",10)) chasmGo(["You lower yourself, drop, and land in a crouch you will brag about later."]);
+            else { hurt(5,"The drop is honest about its height. You pay in blood and arrive below.");
+                   chasmGo(["Bruised, one floor down, and still walking."]); } } },
         { t:"Back off", fn:()=>{ ev.done=true; stepBack(); } }
       ]);
     });
@@ -2614,13 +2701,23 @@ function updateBattleMusic(){
   const c=game.combat;
   const fighting= game.state==="combat" && c && c.turn!=="won";
   if (fighting){ hbM.on=true; hbM.tail=0; }
-  else if (hbM.on){ hbM.tail++; if (hbM.tail>260){ hbM.on=false; return; } }
+  else if (hbM.on){ hbM.tail++; if (hbM.tail>460){ hbM.on=false; return; } }
   else return;
-  let want= fighting? heartIv() : 66;
+  let want, vol, ease;
+  if (fighting){
+    want=heartIv();
+    ease=0.035;
+    vol=0.078+0.05*(1-clamp(game.player.hp/game.player.maxhp,0,1));
+  } else {
+    // the fight is over: the heart settles in stages - slows past calm,
+    // every beat quieter and further apart, until the ears accept the silence
+    const tt=clamp(hbM.tail/460,0,1);
+    want=66+150*Math.pow(tt,1.6);
+    ease=0.05;
+    vol=0.085*(1-tt*tt);
+  }
   if (hbM.jolt>0){ hbM.jolt--; want*=0.55; }
-  hbM.iv += (want-hbM.iv)*(hbM.jolt>0? 0.35 : (fighting? 0.035 : 0.010));
-  const vol= fighting? 0.078+0.05*(1-clamp(game.player.hp/game.player.maxhp,0,1))
-                     : Math.max(0, 0.085*(1-hbM.tail/260));
+  hbM.iv += (want-hbM.iv)*ease;
   hbM.acc++;
   if (hbM.acc>=Math.round(hbM.iv)){
     hbM.acc=0;
@@ -3483,6 +3580,78 @@ const LAMPS=[
   [47,5],[47,11],[47,17],[47,25],[8,20],[31,20],[41,20],
   [10,10],[36,10],[52,10],[10,29],[36,31],[52,29]
 ];
+/* ----- the city keeps house: lamplight pools, street trash, cooking fires ----- */
+let TRASH=null, trashMap=null, cityLight=null, FIRE_SPOTS=null;
+function computeCityProps(){
+  trashMap=new Map(); TRASH=[];
+  const rndT=mulberry(9137);
+  for (let y=1;y<CH-1;y++) for (let x=1;x<CW-1;x++){
+    if (cityGrid[y][x]!==".") continue;
+    const r1=rndT();
+    if (r1<0.048){
+      const kind=Math.floor(rndT()*5);
+      TRASH.push([x,y,kind]);
+      trashMap.set(x+","+y,kind);
+    }
+  }
+  cityLight=[];
+  for (let y=0;y<CH;y++) cityLight.push(new Array(CW).fill(0));
+  for (const lp of LAMPS){
+    for (let y=Math.max(0,lp[1]-4);y<=Math.min(CH-1,lp[1]+4);y++)
+      for (let x=Math.max(0,lp[0]-4);x<=Math.min(CW-1,lp[0]+4);x++){
+        const dd=Math.hypot(x-lp[0],y-lp[1]);
+        const b=Math.max(0,1-dd/3.8);
+        if (b>cityLight[y][x]) cityLight[y][x]=b;
+      }
+  }
+  FIRE_SPOTS=[];
+  for (const id of ["tavern","market","guild","wash","tallow"]){
+    const bl=BUILDINGS.find(b2=>b2.id===id);
+    if (!bl) continue;
+    const dpos=bldDoor(bl);
+    if (dpos) FIRE_SPOTS.push([dpos[0],dpos[1], (id==="tavern"||id==="market")?1:0]);
+  }
+}
+function fireSpotTarget(fs){
+  const cand=[[fs[0]+1,fs[1]],[fs[0]-1,fs[1]],[fs[0],fs[1]+1],[fs[0],fs[1]-1]]
+    .filter(c=>c[0]>=1&&c[1]>=1&&c[0]<CW-1&&c[1]<CH-1&&!citySolid(c[0],c[1]));
+  return cand.length? cand[irnd(cand.length)] : null;
+}
+function drawLampPost(lx,ly){
+  blobShadow(lx+5,ly+10,7,0.30);
+  ctx.fillStyle="#0f0a12"; ctx.fillRect(lx+3,ly-2,2,12);
+  ctx.fillStyle="#2a2030"; ctx.fillRect(lx+3,ly-2,1,12);
+  ctx.fillStyle="#0f0a12"; ctx.fillRect(lx+2,ly+9,4,1);
+  ctx.fillStyle="#150e18"; ctx.fillRect(lx+2,ly-3,5,1);
+  ctx.fillStyle="#150e18"; ctx.fillRect(lx+5,ly-2,1,1);
+  ctx.fillStyle="#35271a"; ctx.fillRect(lx+4,ly-1,3,1);
+  ctx.fillStyle="#241812"; ctx.fillRect(lx+4,ly,3,4);
+  ctx.fillStyle=(worldTick%53<4)? "#ffe49a" : "#f2be58";
+  ctx.fillRect(lx+5,ly+1,1,2);
+  ctx.fillStyle="rgba(255,228,154,0.5)"; ctx.fillRect(lx+5,ly,1,1);
+  ctx.fillStyle="#35271a"; ctx.fillRect(lx+4,ly+4,3,1);
+  glow(lx+5,ly+1,26,[255,176,74],0.18);
+}
+function drawFires(camX,camY){
+  if (!FIRE_SPOTS) return;
+  for (const fs of FIRE_SPOTS){
+    const fx=(fs[0]-camX)*T, fy=(fs[1]-camY)*T;
+    if (fx<-24||fy<-24||fx>Wz+24||fy>Hz+24) continue;
+    glow(fx+4,fy+6,20,[255,150,60],0.13);
+    ctx.fillStyle="#3a3238"; ctx.fillRect(fx+1,fy+7,2,1); ctx.fillRect(fx+6,fy+7,2,1); ctx.fillRect(fx+3,fy+8,3,1);
+    const f2=(worldTick+fs[0]*7)%14;
+    ctx.fillStyle= (f2<7)? "#e07b2c" : "#f2a23c";
+    ctx.fillRect(fx+3,fy+4,3,3);
+    ctx.fillStyle= (worldTick%9<4)? "#f6c95e" : "#e8933a";
+    ctx.fillRect(fx+4,fy+3,1,2);
+    if (fs[2]){
+      ctx.fillStyle="#4b4352"; ctx.fillRect(fx+2,fy+1,4,2);
+      ctx.fillStyle="#2c242e"; ctx.fillRect(fx+3,fy+2,2,1);
+      if (worldTick%37<3){ ctx.fillStyle="rgba(200,200,210,0.4)"; ctx.fillRect(fx+3+(worldTick%2),fy-2,1,2); }
+    }
+    if ((worldTick+fs[0]*13)%29<2){ ctx.fillStyle="rgba(200,120,60,0.5)"; ctx.fillRect(fx+4+(f2%3===0?1:0),fy-1,1,2); }
+  }
+}
 function drawBuilding(bl, sx, sy){
   const w=bl.w*T, h=bl.h*T;
   blobShadow(sx+w/2, sy+h+1.5, w*0.92, 0.30);
@@ -3596,6 +3765,7 @@ function drawBuilding(bl, sx, sy){
 function drawBase(){
   ctx.fillStyle="#201a26"; ctx.fillRect(0,0,W,H);
   if (!cityGrid) cityGrid=buildCity();
+  if (!trashMap || !cityLight) computeCityProps();
   const b=game.base;
   const camX=clamp(b.px-Math.floor(VWz/2),0,CW-VWz), camY=clamp(b.py-Math.floor(VHz/2),0,CH-VHz);
   ctx.save(); ctx.scale(camZ,camZ);
@@ -3616,13 +3786,26 @@ function drawBase(){
       if (c==="."){ ctx.fillStyle="#292030"; ctx.fillRect(x*T,y*T,1,1); }
       if (c==="D"){ ctx.fillStyle="#2c1e14"; ctx.fillRect(x*T+1,y*T+1,4,6); }
       if (c==="G"){ ctx.fillStyle="#c8963f"; ctx.fillRect(x*T+3,y*T+3,1,1); }
+      const lit= cityLight? cityLight[wy][wx] : 0;
+      if (lit>0.02){
+        const lq=lit*(0.86+0.14*Math.sin(worldTick/17+wx*2.1+wy*1.3));
+        ctx.save(); ctx.globalCompositeOperation="lighter";
+        ctx.fillStyle="rgba("+Math.round(88*lq)+","+Math.round(66*lq)+","+Math.round(30*lq)+",1)";
+        ctx.fillRect(x*T,y*T,T,T);
+        ctx.restore();
+      }
+      const trk= trashMap? trashMap.get(wx+","+wy) : undefined;
+      if (trk===0){ ctx.fillStyle="#5b5560"; ctx.fillRect(x*T+2,y*T+4,1,2); ctx.fillStyle="#6d675f"; ctx.fillRect(x*T+3,y*T+3,1,1); }
+      else if (trk===1){ ctx.fillStyle="#3c3226"; ctx.fillRect(x*T+1,y*T+5,3,1); ctx.fillStyle="#4a4034"; ctx.fillRect(x*T+2,y*T+4,2,1); }
+      else if (trk===2){ ctx.fillStyle="#4a3a28"; ctx.fillRect(x*T+1,y*T+3,3,2); ctx.fillStyle="#2c2218"; ctx.fillRect(x*T+2,y*T+4,1,1); }
+      else if (trk===3){ ctx.fillStyle=PAL.boneDim; ctx.fillRect(x*T+1,y*T+4,2,1); ctx.fillRect(x*T+5,y*T+5,1,1); }
+      else if (trk===4){ ctx.fillStyle="#384530"; ctx.fillRect(x*T+3,y*T+3,2,1); ctx.fillRect(x*T+2,y*T+5,1,1); ctx.fillRect(x*T+5,y*T+2,1,1); }
     }
   }
   for (const lp of LAMPS){
     const lx=(lp[0]-camX)*T, ly=(lp[1]-camY)*T;
-    if (lx<-26||ly<-26||lx>Wz+26||ly>Hz+26) continue;
-    glow(lx+4, ly+6, 23, [255,172,64], 0.17);
-    ctx.fillStyle="rgba(160,150,120,0.10)"; ctx.fillRect(lx,ly,8,8);
+    if (lx<-40||ly<-40||lx>Wz+40||ly>Hz+40) continue;
+    glow(lx+4, ly+5, 30, [255,176,72], 0.15);
   }
   for (const bl of BUILDINGS){
     if (bl.home && !game.player.house) continue;
@@ -3634,12 +3817,11 @@ function drawBase(){
       drawNPC(dxp, dyp-8, bl.id==="tavern"? PAL.bloodHi : PAL.green);
     }
   }
+  drawFires(camX,camY);
   for (const lp of LAMPS){
     const lx=(lp[0]-camX)*T, ly=(lp[1]-camY)*T;
-    if (lx<-8||ly<-14||lx>Wz+8||ly>Hz+14) continue;
-    ctx.fillStyle="#120d16"; ctx.fillRect(lx+4,ly,1,7);
-    ctx.fillStyle=(worldTick%53<3)? "#ffe08a":"#e8b54e"; ctx.fillRect(lx+3,ly-1,3,1);
-    ctx.fillStyle="#120d16"; ctx.fillRect(lx+3,ly-2,3,1);
+    if (lx<-10||ly<-16||lx>Wz+10||ly>Hz+16) continue;
+    drawLampPost(lx,ly);
   }
   drawHero((b.px-camX)*T, (b.py-camY)*T, false);
   if (!game.ui.mode){
@@ -4428,6 +4610,7 @@ window.__openings={
   get earsHinted(){ return game && game.flags? !!game.flags.earsHinted : false; },
   droneHush:droneHush,
   findRumor, hasRumor, LORE_KINGDOM, RH_BY_ID, KEEPERS, WORK_JOBS, workShift, keeperGreet, bumpVisit, heirName, keeperChat, KING_STAGES, TENSION_LINES, crownYears, crownStageNum, updateKingdom, meetCommando, crownPressure, commandoFoe, corpseEvent, tavernAgents,
+  updateBattleMusic, chasmGo, fireSpots:()=>FIRE_SPOTS, trashList:()=>TRASH, lightMap:()=>cityLight,
   ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC,
   get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; }
 };

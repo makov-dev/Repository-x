@@ -20,8 +20,11 @@ devices the game auto-enters fullscreen when you begin (the **FS** chip in the
 top-right corner toggles it manually). City buildings are drawn as pixel-art
 façades: lit windows, doors, striped awnings, guild banners, the tavern's
 swinging lantern, chimney smoke, and the arched Gate of Openings. It keeps its
-own **shadow and light**: every building drops a soft shadow, street lamps
-throw warm flickering pools onto the roads, windows and dungeon torches glow
+own **shadow and light**: every building drops a soft shadow, **lampposts**
+stand at the road's edge - dark iron posts with a small glass lantern hanging
+under a crossarm, its flame flickering — and their light pool visibly brightens
+the street tiles around them, pushing the dark back in a warm radius; windows
+and dungeon torches glow
 additively onto the stones, and the hero, the townfolk, monsters and even
 corpses each cast a foot-shadow on the ground. The delve is lit to be read:
 a lantern-glow follows you, seen floors stay visible, stairs down blaze with a
@@ -31,8 +34,9 @@ own drone**, and the drone sinks lower and darker the deeper you go. **Depth cha
 air** — deeper floors shift from cold blue-violet through bruised purple to a
 deep red mine-gloom. In a fight **the music is your heartbeat**: a slow calm
 lub-dub when you are whole, pounding faster with every wound and **skipping a beat whenever steel or claw
-actually finds you**, easing
-noticeably back to calm after a kill, and stopping dead the instant you do.
+actually finds you** — and after a kill **it settles in stages**: the beats
+fall further and further apart, each one quieter, an audible unwinding until
+silence takes the room back. At your death it stops dead the instant you do.
 You can see the heart too: **with every beat the edges of the world pulse a
 thin blood-dark**, subtler at full health, tightening as you bleed.
 In the quiet between fights **greed gets a heartbeat of its own**: a quicker,
@@ -62,7 +66,13 @@ wake up later. Chalked doors appear at the Gate of Openings, forever after:
 **The Maw Behind Plaster**, **The Debt Vaults**, and **The Ninth Seam**.
 
 The streets are **inhabited**: named folk with a trade and a family line walk
-purposefully from one door to another and slip inside. Tap one to get a look —
+purposefully from one door to another at an honest walking pace and slip
+inside. The streets are strewn with **trash** - bottles, rags, crates, bones,
+blown leaves in the gutters - and **cooking fires** burn at the doors of the
+Lamp, the Grave-Market, the Guild Hall, the Washhouse and the Tallowworks
+(a pot steaming over the tavern's). Walkers sometimes divert to a fire instead
+of an errand: they stand by it, idle, warm their hands, and only then move
+on - or wander off entirely. Tap one to get a look —
 name, age, trade, and what they think of you. At first you are furniture with
 pockets; kept at it, they glance, nod, eventually say "Morning, [your name]",
 and in time greet you by title. They **age**: elderly townfolk can die
@@ -185,8 +195,12 @@ an auto-walk in progress.
    - **Obstacles** — rubble and foul air gather in the rooms; the corridors
      hold the traps: grown spike floors, bottomless chasms, and thin seams
      of pale dust hiding weighed plates (read them with Wits, or a Rope &
-     Hook solves most things a stat check won't). Every trap sits in a
-     passage you have to cross — the checks are the toll, not decoration.
+     Hook solves most things a stat check won't). Traps are only ever laid
+     on **single-file corridor chokepoints** — where the generator can prove
+     sealing the tile cuts the tunnel in two, it prefers those crossings — so
+     the check is a toll you pay to move, not a decoration. And a chasm is
+     also a door: **climb down into it** (Rope & Hook) or drop (Agility) and
+     you reach the floor below — depth is the gain, the fall is the price.
    - **Thresholds.** Where a room opens into a tunnel, the doorway is
      drawn as a pale worn-steel line, distinct from the gold room outline,
      so the way on is always legible.
@@ -239,7 +253,9 @@ an auto-walk in progress.
    dice tick while they spin, a **chime when you catch a six**, a sting
    for crits, thuds for hits, blood-flash on wounds, coin-jingle on
    payout, and **your own heartbeat leading every fight** (a lub-dub layered
-   into octaves, so even a phone speaker hears it). Crits throw gold sparks
+   into octaves, so even a phone speaker hears it) — then, when the fight is
+   won, the deceleration is the sound of standing down: each settling beat
+   slower and softer than the last. Crits throw gold sparks
    and **punch the screen** — the whole world lurches and swells around
    the blow. Every flash, shake, and shout can be silenced with the
    SND chip.
