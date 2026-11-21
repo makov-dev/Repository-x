@@ -735,7 +735,7 @@ function newGame(){
     dungeon:null,
     combat:null,
     ui:{ mode:null, menu:null, dialog:null, onclose:null, oncancel:null },
-    flags:{ news:[], crownStage:0, kingEpoch:Math.floor(17*52), ngplus:0 },
+    flags:{ news:[], crownStage:0, kingEpoch:Math.floor(17*52), ngplus:0, pacts:{}, errands:{} },
     npcClock:0,
     npcs: NPC_BASE.map(b=>({ name:b.name, desc:b.desc, age:b.age, ageWeeks:b.age*52, talks:(b.talks||GENERIC_TALKS).slice(),
       marriedTo:null, dead:false, widowed:false, kids:0, parentOfYou:false, aff:0, met:false }))
@@ -898,6 +898,8 @@ function loadGame(){
       if (typeof game.flags.sharkDrip!=="number") game.flags.sharkDrip=0;
       if (typeof game.flags.loanDue!=="number") game.flags.loanDue=0;
       if (game.flags.loan && typeof game.flags.loan.owe!=="number") game.flags.loan=null;
+      if (!game.flags.pacts || typeof game.flags.pacts!=="object") game.flags.pacts={};
+      if (!game.flags.errands || typeof game.flags.errands!=="object") game.flags.errands={};
       if (!Array.isArray(game.townfolk)) game.townfolk=[];
       if (!Array.isArray(game.townPool)) game.townPool=[];
       if (!Array.isArray(game.flags.lore)) game.flags.lore=[];
@@ -1831,6 +1833,24 @@ function genFloor(d){
     placed.push(t);
     evs.push({x:t[0],y:t[1],type:"obstacle", kind:pick(trapKinds)});
   }
+  /* ----- the floor's one landlord ----- */
+  if (rooms.length>2){
+    let bt=null;
+    for (let i=freeTiles.length-2;i>=fi && !bt;i--){
+      const t=freeTiles[i];
+      const inR=rooms.find(r=>t[0]>=r.x&&t[0]<r.x+r.w&&t[1]>=r.y&&t[1]<r.y+r.h);
+      if (inR && inR!==start && inR!==far) bt=t;
+    }
+    if (bt){
+      const bpool=FLOOR_BOSSES.filter(b=>b.minTier<=tierNow);
+      const bw=irnd(100);
+      const sents=bpool.filter(b=>b.kind==="sentient"), beasts=bpool.filter(b=>b.kind==="beast");
+      const B= (sents.length && (bw<55 || !beasts.length))? pick(sents) : (beasts.length? pick(beasts) : pick(bpool));
+      const bev={ x:bt[0], y:bt[1], type:"boss", boss:B.id, kind:B.kind };
+      evs.push(bev);
+      floor.bossEv=bev;
+    }
+  }
   const lt=freeTiles.length? freeTiles[freeTiles.length-1] : null;
   if (lt) floor.lurker={ x:lt[0], y:lt[1] };
   d.floors.push(floor);
@@ -1922,6 +1942,7 @@ function triggerEvent(ev){
     case "bait": baitEvent(ev); break;
     case "whimper": whimperEvent(ev); break;
     case "secret": secretEvent(ev); break;
+    case "boss": bossEvent(ev); break;
   }
 }
 function secretEvent(ev){
@@ -2298,6 +2319,111 @@ function fellowsCollect(){
        "The one holding the ledger-book taps the cover: "+owe+"g, as agreed."], ()=>fellowsMenu(owe));
 }
 
+/* ----- floor landlord events ----- */
+function flagsPacts(){ if (!game.flags.pacts || typeof game.flags.pacts!=="object") game.flags.pacts={}; return game.flags.pacts; }
+function flagsErrands(){ if (!game.flags.errands || typeof game.flags.errands!=="object") game.flags.errands={}; return game.flags.errands; }
+function miniFoe(B,tierNow){
+  const t=clamp(tierNow,1,3)-1;
+  const hp=ngHp(Math.round(B.hp[t]*(0.9+Math.random()*0.25)));
+  return { n:B.name, mhp:hp, hp:hp, atk:B.atk[t]+ngAtkBump(), tr:null, artSeed:irnd(2147483647), human:false, bossArt:B.id };
+}
+function grantBossLore(B,via){
+  if (B.lore && !hasLore(B.lore)){ findLore(B.lore,via); return true; }
+  const unf=LORE_FRAG.filter(f=>!hasLore(f.id));
+  if (unf.length){ findLore(pick(unf).id,via); return true; }
+  return false;
+}
+function bossErrandState(B){
+  const er=flagsErrands()[B.id]; if (!er) return "none";
+  if (er.kind==="kill") return er.have>=er.need? "ready":"active";
+  return countItem(er.item)>0? "ready":"active";
+}
+function bossOptions(ev,B){
+  const p=game.player, opts=[];
+  if (B.kind==="beast"){
+    opts.push({ t:"Attack it", d:"It would rather not be spoken to.", fn:()=>{ ev.done=true; startCombat(miniFoe(B,game.dungeon.tierNow)); } });
+    opts.push({ t:"Back out of its room slowly", fn:()=>{ ev.done=false; stepBack(); } });
+    return opts;
+  }
+  opts.push({ t: ev.talked? "Speak with it again":"Speak with it", d:"Its attention is a weather. You step under it.", fn:()=>{
+    ev.talked=true;
+    if (check(B.stat,B.dc)){
+      say(B.talk, ()=>{
+        const got=grantBossLore(B,"the "+cap(B.id)+"'s strange arithmetic");
+        const back=got? ["It considers you a little longer, in whatever way such things consider.",
+                          "Something true was handed across the gap, in whatever passes for hands, and quietly pocketed by your mind."]
+                      : ["It considers you a little longer, in whatever way such things consider.",
+                          "It has said its say; the rest of it is figures you cannot read."];
+        say(back, ()=>showMenu(B.name.toUpperCase(), bossOptions(ev,B)));
+      });
+    } else if (B.harsh){
+      say(B.talkFail, ()=>{ ev.done=true; startCombat(miniFoe(B,game.dungeon.tierNow)); });
+    } else {
+      say(B.talkFail, ()=>{ showHint("It dims, wounded, and keeps its own counsel."); showMenu(B.name.toUpperCase(), bossOptions(ev,B)); });
+    }
+  } });
+  if (B.trade && !ev.traded && countItem(B.trade.want)>0){
+    opts.push({ t:"Trade: "+B.trade.want+" for "+fmt(B.trade.giveG), fn:()=>{
+      ev.traded=true; useFromInv(B.trade.want,1); p.gold+=B.trade.giveG; sfx("gain");
+      say(B.trade.line, ()=>showMenu(B.name.toUpperCase(), bossOptions(ev,B))); } });
+  }
+  const st=bossErrandState(B);
+  if (B.errand && st==="none" && !flagsPacts()[B.id]){
+    opts.push({ t:"Hear its errand", fn:()=>{
+      const er=B.errand.kind==="kill"? {kind:"kill",need:B.errand.need,have:0} : {kind:"item",item:B.errand.item};
+      flagsErrands()[B.id]=er;
+      say(B.errand.assign, ()=>showMenu(B.name.toUpperCase(), bossOptions(ev,B))); } });
+  } else if (B.errand && st==="active"){
+    const pr=B.errand.kind==="kill"? flagsErrands()[B.id].have+"/"+flagsErrands()[B.id].need : "not in hand yet";
+    opts.push({ t:"Ask about the errand ("+pr+")", fn:()=>{
+      say(B.errand.kind==="kill"? ["It points, with several of itself, at everywhere the small hungry things are. The tally stands. It waits."]
+                                : ["Its want does not change while it isn't counting you. Bring the "+B.errand.item+". It has already budgeted for this."],
+        ()=>showMenu(B.name.toUpperCase(), bossOptions(ev,B))); } });
+  }
+  opts.push({ t:"Attack it", d:"Whatever world it lives in, your knife lives in this one.", fn:()=>{ ev.done=true; startCombat(miniFoe(B,game.dungeon.tierNow)); } });
+  opts.push({ t:"Leave it to its own little world", fn:()=>{ ev.done=false; stepBack(); } });
+  return opts;
+}
+function bossDeliver(ev,B){
+  const er=flagsErrands()[B.id], p=game.player;
+  if (er.kind==="item") useFromInv(er.item,1);
+  delete flagsErrands()[B.id];
+  flagsPacts()[B.id]=1;
+  p.gold+=B.errand.g; sfx("gain");
+  const out=B.errand.done.slice();
+  if (er.kind==="kill") p.hp=clamp(p.hp+10,0,p.maxhp);
+  const got=grantBossLore(B,"errand complete, honored below");
+  if (got) out.push("And, as if renting space in another world's mind were a trade good - a truth comes with the wage.");
+  out.push("You are, from this floor on, an arrangement. The dark goes easier on known debtors.");
+  say(out, ()=>saveGame());
+}
+function bossFriendly(ev,B){
+  ev.done=true;
+  const p=game.player;
+  const opts=[];
+  opts.push({ t:"Sit with it a while", fn:()=>{
+    say(B.pact, ()=>showMenu(B.name.toUpperCase(), bossFriendlyOpts(ev,B))); } });
+  if (B.trade && !ev.traded && countItem(B.trade.want)>0){
+    opts.push({ t:"Trade: "+B.trade.want+" for "+fmt(B.trade.giveG), fn:()=>{
+      ev.traded=true; useFromInv(B.trade.want,1); p.gold+=B.trade.giveG; sfx("gain");
+      say(B.trade.line, ()=>showMenu(B.name.toUpperCase(), bossFriendlyOpts(ev,B))); } });
+  }
+  opts.push({ t:"Take your leave", fn:()=>saveGame() });
+  showText(B.pact, ()=>showMenu(B.name.toUpperCase(), opts));
+}
+function bossFriendlyOpts(ev,B){ return [ { t:"Leave it be", fn:()=>saveGame() } ]; }
+function bossEvent(ev){
+  const d=game.dungeon, p=game.player;
+  const B=BOSS_BY_ID[ev.boss]; if (!B) return;
+  const st=bossErrandState(B);
+  if (B.kind==="sentient" && st==="ready"){ bossDeliver(ev,B); return; }
+  if (flagsPacts()[B.id]){ bossFriendly(ev,B); return; }
+  showText(B.intro, ()=>{
+    ev.met=true;
+    showMenu(B.name.toUpperCase(), bossOptions(ev,B));
+  });
+}
+
 /* ----- checks, wounds, death ----- */
 function check(stat, dc){
   const p=game.player;
@@ -2600,6 +2726,11 @@ function winCombat(){
     if (p.killsByKind[c.e.n]===7) earnTitle(c.e.n+" Slayer");
     if (!c.e.human) maybeFoeLore(c.e.n);
   }
+  const ers=game.flags.errands;
+  if (ers) for (const k in ers){ const er=ers[k]; if (er && er.kind==="kill" && !c.e.human && er.have<er.need){
+      er.have++;
+      if (er.have>=er.need) clog("Something in you was being counted. It added up to what was asked.");
+  } }
   if (c.critKill) p.streak++; else p.streak=0;
   const tilt= game.dungeon? game.dungeon.tierNow:1;
   let g=2+irnd(6)+tilt*2;
@@ -2933,6 +3064,74 @@ function lootRarity(v){
 
 /* ----- reputation: the titles the city gives you ----- */
 /* ----- the hidden history: what nobody in Jericho knows ----- */
+/* ----- floor landlords: one miniboss keeps a room per floor ----- */
+const FLOOR_BOSSES=[
+  { id:"gnaw", name:"The Gnawing Chancel", kind:"beast", minTier:1, hp:[22,34,52], atk:[4,5,7], lore:null,
+    intro:["A wide pews-shaped mass of jaws and knuckle fills the room like furniture that grew.",
+      "It does not think. It is a door that eats. Your light dims in appetite."] },
+  { id:"sow", name:"The Sow of Small Deaths", kind:"beast", minTier:1, hp:[18,28,44], atk:[3,5,6], lore:null,
+    intro:["Something large bends low over a litter of small teeth. Her hide is hung with ribbons of old veils.",
+      "The sow of small deaths is simply hungry, the honest way. There is no reasoning with breakfast."] },
+  { id:"clock", name:"The Hunger With a Clock in It", kind:"beast", minTier:2, hp:[26,40,60], atk:[5,6,8], lore:null,
+    intro:["A wet lung-and-meat bulk, and somewhere inside it clockwork ticks, patient as rent.",
+      "Something in it counts. Nothing in it considers. It counts down, and ends at eat."] },
+  { id:"auditor", name:"The Marrow Auditor", kind:"sentient", minTier:1, hp:[14,22,34], atk:[3,4,6],
+    lore:"gild", stat:"wit", dc:10, harsh:true,
+    intro:["The room is ruled by a kneeling hall of bone - no: it is a tally standing upright, ribs like ruled columns. The Marrow Auditor keeps count.",
+      "It perceives you precisely: a small animal that files itself under a name and dies of arithmetic. It does not despise this. It finds you illiterate."],
+    talk:[`"Sleep," it says, and the words arrive one at a time, like coins returned in exact change. "Sleep is settling an account. The dead owe nothing. You are owed so little sleep. It is sad the way small debts are sad."`,
+      `Its view of the city arrives as sums, not words: the Openings are holes it keeps in its own ledger, and it is genuinely unsure the surface is real. It believes the sun is a rumor you animals maintain by agreeing on it.`],
+    talkFail:["Your grammar of now-and-here offends its bookkeeping: in its thinking, yesterday and you are equally flexible amounts, and you have just rounded off wrong in both.",
+      "A line of red ink crosses the air. The columns stand up."],
+    trade:{ want:"Wet Ledger Page", giveG:60, line:["You hand over the wet page. It dries the numbers with a lacquer tongue and signs them with a name that is not a name, and pays like a machine remembering tenderness."] },
+    errand:{ kind:"item", item:"Fossilized Tear", g:80,
+      assign:[`"There is a payment missing from before the streets," it says. "A hard small grief, priced in centuries. Bring me the tear of it, and my book stays clean of your kind."`],
+      done:["The tear enters its ledger somewhere that is not a pocket. The Auditor closes the column.",
+        "In its cosmology you have become an entry marked paid in full - which, for a thing like this, is the nearest it can get to love."] },
+    pact:["The Auditor inclines its columns. In its book you are a line item it has chosen to protect, the way a miser protects one dry coin."] },
+  { id:"veins", name:"The Cartographer of Veins", kind:"sentient", minTier:2, hp:[15,24,36], atk:[3,5,6],
+    lore:"ribs", stat:"wit", dc:11, harsh:true,
+    intro:["A seated figure made of drawings of itself: hide stretched on wire like ruled vellum, pages of it turning with no wind. The Cartographer of Veins is mapping what it sits inside.",
+      "It does not map rooms. It maps the body under the city, one vein a decade, and it is certain that humans are herd animals that come down here to scab."],
+    talk:["It turns a page of itself toward you, and for a moment you see the Openings its way: not tunnels. Wounds. Not dungeons. Treatment. The city above is the dressing, and everyone who digs is surgery the patient never agreed to.",
+      `"For as long as it has been drawing," it adds, almost kindly, "the drawing has been winning. Nobody has ever left one of its atlases. You are welcome to look."`],
+    talkFail:["It reads your face like a bad copy and loses interest the wrong way: the sharp ends of its attention begin to unfold.",
+      "It is not angry. You simply no longer merit ink."],
+    trade:{ want:"Skin-Map of Jericho", giveG:150, line:["You trade it the hide-map of the streets. It studies the two alleys that do not exist and laughs like a draught getting into a coat: one of them is a vein.",
+      "It pays well, and marks the other alley with a pin. For later. Very, very much for later."] },
+    errand:{ kind:"item", item:"Bileglass Vial", g:120,
+      assign:["" + '"My atlas is missing one river," it says. "The water the deep pays in. Bring me a vial of it, and your shape will be added - accurately, which is safety, where I am from."'],
+      done:["The vial goes into a margin. The atlas is amended with you in it now, as a known river-source.",
+        "It will never cut a road it has finished drawing. This is the only mercy of maps."] },
+    pact:["The Cartographer holds up a new page: it is your outline, drawn generously. It has included a lantern that is not there. It finishes things it draws."] },
+  { id:"drowse", name:"The Drowsing Host", kind:"sentient", minTier:2, hp:[20,32,50], atk:[3,5,7],
+    lore:"mother", stat:"wll", dc:10, harsh:true,
+    intro:["It fills the room the way heat fills a kettle: fifty hands folded, and a face at the center of the fold like a knuckle remembering. The Drowsing Host has been awake since before Jericho, and it has kept the grudge.",
+      "To it, death is sleep - obvious, democratic, enviable. Humans are the blessed animals that get to stop. It watches you the way the starving watch a banquet."],
+    talk:[`"You will sleep some night," it says, slow as an avalanche in its own logic. "In a bed. In a house. And wake. You do not understand what wealth that is - borrowed from the deep at no interest. No interest. Nothing Below is given such credit."`,
+      "It envies you so much it becomes gentle. That is as close to holy as this floor will ever be."],
+    talkFail:["It reaches - not fast, it is never fast - to be next to the sleep-adjacent thing, to have stopped, just once. You move first. Then it does."],
+    trade:null,
+    errand:{ kind:"kill", need:2, g:60,
+      assign:[`"Bring down two small deaths upstairs of here," it says. "Any of the little hungry things. And then tell me how it sounded when they stopped. Spare nothing. That part is the payment."`],
+      done:["You tell it, in detail, how the kills sounded, and it listens with all of its hands.",
+        `"Sleepers," it says, finally, satisfied. Something like peace crosses the room. And something like a wage.`] },
+    pact:["It sighs - a room's worth of sighs - and marks you handed. You are one of the animals that gets to stop, and it has decided you know how to spend it."] },
+  { id:"lamp", name:"The Lamp-Bearer Below", kind:"sentient", minTier:1, hp:[10,18,28], atk:[2,3,5],
+    lore:"bellhymn", stat:"wit", dc:9, harsh:false,
+    intro:["A long figure bows in a doorway, immaculate, made of soot and patience. It carries nothing. It is bowed because of the thing in your hand.",
+      "The Lamp-Bearer worships light. To it, humans are sacred animals: the only things Below that carry little suns and refuse to share. It does not understand hunger, sleep, or ownership. It understands flicker."],
+    talk:["The conversation spiders happily. It explains, delighted, that fire is the torn hem of the sun; that your lantern is a portable relic; that the bell-hymn was originally a fire-song - sung to keep the changing ones drowsy.",
+      "Then it hums two notes of it. Correctly. The Holy Gate has never dared."],
+    talkFail:["It dims, mortified, certain it has used the wrong flicker. The audience continues anyway, more sad than before."],
+    trade:{ want:"Ration", giveG:35, line:["You give it a ration. It does not eat it - it holds the wrapped loaf up to your lantern's flame for one long, reverent minute, then pays you as if you had handed over a saint's portrait."] },
+    errand:{ kind:"item", item:"Choirbell Fragment", g:90,
+      assign:[`"Bring me the drowned bell," it says, "and let it hum down here once. After that I will protect your flame through anyone's dreams, for as long as it burns."`],
+      done:["You hand over the bell fragment. It hums into it once - very quietly - then tucks it away.",
+        "From now on, when your lantern gutters, somewhere Below something is cupping its hands around the wind."] },
+    pact:["It bows again, deeper. Your light is now a shrine it visits. The arrangement is unspoken, as most real ones are."] }
+];
+const BOSS_BY_ID={}; for (const b of FLOOR_BOSSES) BOSS_BY_ID[b.id]=b;
 const LORE_FRAG=[
   { id:"ribs", church:"Doctrine says: the world's floor is the bones of the first sinners, cursed to bear us.",
     truth:"They were not sinners. The streets do not stand on bones. The bones hold up the thing the city refuses to name: a torso, city-wide, and the Openings are its entry wounds." },
@@ -3577,6 +3776,13 @@ const BESTIARY_DESC = {
   "The Hundred-Handed Host":"Fifty pairs of hands and one enormous patience. It only wants to hold you.",
   "Pale Chandelier":"The arms of the drowned, arranged as light. It hangs from ceilings that should not exist. So it hangs from yours.",
   "Wound-Warden of the Deep Ward":"A jailer of the city's worst cellar, assembled from other people's unhealed injuries.",
+  "The Gnawing Chancel":"Furniture that grew. A pew of jaws. It has no thoughts to interrupt, and would not use them.",
+  "The Sow of Small Deaths":"A mother of teeth, veils on the hide. Honest hunger; you cannot reason with breakfast.",
+  "The Hunger With a Clock in It":"It counts. It does not consider. The tick deepens as it comes.",
+  "The Marrow Auditor":"A ledger that stood up. To it death is an audit that always balances, and humans are animals that file themselves badly.",
+  "The Cartographer of Veins":"It maps the body under the city, one vein a decade. To it the Openings are wounds and humans are herd animals come to scab.",
+  "The Drowsing Host":"Fifty hands and a never-slept century. To it death is sleep, obvious and democratic, and everything above is rich beyond blame.",
+  "The Lamp-Bearer Below":"It worships your lantern. Humans, to it, are sacred animals that carry small suns and refuse to share.",
   "The Long Mother":"Fifty hands, a warmth at the end of the corridor, and a story about both. Do not go to the warmth.",
   "Crown Commando":"The kingdom's answer to the dark: drilled, sheeted in it-armor, lamps rated for inferiors. Not here for the city's sake - here to bring something back for a dying king, and now perhaps for whoever wears his seals.",
 };
@@ -4101,6 +4307,17 @@ function drawDungeon(){
               if (gl<2){ ctx.fillRect(gx2-1,gy2,3,1); ctx.fillRect(gx2,gy2-1,1,3); }
             }
           }
+        }
+        else if (ev.type==="boss"){
+          const pacted=game.flags.pacts && game.flags.pacts[ev.boss];
+          const pul=(0.12+0.08*Math.sin(worldTick/11+wx*2.1)).toFixed(3);
+          glow(x*T+4,y*T+3,22,pacted? [160,200,235]:[190,120,235],0.14);
+          ctx.fillStyle="rgba("+(pacted? "150,190,230":"180,110,225")+","+pul+")";
+          ctx.fillRect(x*T-1,y*T-1,T+2,T+2);
+          ctx.fillStyle="#14101c"; ctx.fillRect(x*T+2,y*T+1,4,6);
+          ctx.fillStyle=pacted? "#9fc0dd":"#b9a2d8"; ctx.fillRect(x*T+3,y*T+2,2,1);
+          ctx.fillStyle=(worldTick%14<7)? "#e0b1f5":"#a06fd0";
+          ctx.fillRect(x*T+2,y*T,4,1);
         }
         else if (ev.type==="obstacle"){
           if (ev.kind==="rubble"){ ctx.fillStyle="#4b4349"; ctx.fillRect(x*T+1,y*T+2,3,3); ctx.fillRect(x*T+4,y*T+4,3,2); }
@@ -4732,7 +4949,10 @@ window.__openings={
   sharkTrigger, sharkMeet, fellowsCollect, fellowsMenu, fellowsBeat, leaveDungeon,
   get loan(){ return game && game.flags? (game.flags.loan||null) : null; },
   ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC,
-  get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; }
+  get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; },
+  FLOOR_BOSSES, BOSS_BY_ID, bossEvent, miniFoe, bossErrandState, flagsPacts, flagsErrands, grantBossLore,
+  get pacts(){ return game && game.flags? (game.flags.pacts||{}) : {}; },
+  get errands(){ return game && game.flags? (game.flags.errands||{}) : {}; }
 };
 </script>
 </body>

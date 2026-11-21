@@ -215,8 +215,25 @@ an auto-walk in progress.
    - **Thresholds.** Where a room opens into a tunnel, the doorway is
      drawn as a pale worn-steel line, distinct from the gold room outline,
      so the way on is always legible.
-   - **Puzzles** — a door of fused vertebrae that riddles you, a three-lever
-     panel with scratched hints, a basin that trades blood for barrows.
+   - **The floor's landlord.** Every floor has its own **miniboss** keeping
+     one of the rooms, marked by a violet aura you can see before you step
+     in. Some of them (the Gnawing Chancel, the Sow of Small Deaths, the
+     Hunger With a Clock in It) are simply **bloodthirsty beasts** — strong,
+     honest, and about as negotiable as gravity. But the deep also grows
+     **persons**, and their minds work along different walls: to the Marrow
+     Auditor, death is just an audit that finally balances; to the Drowsing
+     Host, sleep is wealth and you are rich beyond blame; the Cartographer
+     of Veins is certain humans are herd animals that come down here to
+     scab; the Lamp-Bearer worships your lantern outright. Talk to them —
+     a Wits or Will check opens their world a crack, and a success can
+     hand you a **truth fragment** the surface churches have never had.
+     They **trade** (wet ledgers, hide-maps, bells and rations all have
+     buyers below), assign **errands** (deliver a relic, or put down two
+     small deaths and tell your host how it sounded), and if you honor an
+     errand you gain a **pact**: your names go in their book, and every
+     landlord of that lineage will meet you as a friend instead of a fight,
+     forever. Fail a conversation with an unforgiving one and the audience
+     becomes a bout.
    - **Corpses of delvers** (loot them, or bury them — one of them stands up)
      and old shrines that ask nothing and offer plenty.
 
@@ -513,6 +530,10 @@ an auto-walk in progress.
   deserters, the adviser's failure, the grey figure — and are
   therefore different news depending on whether you read them as a
   17-year-old delver or as your own child.
+- Every floor keeps a **miniboss** (7 landlord lineages: 3 beasts, 4
+  alien persons). Landlords can grant truth fragments, trade, assign
+  errands, and become permanent non-hostile **pacts** once an errand is
+  honored. Their stats scale with the floor's danger tier.
 - Aging: no time limits, but years pass as you train, delve, and rest;
   max HP declines past 40. Jericho keeps the receipts.
 - Inventory is slot-capped; the Deep Cellar upgrade adds 8 slots and lets
