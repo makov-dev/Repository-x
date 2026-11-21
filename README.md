@@ -138,6 +138,16 @@ an auto-walk in progress.
    - **Grave-Market: packs.** Carry **10** items; buy a **Satchel (35g,
      +3)** or **Expedition pack (90g, +6)** up to 19. Items stack, slots
      don't; the deep-cellar widens the chest instead.
+   - **Honest work, if you want it badly enough.** The Washhouse, the
+     Bone Carver, the Tallowworks and the Pawnbroker will take a shift
+     off you - two weeks and 35 stamina (more than the Yard ever asks)
+     for a wage counted in single coins (2-6g), with maybe a one-in-
+     seven chance the work itself teaches your body something (Agility
+     at the wringing, Wits on the appraisal bench, Will in the vats,
+     Strength portering the Market's freight). Honest work pays worse
+     than the dark and teaches slower than the Yard. But it is sure,
+     and sure is never cheap. Too tired to hold a mop? The option does
+     not exist that day.
    - **Church of the Holy Gate** — pray for free (sincerity optional; results
      vary by Will), light a candle for the dead (+2 HP), renew vows —
      and **pay for funerals**. When city-folk die the news says who
@@ -145,6 +155,17 @@ an auto-walk in progress.
      heals a wound of your own, or hardens you (+1 Will).
    - **Training Yard** — pay sweat and stamina to grind STR/AGI/WIT/WLL.
    - **Gate of Openings** — choose which crack in the world to crawl into.
+
+   **Every place is somebody's job.** Eleven facilities have a keeper
+   who is always there: Master Pell the guild clerk, Weigh-mistress
+   Corrin, Setter Mala, Barkeep Odo, Clerk Ivvan, the Sexton, Yard-
+   master Grett, Laundress Suki, Carver Nol, Old Wick and Broker Feen.
+   They know you the way the street does — first visits you are furniture,
+   then a nod, eventually your name, and the day comes when "***your
+   title*** first," is the whole conversation. Regulars get trusted:
+   from the sixth visit on, a keeper may share what their counter hears
+   — and a counter in Jericho hears the kingdom's business. (The clinic
+   hears nothing but screaming; Mola keeps none of it.)
 
 2. **The Openings (dungeons).** Three gates (danger tiers I–III), each with
    procedurally generated floors: random rooms and corridors, descending
@@ -317,6 +338,25 @@ an auto-walk in progress.
    Hall or the Church. Nine fragments exist. The city will never say
    any of them aloud.
 
+   **And beneath the truth, a second layer of wrong.** Jericho technically
+   falls under the kingdom, and the kingdom's paper still finds its way
+   in: thirteen scraps of decree, gossip and paperwork — no army ever
+   comes to collect; the tax assessors' ledgers came back by cart while
+   the assessors stayed below; every exile the kingdom wants forgotten
+   is shipped in; one road in and no road out; the old, dying king's
+   agents in their court accents, gently asking divers what cures age
+   down there, paid from a mint nobody has seen, working from one line
+   translated wrong (*HE WHO HOLDS THE GATE SHALL NOT DIE* — the line
+   continues, unhelpfully, *HE SHALL NOT DIE EVER, WHICH IS DIFFERENT*).
+   Rumors are found the way truths are: the sexton's pretended gossip,
+   the polite strangers in the Lamp's corner, the clerk off the record,
+   a dead man's court papers, the pawnbroker who has priced everything,
+   and the placements in old stonework. The codex keeps both piles —
+   *what the Holy Gate sings* against *what the dark says*, and below
+   them, *what the kingdom says*, which is mostly mistold, self-serving,
+   and — here is the cruelty of it — **almost all of it true**. None of
+   it advances what the Gate asks of you. The Gate does not deal in paper.
+
 10. **The Threshold.** When the dark has told you enough — six truths,
     the three great horrors of the deep given their deaths, the ninth
     depth witnessed, five graves paid for, and a child left behind who
@@ -334,15 +374,31 @@ an auto-walk in progress.
 11. **Death & the blood line.** Death is permanent — but a child of 14 or
    more *continues*: the save stands, you take over the heir with half your
    old body's leanings plus their taught "spark" for stats, the house and
-   its upgrades, your good weapons, and 15g (inheritance is taxed). Dead
-   too young to leave a grown heir? The save is wiped. A widowed spouse is
-   remembered in the world — and courting your own parent is, correctly,
-   impossible.
+   its upgrades, your good weapons, and 15g (inheritance is taxed).
+
+   **The posthumous heir.** Die childless but with a living wife, and the
+   midwife climbs the stair before the wax on your name dries: she was
+   with child — yours, dated to the week you went down. Then seventeen
+   years pass *in the world, not to a fade-out*: NPCs age their thousands
+   of weeks, wed, and die of age — the old grandmothers go in the first
+   winters, new faces arrive with the carts, the street crowd it replaced
+   never knew you. Your widow may live to meet the heir she raised on
+   your stories and her own unkind addenda; or Jericho raises the child
+   on leavings, and your mother's grave is under the Church's slates with
+   your name in her book, spelled right. You take over the heir at 17
+   with a spark the single bed left bright, one house richer in grief —
+   and the Gate's blood condition carried forward, not skipped. Dead with
+   nothing at all? The save is wiped. A widowed spouse is remembered in
+   the world — and courting your own parent is, correctly, impossible.
 
 ## Systems summary
 
 - Stats: STR/AGI/WIT/WLL; checks are d10 + stat − wounds vs difficulty.
-- Stamina economy gates everything: delving, training, burial.
+- Stamina economy gates everything: delving, training, burial — and
+  honest work, which spends it at a loss.
+- Two ledgers of hidden lore: 9 truth fragments (they feed the Gate's
+  conditions) and 13 kingdom scraps (they feed only the city's
+  misreading of itself). Neither ledger mentions the other.
 - Aging: no time limits, but years pass as you train, delve, and rest;
   max HP declines past 40. Jericho keeps the receipts.
 - Inventory is slot-capped; the Deep Cellar upgrade adds 8 slots and lets

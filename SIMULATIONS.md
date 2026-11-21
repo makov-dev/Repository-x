@@ -177,3 +177,19 @@ player was under the city.
   rose after rose ("weeks are the clock"), won the Bones Game twice,
   cellar upgrade by 20y10, and the bellhymn fragment at the thirteenth candle.
   The exception the city allows.
+
+## 13. Re-run after the inheritance round (build with pregnancy heirs,
+kingdom rumors, work shifts and facility keepers)
+
+Same rig, same 50/50 split, new build - a full-loop regression pass and a
+check that the new systems didn't distort the economy the personas play:
+
+- Door-Chasers: died 42/50 (was 41/50), reached the Gate 0/50, deepest depth
+  median 7 max 9, truths median 3 max 7, great horrors >=1 in 31 runs,
+  all-three 6, heirs continued 3/50.
+- Roof-Menders: died 8/50 (was 13/50), married 28/50, housed 39/50, upgrades
+  median 5, bones wins median 3, born children 28 - mildly kinder spread,
+  consistent with dice weather rather than drift.
+- Conclusion: the new layers ride alongside; the Gate remains unreached in
+  100 lives, and work shifts do not yet appear in persona playbooks (they
+  are below the survival bar the rig is tuned for - as designed).

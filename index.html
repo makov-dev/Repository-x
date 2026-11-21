@@ -373,6 +373,75 @@ const WORK_LINES={
   tallow:"fat going to candlelight, hour by hour. The whole block burns its own dead, most nights.",
   pawn:"everything somebody sold to stay another week, priced accordingly. The clerk nods without greeting."
 };
+/* ----- facility keepers: every place is somebody's job ----- */
+const KEEPERS={
+  guild:  { name:"Master Pell", role:"the guild clerk", desc:"Teeth too few for the jokes he still tells with them.", src:["guild","dungeon"],
+    g:["\"Deeds,\" he says, as if you had come for anything else.","He points you at the slate without looking up.","\"Back again. Good. The ink on your name never dries down here.\""] },
+  market: { name:"Weigh-mistress Corrin", role:"the weigh-mistress", desc:"Weighs loot like a judge and haggles like an open wound.", src:["market","dungeon"],
+    g:["Her scales do not have a generous setting.","She nods at your pack, which is a discount of mouth.","\"Your step is known upstairs and down,\" she says, ending the argument before it starts."] },
+  clinic: { name:"Setter Mala", role:"the flesh-setter", desc:"Her needles are honest; her brandy is not.", src:[],
+    g:["\"Sit where the light is,\" she says, ending the exam before it begins.","Her mosaic of freed scars rustles when she shrugs.","\"You keep coming back. That is the healthiest thing about you.\""] },
+  tavern: { name:"Barkeep Odo", role:"the barkeep", desc:"Remembers everything ordered and nothing said.", src:["tavern","church"],
+    g:["He pours your usual, which you have never ordered before tonight.","He marks your slate with two fingers. A truce.","\"The usual,\" he says, and somehow it is."] },
+  office: { name:"Clerk Ivvan", role:"the housing clerk", desc:"Has four deeds left and has learned to grieve them.", src:["guild"],
+    g:["She straightens a stamp that does not need it.","\"Alive,\" she notes, crediting you the compliment.","\"Your name comes up less for debt now,\" she says. In Jericho, a love letter."] },
+  church: { name:"the Sexton", role:"the sexton", desc:"Digs the poor graves himself and hates the arithmetic.", src:["church"],
+    g:["He does not interrupt your silence, and you do not interrupt his.","He marks your seat with a thumb-smudge of grave-dirt. Attendance.","\"The pews remember you,\" he says. Pews, in his mouth, means the dead ones."] },
+  yard:   { name:"Yard-master Grett", role:"the yard-master", desc:"Her drills have outlived four wars and one marriage.", src:["dungeon"],
+    g:["\"Feet first,\" she says, ending your warm-up.","She tosses you the worn stave. Hers, not the rack's.","\"You drill like a person with reasons,\" she says. Highest score she gives."] },
+  wash:   { name:"Laundress Suki", role:"the laundress", desc:"Knows every wound in the ward by its stain pattern.", src:[],
+    g:["\"Rinse your own blood out. House rule, not kindness.\"","She has your shape of shirt memorized.","\"Steady work steadies the hands,\" she says, ending the argument."] },
+  carver: { name:"Carver Nol", role:"the bone-carver", desc:"Prays over every femur he prices.", src:["dungeon"],
+    g:["\"Silence,\" he says. The chisel must hear.","He saves his best bone-dust breaths for regulars.","\"The dark keeps its ledgers,\" he says. \"So do I.\""] },
+  tallow:{ name:"Old Wick", role:"the renderman", desc:"Rendered fat for sixty years. Smells like everyone's funerals.", src:["market"],
+    g:["\"Mind the vats. They mind you back.\"",
+       "He stirs without looking. His arm does the work of two staves.",
+       "You smell of the works now. So does he. It is a kind of family."] },
+  pawn:   { name:"Broker Feen", role:"the pawnbroker", desc:"Priced everything in Jericho twice and himself never.", src:["market","tavern"],
+    g:["\"Everything sold here is a confession.\"","He looks at you the way he looks at a fake ring: as a number with hopes.","\"Your coin spends steadier nowadays,\" he says. Almost a blessing."] }
+};
+function bumpVisit(id){
+  if (!game.flags.visits) game.flags.visits={};
+  game.flags.visits[id]=(game.flags.visits[id]||0)+1;
+  return game.flags.visits[id];
+}
+function keeperGreet(id){
+  const k=KEEPERS[id]; if (!k) return null;
+  const v=game.flags.visits[id]||1;
+  if (v===1) return [k.name+", "+k.role+", has not decided about you yet. "+k.desc, k.g[0]];
+  if (v<=3) return [k.name+": "+k.g[1]];
+  if (v<=7) return [k.g[2]];
+  return ["\""+addr()+" first,\" "+k.name+" says, and lets the title carry the greeting."];
+}
+function keeperChat(id){
+  const k=KEEPERS[id]; if (!k || !k.src) return null;
+  const unfound=LORE_KINGDOM.filter(r=>k.src.indexOf(r.src)>=0 && !hasRumor(r.id));
+  if (!unfound.length) return null;
+  const r=pick(unfound);
+  findRumor(r.id, k.name);
+  return r.text;
+}
+/* ----- honest work: pays worse than the dark, teaches slower than the yard ----- */
+const WORK_JOBS={
+  market:{ stat:"str", label:"Strength",  hint:"portering the staggers' freight up the ramp, crate by crate", story:"You carry what the carts bring: wax, salt, rope-heavy crates that drip a little and settle wrong. Your spine files a complaint, in triplicate." },
+  wash:  { stat:"agi", label:"Agility",   hint:"steaming other people's sheets for coins that smell like the sheets", story:"You wring, you stretch, you dodge the scalds. Your arms learn to move before you finish thinking." },
+  carver:{ stat:"wit", label:"Wits",      hint:"carving prayers into things that used to be walked on", story:"You measure twice and cut once, and learn where a skull keeps its secrets. The dust gets into your wits and settles something straight." },
+  tallow:{ stat:"wll", label:"Will",      hint:"rendering the ward's fat into light, and the market pays for light", story:"The vats breathe their smell into your clothes, your hair, your sleep. The job is the stirring. The stirring is staying. Your will learns what your back already knows." },
+  pawn:  { stat:"wit", label:"Wits",      hint:"appraising what desperation brings in, at prices desperation accepts", story:"Ten stopped clocks, nine spoons, one thing you decline to price out loud. The sums teach you the arithmetic of damage." }
+};
+function workShift(id){
+  const j=WORK_JOBS[id], p=game.player;
+  if (!j){ return; }
+  if (p.stam<35){ say(["Your hands shake too much to be trusted with honest work. Rest first."]); return; }
+  const pay=2+irnd(5);
+  p.gold+=pay; p.stam-=35;
+  advanceWeeks(2);
+  const out=[j.story, "Pay: "+fmt(pay)+"g, counted twice. Stamina pays the rest."];
+  if (Math.random()<0.15){ p[j.stat]+=1; sfx("gain"); sparkBurst(W/2, 80, "#e0b95a", 10, 1);
+    out.push("Hard work teaches what coin will not: "+j.label+" rises to "+p[j.stat]+"."); }
+  else out.push("It pays less than the dark and teaches slower than the yard. But it is sure, and sure is never cheap.");
+  say(out, ()=>saveGame());
+}
 function spawnTownfolk(){
   if (!game.doorTiles || !game.doorTiles.length) game.doorTiles=computeDoorTiles();
   const dt=game.doorTiles;
@@ -732,6 +801,8 @@ function loadGame(){
       if (!Array.isArray(game.townfolk)) game.townfolk=[];
       if (!Array.isArray(game.townPool)) game.townPool=[];
       if (!Array.isArray(game.flags.lore)) game.flags.lore=[];
+      if (!Array.isArray(game.flags.rh)) game.flags.rh=[];
+      if (!game.flags.visits) game.flags.visits={};
       if (typeof game.flags.funerals!=="number") game.flags.funerals=0;
       if (typeof game.flags.candles!=="number") game.flags.candles=0;
       game.state = game.dungeon? "dungeon":"base";
@@ -840,6 +911,16 @@ function nearBuilding(b, px, py){
   return (px>=b.x-1 && px<=b.x+b.w && py>=b.y-1 && py<=b.y+b.h);
 }
 function enterBuilding(b){
+  if (KEEPERS[b.id]){
+    const v=bumpVisit(b.id);
+    const g=keeperGreet(b.id);
+    const chat= v>=6 && Math.random()<0.35 ? keeperChat(b.id) : null;
+    const show= v<=2 || v===4 || v===8 || v===13 || !!chat;
+    if (show && (g || chat)){ say([].concat(g||[], chat? [chat]:[]), ()=>openFacility(b)); return; }
+  }
+  openFacility(b);
+}
+function openFacility(b){
   switch (b.id){
     case "guild": openGuild(); break;
     case "market": openMarket(); break;
@@ -859,8 +940,18 @@ function enterBuilding(b){
       } else if (b.work){
         const fol=game.townfolk.filter(w=>w.workId===b.id);
         const names=fol.map(w=>w.name).join(", ");
-        say([b.label+": "+(WORK_LINES[b.id]||"Work happens here. Nobody loves it."),
-             names? "At the benches today: "+names+"." : "The benches are empty. Odd hour, or late debts."]);
+        const opts=[{ t:"Loiter among the workers", fn:()=>{
+            say([b.label+": "+(WORK_LINES[b.id]||"Work happens here. Nobody loves it."),
+                 names? "At the benches today: "+names+"." : "The benches are empty. Odd hour, or late debts."]); } }];
+        if (WORK_JOBS[b.id] && game.player.stam>=35)
+          opts.unshift({ t:"Take a shift (2 weeks, stamina -35)", d:WORK_JOBS[b.id].hint, fn:()=>workShift(b.id) });
+        if (b.id==="pawn" && LORE_KINGDOM.some(r=>r.src==="market" && !hasRumor(r.id)))
+          opts.push({ t:"Ask about the crown's business", fn:()=>{
+              const r=pick(LORE_KINGDOM.filter(x=>x.src==="market" && !hasRumor(x.id)));
+              findRumor(r.id, "the pawnbroker, who has priced everything");
+              say(["He looks at you the way he looks at a fake ring: as a number with hopes.",
+                   "Everything the kingdom ships in stays. Nothing ships out. \"You work that out,\" he says."]); } });
+        showMenu(b.label.toUpperCase(), opts);
       }
   }
 }
@@ -893,6 +984,9 @@ function buyRumor(){
       "A diving crew came back from "+o.name+" short two men. The two men came back a week later.",
       "Cold air rises from "+o.name+". Colder every year."
     ])};
+    if (Math.random()<0.35){ const gr=pick(LORE_KINGDOM.filter(r2=>r2.src==="guild" && !hasRumor(r2.id)));
+      if (gr) findRumor(gr.id, "the clerk, off the record");
+    }
     say(["The clerk leans close.","\""+game.flags.guildRumor.note+"\""]);
   } else {
     say(["The clerk blinks slowly. \"Nothing worth your purse. Keep your coin.\""]);
@@ -905,6 +999,7 @@ function openMarket(){
     { t:"Sell loot ("+lootValue()+"g on your person)", fn:sellMenu },
     { t:"Supplies", fn:supplyMenu },
     { t:"Ironmonger (weapons & armor)", fn:gearMenu },
+    ...(game.player.stam>=35? [{ t:"Porter freight for the staggers (2 weeks, stamina -35)", d:WORK_JOBS.market.hint, fn:()=>workShift("market") }]:[]),
     { t:"Leave", fn:()=>{} }
   ]);
 }
@@ -1063,6 +1158,12 @@ function openChurch(){
       opts.push({ t:"Ask about funerals", fn:()=>{
           say(["\"Only the paid get buried proper,\" the sexton says. \"The rest go to the pits. It is arithmetic, not cruelty. Well - both.\""], ()=>openChurch()); } });
     }
+    if (LORE_KINGDOM.some(r=>r.src==="church" && !hasRumor(r.id)))
+      opts.push({ t:"Ask the sexton what the kingdom wants here", fn:()=>{ advanceWeeks(1);
+          const r=pick(LORE_KINGDOM.filter(x=>x.src==="church" && !hasRumor(x.id)));
+          findRumor(r.id, "the sexton, who pretends it is gossip");
+          say(["The sexton straightens candles that do not need straightening.",
+               "\"The kingdom forgot this place the way you forget a debt,\" he says. \"It still pays interest.\""], ()=>openChurch()); } });
     if (p.spouse) opts.push({ t:"Renew your vows with "+p.spouse.name.split(" ")[0], fn:()=>{
         p.stam=clamp(p.stam+15,0,maxStam());
         say(["Old words, older dust, both rings warmed by the same candle.","You walk out lighter than the mathematics of it explains."], ()=>openChurch()); saveGame(); } });
@@ -1110,6 +1211,7 @@ function openTavern(){
           say(["Grease, onions, mystery. You feel like a person again."], ()=>openTavern()); } },
       { t:"The Bones Game (stake 10g)", fn:()=>bonesGame(10) },
       { t:"Buy a round, listen to the room (8g)", fn:listenTavern },
+      ...(LORE_KINGDOM.some(r=>r.src==="tavern" && !hasRumor(r.id))? [{ t:"Sit near the polite strangers (8g)", d:"Court vowels. New coin. They keep asking divers what cures age.", fn:tavernAgents }]:[]),
       { t:"Who is here tonight? (court here)", fn:rosterMenu }
     ];
     if (p.partner) opts.push({ t:"Court "+p.partner.name.split(" ")[0], fn:courtWith });
@@ -1169,6 +1271,21 @@ function listenTavern(){
     "\"The Long Mother is a story. A story with fifty hands, but a story.\""
   ])], ()=>{ if (Math.random()<0.15) findLore("changed","the wrong stories, told right");
              openTavern(); });
+}
+function tavernAgents(){
+  const p=game.player;
+  if (p.gold<8){ say(["They glance at your empty hands and pour their wine thinner."], ()=>openTavern()); return; }
+  p.gold-=8;
+  const unfound=LORE_KINGDOM.filter(r=>r.src==="tavern" && !hasRumor(r.id));
+  const r=unfound.length? pick(unfound) : null;
+  const lines=["You take the corner table. Two straight-backed strangers with court vowels are asking divers, gently, what cures age down there.",
+               "\"There is nothing down there but teeth,\" somebody mutters. The strangers write down the teeth."];
+  if (r){
+    findRumor(r.id, "the polite strangers");
+    lines.push("One of them buys you a wine you did not order and pays with coin too new to be dirty.");
+  }
+  say(lines, ()=>openTavern());
+  saveGame();
 }
 function courtMeet(){
   const p=game.player;
@@ -1307,7 +1424,9 @@ function openHome(){
   const p=game.player;
   if (!p.house){ say(["Wrecked rooms behind a rotted door. Yours someday, maybe. If you live and pay."]); return; }
   const lines=["Home. The floor slants, the roof holds, the dead stay outside.",
-               p.spouse? p.spouse.name+" has the kettle on." : "No one waits up for you. Yet."];
+               p.spouse? p.spouse.name+" has the kettle on."
+               : game.flags.posthumous? "The house remembers two keepers: the one it buried, and you."
+               : "No one waits up for you. Yet."];
   if (p.child) lines.push(p.child.name+" babbles at a dust mote.");
   say(lines, ()=>{
     const opts=[
@@ -1354,7 +1473,7 @@ function homeRest(){
   saveGame();
 }
 function teachChild(){
-  const c=game.child;
+  const c=game.player.child;
   if (!c) return;
   c.spark+=1;
   say([pick([
@@ -1786,6 +1905,7 @@ function corpseEvent(ev){
           if (roll<0.5){ ev.done=true;
             const l=rollLoot(game.dungeon.tierNow,1);
             if (Math.random()<0.25) findLore("gild","a dead man's ledgers");
+            else if (Math.random()<0.35) findRumor("misread","court papers, carried past the point of use");
             say(["You strip the pack. \"Sorry,\" you say. The corpse's jaw hangs a little lower."], ()=>{
               takeMany(l, null); }); }
           else if (roll<0.8){
@@ -1916,6 +2036,11 @@ function hurt(n, msg){
   say(lines);
   saveGame();
 }
+const HEIR_NAMES=["Toma","Oren","Wren","Silla","Bray","Neme","Cass","Ivo","Petra","Lun","Mote","Ansk"];
+function heirName(sp){
+  const m=sp.name.match(/of the [A-Za-z' ]+/);
+  return pick(HEIR_NAMES)+(m? " "+m[0].trim() : "");
+}
 function die(cause){
   const p=game.player;
   game.combat=null; deadPage=0;
@@ -1927,6 +2052,23 @@ function die(cause){
     ep.push("But blood remembers: "+p.child.name+", "+Math.floor(p.child.weeks/52)+" years old, old enough to hate the doors and grown enough to open them.");
     ep.push("What is inherited: the house and its improvements, " + (p.weapon.d>2? "your "+p.weapon.n+", ":"") + "the leanings of your body, and a spark of "+p.child.spark+".");
     ep.push("The save stands. Jericho shrugs. The lamp is relit.");
+    ep.push("[ENTER] take up the knife as "+p.child.name+".");
+    game.state="legacy";
+    game.flags.epilogue=ep;
+    return;
+  }
+  if (p.spouse && !p.spouse.dead && !p.child){
+    const sp=p.spouse;
+    game.flags.posthumous=1;
+    ep.push("The wax is barely dry on your name when the midwife climbs the stair: "+sp.name.split(" ")[0]+" is with child. Yours. Counted back, it was conceived the same week you went down.");
+    p.child={ name:heirName(sp), weeks:0, spark:2 };
+    for (let yr=0; yr<17; yr++) advanceWeeks(52);
+    game.townfolk=[];
+    const news=drainNews();
+    if (news.length){ ep.push("The seventeen years, briefly:"); ep.push(...news.slice(0,7)); }
+    if (sp.dead) ep.push(sp.name+" did not live to see it grown. Jericho raised "+p.child.name+" the way Jericho raises everything: on other people's leavings, and tough as boot leather.");
+    else ep.push(sp.name+" ("+Math.floor(sp.ageWeeks/52)+" winters now) raised "+p.child.name+" on your stories and her own addenda, most of them unkind and all of them true.");
+    ep.push("What is inherited: the house and its improvements, "+(p.weapon.d>2? "your "+p.weapon.n+", ":"")+"the leanings of your body, and a spark of "+p.child.spark+" - bright, for a child conceived against arithmetic.");
     ep.push("[ENTER] take up the knife as "+p.child.name+".");
     game.state="legacy";
     game.flags.epilogue=ep;
@@ -2521,11 +2663,41 @@ function maybeDepthLore(depth){
   if (depth===5) findLore("gild","the fifth depth, where the dark starts paying");
   if (depth===7) findLore("notheaven","the seventh depth, where the stone forgets");
   if (depth===9) findLore("keeper","the ninth depth, which has a door in it");
+  if (depth===2) findRumor("walls","placements in the stonework nobody explains");
+  if (depth===4) findRumor("census","a census page, filed in the dark");
+  if (depth===6) findRumor("oneway","the mouth of the road, seen from underneath");
 }
 function maybeFoeLore(n){
   if (n==="The Hundred-Handed Host") findLore("host","the Host's hundred deaths");
   if (n==="Wound-Warden of the Deep Ward") findLore("warden","the knot you cut out");
   if (n==="The Long Mother") findLore("mother","the warmth that lied");
+}
+const LORE_KINGDOM=[
+  { id:"noarmy",  src:"church",  text:"Jericho is the kingdom's, the maps insist. No army has ever come to collect. The last one sent a letter instead." },
+  { id:"taxmen",  src:"guild",   text:"Tax assessors tried Jericho three times. Their ledgers came back by cart. The assessors stayed below, in whatever way the dark allows." },
+  { id:"exiles",  src:"church",  text:"Every exile the kingdom wants forgotten is shipped here. The city is the sentence. That is why nobody guards the gates: gates are for people with somewhere else." },
+  { id:"oneway",  src:"dungeon", text:"One road leads to Jericho and no road leads out. The carters laugh at the joke until it stops being funny in their mouths: the road is a mouth, and we were all swallowed." },
+  { id:"oldking", src:"tavern",  text:"The king is old and dying slowly in a capital that will not say the word. His physicians have run out of science and started buying rumor." },
+  { id:"agents",  src:"tavern",  text:"Polite strangers with court accents ask divers, gently, what cures age down there. They pay in coin too new to be dirty. Nobody has seen the mint." },
+  { id:"misread", src:"dungeon", text:"The crown's agents work from one line, translated wrong: HE WHO HOLDS THE GATE SHALL NOT DIE. The line continues: HE SHALL NOT DIE EVER, WHICH IS DIFFERENT." },
+  { id:"census",  src:"dungeon", text:"The crown has not counted Jericho in sixty-one years. The last census team submitted one final page: a list of names underlined in something that tests as eyebrow." },
+  { id:"gaolers", src:"guild",   text:"Condemned prisoners arrive with pardons reading 'for service below'. No one has ever met a man discharged from that service alive, or at all." },
+  { id:"tithe",   src:"market",  text:"The crown still ships the tithe in twice a year - wax, salt, rope-heavy crates that drip. Nothing ships out. What a kingdom buys with a city is not recorded." },
+  { id:"walls",   src:"dungeon", text:"The old garrison walls were built facing inward. Either the enemy was the city, or the city was something's pen." },
+  { id:"heirs",   src:"market",  text:"Three heirs quarrel over a rotting throne while the agents answer to a fourth office with no name and a budget with no ceiling. The old king knows. The old king pays." },
+  { id:"hymn",    src:"church",  text:"A crown agent paid the Holy Gate a fortune to keep singing the bell-hymn exactly wrong. The sexton counts the money and asks no questions. The money is the psalm." }
+];
+const RH_BY_ID={}; for (const r of LORE_KINGDOM) RH_BY_ID[r.id]=r;
+function hasRumor(id){ const fr=(game.flags.rh||[]); return fr.indexOf(id)>=0; }
+function findRumor(id, via){
+  if (!game || hasRumor(id)) return;
+  const r=RH_BY_ID[id]; if (!r) return;
+  game.flags.rh=game.flags.rh||[];
+  game.flags.rh.push(id);
+  setBanner(["WHAT THE KINGDOM SAYS", (via? "From "+via+". ":"")+r.text.slice(0,42)+"..."]);
+  sfx("gain");
+  sparkBurst(W/2, 60, "#9db3d6", 22, 1.5);
+  saveGame();
 }
 function gateConditions(){
   const p=game.player, fl=game.flags.lore||[];
@@ -2552,6 +2724,11 @@ function openCodex(){
   for (const fr of recent){
     lines.push("The Holy Gate sings: "+fr.church.slice(0,100));
     lines.push("The dark says: "+fr.truth.slice(0,100));
+  }
+  const rh=game.flags.rh||[];
+  if (rh.length){
+    lines.push("What the kingdom believes: "+rh.length+" of "+LORE_KINGDOM.length+" scraps of decree, gossip, and paperwork.");
+    for (const id2 of rh.slice(-3)){ const r=RH_BY_ID[id2]; if (r) lines.push("The crown's version: "+r.text.slice(0,110)); }
   }
   say(lines, ()=>{ if (fl.length>=4) thresholdMenu(); });
 }
@@ -3703,9 +3880,16 @@ function continueAsChild(){
   closeUI(); game.state="base"; mapOpen=false;
   game.flags.news=[];
   cityGrid=buildCity();
-  say(["The lamp is relit. "+game.player.name+" of the leaning house takes up the knife at "+Math.floor(game.week/52)+" years old.",
-       "Strong as half a dead parent and some of their habits. The house stands because somebody kept paying for it.",
-       "The Openings will remember your old name soon enough. The Gate has not moved."], ()=>saveGame());
+  const heirLines=[
+    "The lamp is relit. "+game.player.name+" of the leaning house takes up the knife at "+Math.floor(game.week/52)+" years old.",
+    game.flags.posthumous? "You were born against arithmetic, into a house that already had one keeper in the ground."
+      : "Strong as half a dead parent and some of their habits. The house stands because somebody kept paying for it.",
+    "The Openings will remember your old name soon enough. The Gate has not moved."
+  ];
+  if (game.flags.posthumous && old.spouse) heirLines.push(!old.spouse.dead?
+    "Your mother is there when you wake. She has not spoken your father's name since, and she counts your rations like a woman keeping score."
+    : "Your mother is buried under the Holy Gate's slates. The sexton keeps your name in her book, spelled right.");
+  say(heirLines, ()=>saveGame());
 }
 function updateUI(){
   const u=game.ui;
@@ -3806,6 +3990,7 @@ window.__openings={
   get hint(){ return String(hintMsg||""); },
   get earsHinted(){ return game && game.flags? !!game.flags.earsHinted : false; },
   droneHush:droneHush,
+  findRumor, hasRumor, LORE_KINGDOM, RH_BY_ID, KEEPERS, WORK_JOBS, workShift, keeperGreet, bumpVisit, heirName, keeperChat,
   get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; }
 };
 </script>
