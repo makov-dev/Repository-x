@@ -724,7 +724,7 @@ function newGame(){
       weapon:{n:"Rusted Knife", d:2},
       armor:{n:"Padded Rags", a:1},
       inv:[ {n:"Ration", v:8, qty:3, kind:"food"}, {n:"Bandage", v:10, qty:1, kind:"heal"} ],
-      wounds:[],
+      wounds:[], ills:[],
       house:null, upgrades:[],
       spouse:null, partner:null, tryChild:0, child:null,
       kills:0, delves:0, deep:0,
@@ -742,6 +742,45 @@ function newGame(){
   };
 }
 
+/* ----- the body's credit: stamina below zero is loaned meat ----- */
+const STAM_FLOOR=-25;
+const LOAN_MILES=[
+  { at:0.01, head:"UNDER EMPTY - THE BODY LENDS", warn:"You are below empty, running on the body's own credit. It collects as it goes - an injury or an illness for every stretch of the loan. The further you press, the closer the whole debt comes to coming due." },
+  { at:8,    head:"THE LOAN TAKES AGAIN", warn:"It is collecting in meat and sickness, and -25 is the end of the credit. Past that line, every step is a roll to keep standing." },
+  { at:16,   head:"THE LOAN TAKES AGAIN", warn:"Credit is nearly gone. Eat, sleep, or turn back - anything past -25 is a death roll at the body's table." },
+  { at:24,   head:"THE LAST OF THE CREDIT", warn:"Every step from here is a death roll at the body's table. Eat now, climb now, or the debt is collected in full." }
+];
+function exhaustAilment(){
+  const p=game.player;
+  p.wounds=p.wounds||[];
+  if (!p.ills) p.ills=[];
+  if (Math.random()<0.5){
+    const limb=pick(["knee","back","ribs","hand","leg","arm"]);
+    if (p.wounds.indexOf(limb)<0){ p.wounds.push(limb);
+      return "It takes payment in flesh: your "+limb+" goes wrong. (a new wound)"; }
+    return "It takes payment in flesh: your old "+limb+" wakes up worse.";
+  } else {
+    const ill=pick(["a wracking cough","the deep sweats","a fever with opinions","an ear-sickness that tilts every corridor"]);
+    if (p.ills.length<4){ p.ills.push(ill);
+      return "It takes payment in sickness: you catch "+ill+". (every check carries it)"; }
+    return "You are already as sick as a body can be. It bills you anyway.";
+  }
+}
+function exhaustHit(mi){
+  say([mi.head, mi.warn, exhaustAilment()]);
+}
+function drainStam(v){
+  const p=game.player;
+  const was=p.stam;
+  p.stam=clamp(p.stam-v,STAM_FLOOR,maxStam());
+  if (p.stam===was) return;
+  if (p.stam>=0){ p.loanMile=0; return; }
+  if (p.loanMile===undefined) p.loanMile=0;
+  while (p.loanMile<LOAN_MILES.length && (-p.stam)>LOAN_MILES[p.loanMile].at){
+    exhaustHit(LOAN_MILES[p.loanMile]);
+    p.loanMile++;
+  }
+}
 function maxStam(){
   const p=game.player;
   return 100 + (p.upgrades.indexOf("leak")>=0?15:0);
@@ -855,6 +894,7 @@ function loadGame(){
       if (typeof Pl.deep!=="number") Pl.deep=0;
       if (typeof Pl.packs!=="number") Pl.packs=0;
       if (!Array.isArray(Pl.chest)) Pl.chest=[];
+      if (!Array.isArray(Pl.ills)) Pl.ills=[];
       if (!Array.isArray(game.townfolk)) game.townfolk=[];
       if (!Array.isArray(game.townPool)) game.townPool=[];
       if (!Array.isArray(game.flags.lore)) game.flags.lore=[];
@@ -1168,6 +1208,12 @@ function openClinic(){
         p.gold-=cost; p.wounds=[];
         say(["Needles. Wire. A smell like a lit match in a butcher's shop.",
              "You keep all your blood this time."]); } },
+    ...(p.ills && p.ills.length? [{ t:"Sweat the fevers out (10g each) - you carry "+p.ills.length, fn:()=>{
+        const cost=p.ills.length*10;
+        if (p.gold<cost){ say(["\"Sickness costs sweat and ten a fever. Bring the difference.\""]); return; }
+        p.gold-=cost; p.ills=[]; advanceWeeks(1);
+        say(["Brandy, blankets, and a night that never ends properly.",
+             "The fevers break. Your body is yours again."]); saveGame(); } }] : []),
     { t:"Bloodrest draught (30g) - full HP", fn:()=>{
         if (p.gold<30){ say(["You are short."]); return; }
         p.gold-=30; p.hp=p.maxhp; say(["It tastes like copper pennies and sleep. You feel whole."]); } },
@@ -1537,6 +1583,10 @@ function homeRest(){
     p.wounds.splice(0,1);
     msgs.unshift("Your spouse sews and scolds. The worst wound closes, badly but truly.");
   }
+  if (p.ills && p.ills.length){
+    const broke=p.ills.slice(); p.ills=[];
+    msgs.unshift("A week of soup and sleep sweats it out of you: "+broke.join(", ")+".");
+  }
   const news=drainNews();
   msgs.push(...news);
   say(msgs, ()=>openHome());
@@ -1813,7 +1863,11 @@ function tryMove(dx,dy){
   d.px=nx; d.py=ny; d.steps++;
   markSeen();
   const p=game.player;
-  p.stam=clamp(p.stam-0.12,0,maxStam());
+  drainStam(0.12);
+  if (p.stam<=-25 && d.steps%2===0){
+    if (d10()+p.wll<9){ die("The body calls the whole loan in, there in the"+pick([" dark"," water"," deep"])+" of "+d.opening.name+". The last of the credit was spent walking."); return; }
+    if (p.rollHintW!==game.week){ p.rollHintW=game.week; showHint("At -25 every step is a death roll at your body's table. This one, you keep."); }
+  }
   if (p.stam<=0 && d.steps%4===0){
     p.hp-=1;
     if (p.hp<=0){ die("Your body quit in the"+pick([" dark"," water"," deep"])+" of "+d.opening.name+"."); return; }
@@ -1970,7 +2024,7 @@ function obstacleEvent(ev){
       showMenu("FOUL AIR", [
         { t:"Hold your breath and press on (Will)", fn:()=>{ ev.done=true;
             if (check("wll",10)) say(["You refuse the air's opinion. Through."]);
-            else { hurt(3,"Your lungs will remember this for days."); p.stam=clamp(p.stam-20,0,maxStam()); }
+            else { hurt(3,"Your lungs will remember this for days."); drainStam(20); }
             saveGame(); } },
         ...(countItem("Antitoxin")? [{ t:"Drink Antitoxin", fn:()=>{ ev.done=true;
             useFromInv("Antitoxin",1);
@@ -2027,7 +2081,7 @@ function puzzleEvent(ev){
             say(["The door unhinges - politely, this once."], ()=>{ takeOne({n:pick(LOOT).n, v:45, kind:"loot"}, null); });
           } else {
             say(["Wrong. The vertebrae tighten like a fist. You lose breath, blood, and pride.",
-                 "The door relents eventually."], ()=>{ hurt(3,null); game.player.stam=clamp(game.player.stam-15,0,maxStam()); });
+                 "The door relents eventually."], ()=>{ hurt(3,null); drainStam(15); });
           }
           saveGame();
         }
@@ -2191,7 +2245,7 @@ function meetAdventurer(){
 /* ----- checks, wounds, death ----- */
 function check(stat, dc){
   const p=game.player;
-  return d10()+p[stat]-p.wounds.length>=dc;
+  return d10()+p[stat]-p.wounds.length-(p.ills? p.ills.length : 0)>=dc;
 }
 function hurt(n, msg){
   const p=game.player;
@@ -3884,8 +3938,9 @@ function drawBase(){
   const p=game.player;
   box(0,0,148,38,"rgba(8,6,10,0.92)");
   txt(p.name+"  "+Math.floor(game.week/52)+"y  "+fmt(p.gold),3,3,PAL.gold);
-  txt("HP "+p.hp+"/"+p.maxhp+" STAM "+Math.floor(p.stam),3,14,PAL.bone);
+  txt("HP "+p.hp+"/"+p.maxhp+" STAM "+Math.round(p.stam)+(p.stam<0?" DEBT":""),3,14, p.stam<0? PAL.bloodHi : PAL.bone);
   if (p.wounds.length) txt("wounds: "+p.wounds.join(","),3,25,PAL.bloodHi);
+  if (p.ills && p.ills.length) txt("unwell: "+p.ills.join(","),3,36,"#8faf7a");
   else if (p.titles.length) txt("\""+p.titles[p.titles.length-1]+"\"",3,25,"#a89762");
   cornerChips();
 }
@@ -4050,7 +4105,7 @@ function drawDungeon(){
   const p=game.player;
   box(0,0,196,38,"rgba(6,4,9,0.9)");
   txt(d.opening.name.slice(0,34)+" d"+d.depth+" (dgr "+d.tierNow+")",3,3,PAL.gold);
-  txt("HP "+p.hp+"/"+p.maxhp+" STAM "+Math.floor(p.stam)+" "+fmt(p.gold),3,14);
+  txt("HP "+p.hp+"/"+p.maxhp+" STAM "+Math.round(p.stam)+(p.stam<0?" DEBT":"")+" "+fmt(p.gold),3,14, p.stam<0? PAL.bloodHi : null);
   let st=null, stn=1e9;
   for (let y2=0;y2<f.h;y2++) for (let x2=0;x2<f.w;x2++){
     if (f.grid[y2][x2]!==">" || !f.seen.has(x2+","+y2)) continue;
@@ -4059,6 +4114,8 @@ function drawDungeon(){
   }
   if (st && stn<30) txt("\u25bc "+(st[0]>d.px? (st[0]-d.px)+"E":(d.px-st[0])+"W")+" "+(st[1]>d.py? (st[1]-d.py)+"S":(d.py-st[1])+"N"), 204,3, PAL.gold);
   if (p.wounds.length) txt("wounds: "+p.wounds.join(","),3,25,PAL.bloodHi);
+  if (p.ills && p.ills.length) txt("unwell: "+p.ills.join(","),3,36,"#8faf7a");
+  else if (p.stam<=-25) txt("DEATH ROLLS EVERY STEP",3,25,PAL.bloodHi);
   const onUp = f.grid[d.py][d.px]==="<", onDown = f.grid[d.py][d.px]===">";
   if (!game.combat){
   hit(0,0,W,H,(gx,gy)=>{
@@ -4487,7 +4544,7 @@ function continueAsChild(){
     weapon: old.weapon.d>2? {n:old.weapon.n, d:old.weapon.d} : {n:"Rusted Knife", d:2},
     armor: {n:old.armor.n, a:old.armor.a},
     inv:[{n:"Ration", v:8, qty:2, kind:"food"},{n:"Bandage", v:10, qty:1, kind:"heal"}],
-    wounds:[],
+    wounds:[], ills:[],
     house:old.house, upgrades:old.upgrades.slice(),
     spouse:null, partner:null, tryChild:0, child:null,
     kills:0, delves:0, deep:0,
@@ -4611,6 +4668,7 @@ window.__openings={
   droneHush:droneHush,
   findRumor, hasRumor, LORE_KINGDOM, RH_BY_ID, KEEPERS, WORK_JOBS, workShift, keeperGreet, bumpVisit, heirName, keeperChat, KING_STAGES, TENSION_LINES, crownYears, crownStageNum, updateKingdom, meetCommando, crownPressure, commandoFoe, corpseEvent, tavernAgents,
   updateBattleMusic, chasmGo, fireSpots:()=>FIRE_SPOTS, trashList:()=>TRASH, lightMap:()=>cityLight,
+  drainStam, exhaustHit, exhaustAilment, check, tryMove, openClinic, staminaFloor:()=>STAM_FLOOR,
   ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC,
   get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; }
 };

@@ -181,7 +181,14 @@ an auto-walk in progress.
    procedurally generated floors: random rooms and corridors, descending
    stairs forever (`>`), an exit back to the city (`<` at depth 1). Floors
    seeded per dive; deeper floors push the danger tier. No time limits —
-   but stamina bleeds away every step, and at zero your HP follows.
+   but stamina bleeds away every step, and at zero your HP follows. Below
+   zero the body starts **lending you meat**: it collects as you go - an
+   **injury or an illness for every stretch of the loan** (both spend your
+   checks; the flesh-setter will sweat a fever out for 10g, a home rest
+   breaks them, the HUD goes red and lists you as *unwell*). **-25 is the
+   end of the body's credit**: past that line **every further step is a
+   death roll** at the body's table. No time limits - the body keeps
+   count instead, and rations and hot meals climb you back out of debt.
 
 3. **Encounters.** On first entering rooms, and at placed sites:
    - **Abominations** — 12 horrors across 3 tiers (Grinworm Clusters to
@@ -488,7 +495,12 @@ an auto-walk in progress.
 
 - Stats: STR/AGI/WIT/WLL; checks are d10 + stat − wounds vs difficulty.
 - Stamina economy gates everything: delving, training, burial — and
-  honest work, which spends it at a loss.
+  honest work, which spends it at a loss. Stamina can run into **debt**:
+  it may sink to -25, and crossing under zero (then again at -8, -16,
+  -24) makes the body take a payment in **flesh** (a wound) or in
+  **sickness** (an *unwell* entry); both penalize every check. Past -25
+  every step is a **death roll** (d10 + Will against the body). Eating
+  climbs you back out; the loan ledger resets on solid ground.
 - Two ledgers of hidden lore: 9 truth fragments (they feed the Gate's
   conditions) and 25 kingdom scraps (they feed only the city's
   misreading of itself). Neither ledger mentions the other. Twelve of
