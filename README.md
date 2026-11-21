@@ -369,6 +369,46 @@ an auto-walk in progress.
    and Jericho toasts the withdrawal the way you toast weather. No
    speeches. The dark does not sign contracts.
 
+   **The coup — the kingdom eats itself.** Around **year 120**, or just
+   eight years after the military waned (whichever comes first), the
+   great houses move: the crowned one disappears — not dead, the houses
+   insist, merely *transitional* — the crown is never found, and a
+   committee of houses rules while the quarrel goes to war. Jericho's
+   one road now runs mail shirts out and **deserters** in: newcomers
+   with scrubbed sleeves, no colors, and a professional interest in
+   stairs nobody checks their war record on. The tavern's long table
+   changes accents; the population of the wards changes trade.
+
+   **The figure in the square.** The day of the coup, everyone in
+   Jericho behaves exactly the same except one: a **grey figure** in
+   court boots stands in the town square and does not leave. It is the
+   old king's adviser — the person who spent a kingdom, a war and a
+   garrison buying one-way passage below, and was refused: the Gate
+   kept the payment and did not keep the buyer. They stop you in the
+   street, politely, often, and ask about your venture — the deepest
+   room, the price of things, what the stone was pretending to be —
+   always checking your sums against a ledger only they can read. And
+   when you are genuinely near the Gate — the ninth depth witnessed,
+   your bestiary nearly whole, the lore carried — the questions stop
+   being questions: they offer a fortune, counted out in coin too new
+   to be dirty, for your maps and your bestiary. Sign, and the run is
+   over — a game over that is not an ending.
+
+   **The dream loop.** Take the sale (or take the duty and pass the
+   lamp) and a **new game+** begins: your successor wakes in Jericho at
+   the very beginning, the whole past life just a dream — but with all
+   the stats in place, and the bestiary remembered like a nightmare
+   someone read aloud. Each loop the things below have *heard a keeper
+   is coming*: they are stronger (HP and attack rise every tier) but
+   better worth the trouble (loot value rises to match). When you
+   become the **Gatekeeper** for real, you may keep living — or **pass
+   the lamp**: a fresh successor line begins, Gate-Touched (the first
+   death of every delve refuses them, once), and their endgame is
+   different: at the ninth depth the Gate is *held* — by the previous
+   character, changed. Taking it from them is the fight; after that the
+   coronation stands. The loop closes on itself as long as there is
+   anyone left ambitious enough to dream.
+
    **And beneath the truth, a second layer of wrong.** Jericho technically
    falls under the kingdom, and the kingdom's paper still finds its way
    in: thirteen scraps of decree, gossip and paperwork — no army ever
@@ -428,10 +468,11 @@ an auto-walk in progress.
 - Stamina economy gates everything: delving, training, burial — and
   honest work, which spends it at a loss.
 - Two ledgers of hidden lore: 9 truth fragments (they feed the Gate's
-  conditions) and 20 kingdom scraps (they feed only the city's
-  misreading of itself). Neither ledger mentions the other. Seven of
-  the kingdom's scraps arrive on the crown arc's fifty-year clock —
-  adviser, wedding, houses, regent, legions, coronation — and are
+  conditions) and 25 kingdom scraps (they feed only the city's
+  misreading of itself). Neither ledger mentions the other. Twelve of
+  the kingdom's scraps arrive on the crown-arc clock — adviser,
+  wedding, houses, regent, legions, coronation, withdrawal, coup, war,
+  deserters, the adviser's failure, the grey figure — and are
   therefore different news depending on whether you read them as a
   17-year-old delver or as your own child.
 - Aging: no time limits, but years pass as you train, delve, and rest;

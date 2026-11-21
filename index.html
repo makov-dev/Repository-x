@@ -456,7 +456,8 @@ function spawnTownfolk(){
   const from=(atB && bldDoor(atB)) || dt[irnd(dt.length)];
   const to=(toB && bldDoor(toB)) || dt[irnd(dt.length)];
   const path=bfsPath(from[0],from[1],to[0],to[1],(x,y)=>!citySolid(x,y),CW,CH)||[];
-  game.townfolk.push({ name:name, occ:pick(TOWN_OCC), line:pick(TOWN_LINES),
+  const folkOcc= (game.flags.war && Math.random()<0.35)? pick(DESERT_OCC) : pick(TOWN_OCC);
+  game.townfolk.push({ name:name, occ:folkOcc, line:pick(TOWN_LINES),
     age0:17+irnd(48), born:game.week, x:from[0], y:from[1], path:path, i:0,
     t:20+irnd(30), lastW:game.week, col:pick(WALK_COLS),
     homeId:home?home.id:null, workId:work?work.id:null, atId:atB?atB.id:null, toId:toB?toB.id:null, inside:0 });
@@ -541,6 +542,26 @@ function drawTownfolk(camX,camY){
     ctx.fillStyle="#d9c9a8"; ctx.fillRect(sx+3,sy+bob,2,2);
     if (!game.ui.mode && !game.combat) hit((sx-4)*camZ,(sy-8)*camZ,(T+8)*camZ,(T+12)*camZ,()=>talkTownfolk(wk));
   }
+}
+
+function drawStranger(camX,camY){
+  const st=game.flags && game.flags.stranger;
+  if (!st) return;
+  const sx=(st.x-camX)*T, sy=(st.y-camY)*T;
+  if (sx<-8||sy<-8||sx>Wz+8||sy>Hz+8) return;
+  const gl=ctx.createRadialGradient(sx+4,sy+5,1,sx+4,sy+5,14);
+  gl.addColorStop(0,"rgba(160,150,170,0.10)"); gl.addColorStop(1,"rgba(160,150,170,0)");
+  ctx.fillStyle=gl; ctx.beginPath(); ctx.ellipse(sx+4,sy+5,14,14,0,0,6.283); ctx.fill();
+  blobShadow(sx+4,sy+9,5,0.35);
+  ctx.fillStyle="#35313e"; ctx.fillRect(sx+2,sy+2,4,4);
+  ctx.fillStyle="#232028"; ctx.fillRect(sx+3,sy+6,2,3);
+  ctx.fillStyle="#b9b2c2"; ctx.fillRect(sx+3,sy,2,2);
+  if (!game.ui.mode && !game.combat) hit((sx-4)*camZ,(sy-8)*camZ,(T+8)*camZ,(T+12)*camZ,()=>{
+    if (game.state!=="base" || game.ui.mode) return;
+    const dist=Math.abs(game.base.px-st.x)+Math.abs(game.base.py-st.y);
+    if (dist<=2){ stopWalk(); strangerMeet(); return; }
+    walkTo(st.x,st.y,strangerMeet,(x,y)=>!citySolid(x,y),CW,CH);
+  });
 }
 
 const RIDDLES = [
@@ -678,7 +699,7 @@ function newGame(){
     dungeon:null,
     combat:null,
     ui:{ mode:null, menu:null, dialog:null, onclose:null, oncancel:null },
-    flags:{ news:[], crownStage:0, kingEpoch:Math.floor(17*52) },
+    flags:{ news:[], crownStage:0, kingEpoch:Math.floor(17*52), ngplus:0 },
     npcClock:0,
     npcs: NPC_BASE.map(b=>({ name:b.name, desc:b.desc, age:b.age, ageWeeks:b.age*52, talks:(b.talks||GENERIC_TALKS).slice(),
       marriedTo:null, dead:false, widowed:false, kids:0, parentOfYou:false, aff:0, met:false }))
@@ -767,7 +788,7 @@ function rollLoot(tier, rolls){
   const total=pool.reduce((s,l)=>s+l.w,0);
   for (let i=0;i<rolls;i++){
     let r=Math.random()*total;
-    for (const l of pool){ r-=l.w; if (r<=0){ out.push({n:l.n, v:Math.round(l.v*(0.8+0.4*tier*0.35)), kind:"loot", qty:1}); break; } }
+    for (const l of pool){ r-=l.w; if (r<=0){ out.push({n:l.n, v:Math.max(1,Math.round(l.v*(0.8+0.4*tier*0.35)*ngLootMul())), kind:"loot", qty:1}); break; } }
   }
   return out;
 }
@@ -1213,7 +1234,7 @@ function openTavern(){
           say(["Grease, onions, mystery. You feel like a person again."], ()=>openTavern()); } },
       { t:"The Bones Game (stake 10g)", fn:()=>bonesGame(10) },
       { t:"Buy a round, listen to the room (8g)", fn:listenTavern },
-      ...((LORE_KINGDOM.some(r=>r.src==="tavern" && !hasRumor(r.id)) || crownStageNum()>=2)? [{ t:"Sit near the polite strangers (8g)", d:"Court vowels. New coin. They keep asking divers what cures age.", fn:tavernAgents }]:[]),
+      ...((!game.flags.war && (LORE_KINGDOM.some(r=>r.src==="tavern" && !hasRumor(r.id)) || crownStageNum()>=2)) || (game.flags.war && !hasRumor("desert"))? [{ t:(game.flags.war? "Sit near the deserters (8g)":"Sit near the polite strangers (8g)"), d:(game.flags.war? "Sleeves scrubbed of colors. They drink like men on leave from a war nobody declared, and stare at the stairs.":"Court vowels. New coin. They keep asking divers what cures age."), fn:tavernAgents }]:[]),
       { t:"Who is here tonight? (court here)", fn:rosterMenu }
     ];
     if (p.partner) opts.push({ t:"Court "+p.partner.name.split(" ")[0], fn:courtWith });
@@ -1287,6 +1308,10 @@ function tavernAgents(){
     lines.push("One of them buys you a wine you did not order and pays with coin too new to be dirty.");
   } else if (crownStageNum()>=4){
     lines.push("They wear crown mail now. The question has changed. Not what cures age - where the stairs open, and how wide.");
+  }
+  if (game.flags.war){
+    lines.push("The strangers are gone. At the long table sit deserters, drinking like men paying for groceries with someone else's ration-book.");
+    lines.push("They ask nothing about cures. They ask where the stairs open wide - because below, nobody checks a war record.");
   }
   say(lines, ()=>openTavern());
   saveGame();
@@ -1442,6 +1467,11 @@ function openHome(){
     if (p.spouse && p.upgrades.indexOf("nursery")>=0 && !p.child && p.tryChild!==1)
       opts.push({ t:"Try for a child", fn:tryForChild });
     if (p.child) opts.push({ t:"Teach "+p.child.name+" ("+cap(childStage(p.child))+")", fn:teachChild });
+    if (p.gatekeeper) opts.push({ t:"Pass the lamp - begin a successor", fn:()=>{
+        showMenu("PASS THE LAMP", [
+          { t:"A successor wakes from the dream", fn:passTheLamp },
+          { t:"Not this year", fn:openHome }
+        ]); } });
     opts.push({ t:"The chest under the floor ("+chestUsed()+"/"+storageCap()+")", fn:openChest });
     opts.push({ t:"Leave", fn:()=>{} });
     showMenu("HOME", opts, ()=>{});
@@ -1580,6 +1610,7 @@ function launchDelve(opening){
   game.dungeon=d;
   game.state="dungeon";
   game.player.delves++;
+  game.player.echoUsed=false;
   genFloor(d);
   say(["You descend into "+opening.name+".",
        "The city noise dies in about nine steps. Something else starts."]);
@@ -1661,8 +1692,8 @@ function tileAt(x,y){
 function tierEnemy(){
   const tier=game.dungeon.tierNow;
   const base=HORRORS[tier][irnd(HORRORS[tier].length)];
-  const hp=Math.max(3,Math.round(base.hp*(0.85+Math.random()*0.3)));
-  return { n:base.n, mhp:hp, hp:hp, atk:base.atk, tr:base.tr, artSeed:irnd(2147483647), human:false };
+  const hp=ngHp(Math.max(3,Math.round(base.hp*(0.85+Math.random()*0.3))));
+  return { n:base.n, mhp:hp, hp:hp, atk:base.atk+ngAtkBump(), tr:base.tr, artSeed:irnd(2147483647), human:false };
 }
 function markSeen(){
   const d=game.dungeon, f=curFloor();
@@ -2032,7 +2063,8 @@ function hurt(n, msg){
   if (msg) lines.push(msg);
   lines.push("(-"+n+" HP. "+p.hp+"/"+p.maxhp+")");
   if (p.hp<=0){
-    if (p.gatekeeper){ p.hp=1; say(["The Gate refuses. Whatever finished you, it was not enough.","(+held at 1 HP)"]); }
+    if (p.echo && !p.echoUsed){ p.echoUsed=true; p.hp=1; say(["The dream catches you. You died once already, and refused the second time.","(the Gate-Touched holds you at 1 HP)"]); }
+    else if (p.gatekeeper){ p.hp=1; say(["The Gate refuses. Whatever finished you, it was not enough.","(+held at 1 HP)"]); }
     else { die("Something in "+(game.dungeon? game.dungeon.opening.name : "Jericho")+" finished you."); return; }
   }
   if (p.hp<=p.maxhp*0.3 && Math.random()<0.4){
@@ -2074,7 +2106,12 @@ function die(cause){
     for (let yr=0; yr<17; yr++) advanceWeeks(52);
     game.townfolk=[];
     const news=drainNews();
-    if (news.length){ ep.push("The seventeen years, briefly:"); ep.push(...news.slice(0,7)); }
+    if (news.length){
+      const crownish=news.filter(x=>/capital|crown|Soldier|banner|regent|the king|coup|war|houses/i.test(x));
+      const local=news.filter(x=>!/capital|crown|Soldier|banner|regent|the king|coup|war|houses/i.test(x));
+      ep.push("The seventeen years, briefly:");
+      ep.push(...crownish.slice(0,4), ...local.slice(0,5));
+    }
     if (sp.dead) ep.push(sp.name+" did not live to see it grown. Jericho raised "+p.child.name+" the way Jericho raises everything: on other people's leavings, and tough as boot leather.");
     else ep.push(sp.name+" ("+Math.floor(sp.ageWeeks/52)+" winters now) raised "+p.child.name+" on your stories and her own addenda, most of them unkind and all of them true.");
     ep.push("What is inherited: the house and its improvements, "+(p.weapon.d>2? "your "+p.weapon.n+", ":"")+"the leanings of your body, and a spark of "+p.child.spark+" - bright, for a child conceived against arithmetic.");
@@ -2301,7 +2338,8 @@ function afterEnemyTurn(){
   const c=game.combat, p=game.player;
   c.guard=false;
   if (p.hp<=0){
-    if (p.gatekeeper){ p.hp=1; clog("The Gate refuses. It is not done with you."); }
+    if (p.echo && !p.echoUsed){ p.echoUsed=true; p.hp=1; clog("The dream catches you: you have died once before and will not repeat the trick. (held at 1 HP)"); }
+    else if (p.gatekeeper){ p.hp=1; clog("The Gate refuses. It is not done with you."); }
     else { die(game.dungeon? "Torn apart in the "+game.dungeon.opening.name : "Slain in Jericho"); return; }
   }
   c.turn="player";
@@ -2349,8 +2387,10 @@ function winCombat(){
 }
 function endCombat(){
   const og=game.combat && game.combat.origin;
+  const gateFall= game.combat && game.combat.e && game.combat.e.afterGate && game.combat.won;
   game.combat=null;
   game.state= og==="base"? "base":"dungeon";
+  if (gateFall){ game.flags.keeperFought=1; openTheGate(true); }
 }
 
 /* ----- juice: floats, shake, banners, sparks, flashes, sound ----- */
@@ -2701,7 +2741,12 @@ const LORE_KINGDOM=[
   { id:"regent",  src:"crown",   text:"The king is dead. The treatments worked the whole way to the grave. The consort signs as regent now; the seals were transferred before the body was cold, and the funeral was closed to everyone who loved him." },
   { id:"legions", src:"crown",   text:"Soldiers in the city at last - the kingdom's answer to sixty years of unanswered letters. They quarter in the guild hall, pay for drinks in new coin, and ask the barkeep who dives, and where, and at what hour." },
   { id:"transfer", src:"crown",  text:"The regent is dead - a horrible accident, the criers say, on coronation day of the young ruler. The crowned child speaks with the regent's cadence and holds a pen the way she did. The great houses keep their doors barred and their faces very studied." },
-  { id:"withdrawn", src:"crown", text:"The banners are coming down along the quays. The commandos stopped going below; the garrison stopped asking why. The decree says 'redeployment'. Jericho's version: even the crown's best are only meat with better boots, and the dark does not sign contracts." }
+  { id:"withdrawn", src:"crown", text:"The banners are coming down along the quays. The commandos stopped going below; the garrison stopped asking why. The decree says 'redeployment'. Jericho's version: even the crown's best are only meat with better boots, and the dark does not sign contracts." },
+  { id:"failedgate", src:"crown", text:"The adviser swallowed the kingdom whole to buy one passage below - garrisons, licences, levies, war, all of it spent on one person's errand. The Gate kept the payment and did not keep the buyer. That is why there was a coup: the treasury came home light." },
+  { id:"coup", src:"crown", text:"The great houses came for the crowned one and found an empty room and a cold crown. 'Transitional', says every seal. The committee rules, and rules, and rules, and the word 'king' is not spoken from balconies anymore. It is written on walls, smaller." },
+  { id:"warfront", src:"crown", text:"The houses went to war over the empty throne. The one road carries mail shirts out and boys with X-signed papers in; nobody ships anything back but weapons that are new in a way that means 'taken off a body'." },
+  { id:"desert", src:"crown", text:"Deserters reach Jericho ahead of any army. Down here nobody checks a war record, and the deep has room for every man who stopped believing in a throne that fought over itself." },
+  { id:"greyman", src:"crown", text:"There is a figure in the Jericho square who asks divers what they saw below. Politely, precisely, every time: how deep, what waited, what refused you. Ward wisdom: do not sell to the grey what you have not priced yourself." }
 ];
 const RH_BY_ID={}; for (const r of LORE_KINGDOM) RH_BY_ID[r.id]=r;
 function hasRumor(id){ const fr=(game.flags.rh||[]); return fr.indexOf(id)>=0; }
@@ -2751,10 +2796,18 @@ function updateKingdom(){
     const slayed=(p.killsByKind||{})["Crown Commando"]||0;
     if (slayed>=8){
       game.flags.crownWaned=true;
+      game.flags.waneWeek=game.week;
       game.flags.news.push(...WANE_NEWS);
       findRumor("withdrawn", "the empty barracks after the banners");
     } else if (Math.random()<0.10) game.flags.news.push(pick(TENSION_LINES));
   }
+  coupCheck();
+  if (game.flags.coup && !game.flags.war && game.week-((game.flags.coupYear)||game.week)>=6*52){
+    game.flags.war=true;
+    game.flags.news.push(...WAR_NEWS);
+    findRumor("warfront", "the carts' incoming cargo: mail, arrows, and boys who signed with an X");
+  }
+  if (game.flags.war && Math.random()<0.08) game.flags.news.push(pick(WAR_LINES));
 }
 function commandoFoe(){
   const hp=22+2*(game.dungeon? game.dungeon.depth : 1);
@@ -2786,6 +2839,224 @@ function crownPressure(){
     game.player.gold-=5; saveGame();
     say(["A corporal at the corner stamps your collar: deep-duty, five gold, crown mathematics. \"The kingdom protects,\" he says, to nobody's belief."]);
   } else say([pick(TENSION_LINES)]);
+}
+/* ===== the wars after the banners, the grey figure in the square, the dream loop ===== */
+const COUP_NEWS=[
+  "Word from the capital, in no official hand: there was a coup. The crowned one is gone - not dead, the houses insist, merely 'transitional'. Nobody can find a body. Nobody can find a crown.",
+  "The one road south is watched by the houses' own men now, and the toll is paid in names. Jericho reads its cargo manifests and keeps its face flat."
+];
+const WAR_NEWS=[
+  "It is war in the kingdom. The carts run mail shirts, arrowheads, and boys who signed their papers with an X. Some of the boys jump off at Jericho and do not sign back on.",
+  "Jericho keeps out of it the way it keeps out of everything, by being worse than the argument.",
+  "Agents of the great houses walk the Grave-Market now, pricing divers with their eyes. 'For service below', the pardons say, and this time the reader is meant to exist afterwards."
+];
+const WAR_LINES=[
+  "The cargoes running the one road are real mail now, and less of it comes back stamped.",
+  "The houses' recruiters reached the quays and left with a list and no volunteers.",
+  "Two great houses folded in the same week. Their tables say 'interregnum'. Jericho's tables say nothing on the subject.",
+  "A deserter nailed a sign over the Stacks doorway: NO COLORS SERVED HERE. The ink was still drying and the drink was already poured."
+];
+const DESERT_OCC=[
+  "a deserter from the kingdom's quarrels; stopped answering roll-call somewhere below the third depth",
+  "an ex-soldier of the interregnum; washed the colors out of the sleeves with rain and gravity",
+  "a paymaster's clerk who absconded with one strongbox and a stronger opinion",
+  "a recruit who signed with an X and kept walking past the front",
+  "a courier of the houses' private war, gone under to let the letters age"
+];
+const STRANGER_QS=[
+  "\"Tell me about the deepest room. What did it do to your arithmetic?\"",
+  "\"You have been below - the city can smell it on you. What did the dark say about the price of things?\"",
+  "\"Did the rooms repeat, or did they answer you? There is a difference, and it matters.\"",
+  "\"How deep this time? No - do not say depth. Say what the stone was pretending to be.\"",
+  "\"Name one thing down there that let you leave without paying. Take your time. I have been taking mine for years.\""
+];
+function ngPlusTier(){ return (game.flags && game.flags.ngplus)||0; }
+function ngHp(x){ return Math.max(3, Math.round(x*ngHpMul())); }
+function ngHpMul(){ const n=ngPlusTier(); return n>0? 1+0.08*n : 1; }
+function ngAtkBump(){ return ngPlusTier(); }
+function ngLootMul(){ const n=ngPlusTier(); return n>0? 1+0.15*n : 1; }
+function coupCheck(){
+  if (game.flags.coup) return;
+  let due= crownYears()>=120;
+  if (!due && game.flags.crownWaned && game.flags.waneWeek && game.week-game.flags.waneWeek>=8*52) due=true;
+  if (due) fireCoup();
+}
+function fireCoup(){
+  game.flags.coup=true;
+  game.flags.coupYear=game.week;
+  game.flags.news.push(...COUP_NEWS);
+  findRumor("coup", "three days of iron doors and an empty balcony");
+  placeStranger();
+  saveGame();
+}
+function placeStranger(){
+  if (!cityGrid){
+    if (!game || !game.player) return;
+    cityGrid=buildCity();
+  }
+  let best=null, bd=1e9;
+  for (let y=1;y<CH-1;y++) for (let x=1;x<CW-1;x++){
+    if (citySolid(x,y)) continue;
+    const dd=Math.abs(x-21)+Math.abs(y-9);
+    if (dd<bd){ bd=dd; best=[x,y]; }
+  }
+  if (!best) return;
+  game.flags.stranger={ x:best[0], y:best[1], cd:20, talk:0 };
+  game.flags.strangerPending=0;
+}
+function kindCatalog(){
+  const s=new Set();
+  for (const t of [1,2,3]) for (const m of HORRORS[t]) s.add(m.n);
+  return Array.from(s);
+}
+function bestiaryPct(){
+  const p=game.player, kinds=kindCatalog();
+  if (!kinds.length) return 0;
+  const have=kinds.filter(k=>p.bestiary[k] && p.bestiary[k].killed);
+  return have.length/kinds.length;
+}
+function gateClose(){
+  const p=game.player;
+  return (p.deep||0)>=9 && bestiaryPct()>=0.8 && (game.flags.lore||[]).length>=4;
+}
+function strangerPressure(){
+  const s=game.flags.stranger;
+  if (!s || game.ui.mode || game.combat || gDice) return;
+  if (s.cd>0){ s.cd--; return; }
+  const dist=Math.abs(game.base.px-s.x)+Math.abs(game.base.py-s.y);
+  if (dist<=5 && Math.random()<0.04){ stopWalk(); strangerMeet(); s.cd=45; }
+}
+function strangerMeet(){
+  const s=game.flags.stranger;
+  if (!s || game.ui.mode || game.combat) return;
+  const p=game.player;
+  s.cd=30; s.talk=(s.talk||0)+1; stopWalk();
+  if (s.talk===1) findRumor("greyman", "the figure in the square, who already knew the answer");
+  const lines=[
+    "The square's one strange constant: a figure in a grey coat, court boots gone to mould, standing as if Jericho were a waiting room they arrived early to, years ago.",
+    pick(STRANGER_QS)
+  ];
+  lines.push( (p.deep||0)>=1?
+    "\""+p.deep+".\" They say your deepest number back like a price they are saving for." :
+    "\"You have not been below yet. You will. Everyone in this city is a diver with a later start date.\"" );
+  showMenu("THE FIGURE IN THE SQUARE", [
+    { t:"Tell them what the dark said", fn:()=>{
+        say(["You talk. The figure listens with the particular hunger of a person checking your sums against a ledger only they can read.",
+             "\"Same as me, then,\" they say, and do not say which me."]); } },
+    { t:"Ask what they are", fn:()=>{
+        say(["A pause with weight. \"An adviser. Of the old king once, before advisers were a war economy.\"",
+             "\"I spent a kingdom on the Gate. It kept the payment and did not keep me. Now I read other people's ruins and wait for someone to descend with the last page.\"",
+             "\"The coup, you think, wondering. They watch you wonder, and the face does not move and the eyes are pleased.\""]); } },
+    ...(gateClose()? [{ t:"They would buy: sell the maps and the bestiary", d:"A fortune, counted out in coin too new to be dirty. And no more diving, no more want, no more you below.",
+        fn:()=>{ showMenu("SELL THE DEEP", [
+          { t:"Sign. Take the fortune.", fn:()=>sellOut() },
+          { t:"Refuse. The Gate is not for sale to the grey.", fn:()=>{
+              say(["\"Another dream, then,\" the figure says, and there is something almost like respect in it. They let you go."]); } }
+        ]); } }] : []),
+    { t:"Walk on", fn:()=>{} }
+  ]);
+}
+function sellOut(){
+  const p=game.player;
+  game.flags.soldStats={ name:p.name, str:p.str, agi:p.agi, wit:p.wit, wll:p.wll,
+    titles:p.titles.slice(), bestiary:p.bestiary };
+  game.flags.soldTier=(game.flags.ngplus||0)+1;
+  game.combat=null;
+  const ep=[
+    "You sign. The figure writes the price on the last blank page of your bestiary and pays it: a fortune in coin too new to be dirty.",
+    "Maps, corners inked where the stairs open wide. Every monster you ever measured, priced. They read some entries twice, and shudder in a way that has no temperature.",
+    "You will never dive again. You will never need to. The word for that is rich. The word for the other thing will not occur to you for years.",
+    "You do not see what your knowledge becomes. But below the ninth depth there is a hall, and lately something in crowd-grey is standing at a door that stands open when it dreams.",
+    "You sleep rich. You dream of the depths. In the dream, you wake -"
+  ];
+  game.state="soldout";
+  deadPage=0;
+  game.flags.epilogue=ep;
+  sfx("coin"); saveGame();
+}
+function startDream(){
+  const s=game.flags.soldStats || null;
+  const tier=game.flags.soldTier || 1;
+  const best= s && s.bestiary? s.bestiary : null;
+  const titl= s && s.titles? s.titles.slice() : [];
+  const sname= s? s.name : null;
+  const stat0= s? { str:s.str, agi:s.agi, wit:s.wit, wll:s.wll } : null;
+  wipeSave();
+  newGame();
+  game.flags.ngplus=tier;
+  game.flags.dream=1;
+  const p=game.player;
+  if (stat0){ p.str=Math.max(3,stat0.str); p.agi=Math.max(3,stat0.agi); p.wit=Math.max(3,stat0.wit); p.wll=Math.max(3,stat0.wll); }
+  if (best) p.bestiary=best;
+  if (titl.length) p.titles=titl;
+  cityGrid=buildCity();
+  placeStranger();
+  game.state="base";
+  const intro=[
+    "You wake in Jericho with the drizzle in your teeth, and behind your eyes the whole dream is still cooling: the depths, the kills, the signature.",
+    (sname? "None of it happened here. Your body disagrees: the knees remember, the hands remember, "+(titl.length? "and the wards will still call you "+titl[titl.length-1]+"." : "and the knife balances the way it was taught, by no one, yet.") :
+      "None of it happened here. Yet.")
+  ,
+    "The things below have heard a keeper is coming, and they have grown for the occasion - stronger, but worth more, because the dark prices its grave-goods to the buyer.",
+    "Dream "+tier+": in a square there is a grey person who remembers buying what is still inside your head."
+  ];
+  say(intro, ()=>saveGame());
+}
+function passTheLamp(){
+  const p=game.player;
+  game.flags.priorKeeper={ name:p.name, str:p.str, agi:p.agi, wit:p.wit, wll:p.wll,
+    titles:p.titles.slice(), weapon:{ n:p.weapon.n, d:p.weapon.d } };
+  game.flags.soldTier=(game.flags.ngplus||0)+1;
+  startKeeperLine();
+}
+function startKeeperLine(){
+  const tier=game.flags.soldTier || 1;
+  const prior=game.flags.priorKeeper || null;
+  wipeSave();
+  newGame();
+  game.flags.ngplus=tier;
+  game.flags.dream=1;
+  game.flags.keeperLine=1;
+  if (prior) game.flags.priorKeeper=prior;
+  const p=game.player;
+  p.str=5; p.agi=5; p.wit=5; p.wll=5;
+  p.echo=1; p.echoUsed=false;
+  cityGrid=buildCity();
+  placeStranger();
+  game.state="base";
+  const lines=[
+    "You wake in Jericho in a bed that is not yours, in a dream you did not finish.",
+    (prior? prior.name+" kept the Gate. That is the entire inheritance: the Gate in your dream had a face, and the face owes anyone who comes for it an argument."
+          : "The Gate in your dream had a face."),
+    "You are Gate-Touched: the first death of every delve refuses you, once. And the deep has heard a keeper is coming - it has grown stronger to meet you, and richer to tempt you.",
+    "Dream "+tier+". Somewhere in a square a grey figure is waiting for a diver to become very close to ready."
+  ];
+  say(lines, ()=>saveGame());
+}
+function priorKeeperFoe(){
+  const k=game.flags.priorKeeper;
+  const n=(k.name || "The First Diver")+", the Gatekeeper";
+  BESTIARY_DESC[n]="You know this one. It was a diver with a name and a knife once; then the Gate finished its paperwork. It holds the stairs the way a held breath holds a scream - and the Gate is holding it together.";
+  const power=(k.str||5)+(k.agi||5)+(k.wit||5)+(k.wll||5);
+  const hp2=ngHp(60+4*power);
+  return { n:n, mhp:hp2, hp:hp2, atk:6+Math.floor(power/12)+ngAtkBump(), tr:null,
+    artSeed:irnd(2147483647), human:true, boss:true, regens:true, afterGate:true };
+}
+function priorKeeperGate(){
+  const k=game.flags.priorKeeper;
+  showText(["The stairs do not step. They hold.",
+    "Below the ninth depth there is a hall you have seen in the corners of every fresco the Holy Gate ever mislabeled.",
+    "At the Gate somebody is standing who does not need the light to be seen. It is "+k.name+".",
+    (k.titles&&k.titles.length? "The wards once knew them as "+k.titles.join(", ")+". The wards do not say anything now. " : "")+"A diver stood here before you, and was not finished being a person until the Gate finished the job.",
+    "\"I kept it warm for you,\" it says. The voice is almost exactly the voice you expected."], ()=>{
+    showMenu("THE GATE - AND ITS KEEPER", [
+      { t:"Take the Gate from them", fn:()=>startCombat(priorKeeperFoe()) },
+      { t:"Kneel. Ask for more time above", fn:()=>{
+          say([k.name+" considers you for a long century.",
+               "\"Go up, then. Dream. Come back hungrier - the Gate is not going anywhere, and neither, as you can see, am I.\""]);
+          stepBack(); } }
+    ]);
+  });
 }
 function gateConditions(){
   const p=game.player, fl=game.flags.lore||[];
@@ -2820,12 +3091,14 @@ function openCodex(){
   }
   say(lines, ()=>{ if (fl.length>=4) thresholdMenu(); });
 }
-function openTheGate(){
+function openTheGate(afterBoss){
   const p=game.player;
   showText(["The stairs do not step. They open.",
     "Below the ninth depth there is a hall you have seen in the corners of every fresco the Holy Gate ever mislabeled.",
-    "And on the far side of it, the Gate. Holding it: something that used to be a person, holding it the way a jaw holds a scream.",
-    "It sees you. Its face does something you have not seen on anything down here. It is \*relieved\*."], ()=>{
+    afterBoss? "And the Gate - unheld now, scandalously patient, as if it had only ever needed two of you to argue it out." :
+      "And on the far side of it, the Gate. Holding it: something that used to be a person, holding it the way a jaw holds a scream.",
+    afterBoss? "Where your predecessor stood there is an outline left in the stone, and the outline is at ease. It was relieved. It is, at last, off duty." :
+      "It sees you. Its face does something you have not seen on anything down here. It is \*relieved\*."], ()=>{
     showMenu("THE GATE", [
       { t:"Take the duty. Become the Gatekeeper.", fn:()=>{
           p.gatekeeper=true; p.maxhp+=12; p.hp=p.maxhp;
@@ -2836,7 +3109,13 @@ function openTheGate(){
           setBanner(["THE GATE IS KEPT","Jericho prays on, unaware of who is listening."]);
           sfx("bell"); setTimeout(()=>sfx("bell"),700); setTimeout(()=>sfx("bell"),1400);
           game.dungeon=null; game.state="base";
-          saveGame(); } },
+          saveGame();
+          showMenu("THE LAMP IS LIT", [
+            { t:"Keep living in Jericho - the house, the slow years", fn:()=>{
+                say(["You keep your name and buy bread with it. Jericho prays on, unaware of who is listening.",
+                     "When you are ready to pass the lamp, it will keep: there is an option for that now, at home."]); } },
+            { t:"Pass the lamp - a successor wakes in the dream", fn:()=>passTheLamp() }
+          ]); } },
       { t:"Turn away. Nobody keeps it. Not yet.", fn:()=>{
           say(["You climb out of a hall older than wrongness, and the relief on the Keeper's face follows you up like a draft.","You will carry that for the rest of your short life."]);
           game.dungeon=null; game.state="base";
@@ -3352,6 +3631,7 @@ function drawBase(){
     }
   }
   drawTownfolk(camX,camY);
+  drawStranger(camX,camY);
   ctx.restore();
   for (let pi=0;pi<3;pi++){
     const bpx=(worldTick*0.3+pi*107)%(W+40)-20, bpy=38+pi*13+Math.sin(worldTick/23+pi*2)*6;
@@ -3793,11 +4073,11 @@ function renderDead(){
   ctx.fillStyle="#070409"; ctx.fillRect(0,0,W,H);
   const rows=deadRows(), per=11, pages=Math.max(1,Math.ceil(rows.length/per));
   if (deadPage>=pages) deadPage=pages-1;
-  txt("THE BOOK OF THE GATE",W/2-52,18,PAL.gold,true);
+  txt(game.state==="soldout"? "THE SALE IS SIGNED" : "THE BOOK OF THE GATE",W/2-52,18,PAL.gold,true);
   let y=32;
   for (const s of rows.slice(deadPage*per,(deadPage+1)*per)){ txt(s,12,y,"#b9b0a0"); y+=10; }
   if (deadPage<pages-1) txt("tap / ENTER >",262,168,"#8c8494");
-  else txt("[ENTER] or tap - Jericho waits.",76,164,"#7f778a");
+  else txt(game.state==="soldout"? "[ENTER] close your eyes. Wake wondering." : "[ENTER] or tap - Jericho waits.",76,164,"#7f778a");
   hit(0,0,W,H,()=>pressZ("Enter"));
 }
 
@@ -3815,7 +4095,7 @@ function updateBase(){
   updTownfolk();
   if (uiBlocked()){ updateUI(); return; }
   const mv=dirTap();
-  if (mv){ stopWalk(); tryBaseMove(mv[0],mv[1]); maybeMugged(); crownPressure(); return; }
+  if (mv){ stopWalk(); tryBaseMove(mv[0],mv[1]); maybeMugged(); crownPressure(); strangerPressure(); return; }
   if (walkPath && walkPath.length){
     if (yesTap()||noTap()){ stopWalk(); return; }
     if (++walkTick>=5){
@@ -3831,6 +4111,10 @@ function updateBase(){
   }
   walkPath=null; walkCb=null;
   if (yesTap()){
+    const stq=game.flags.stranger;
+    if (stq && Math.abs(game.base.px-stq.x)<=2 && Math.abs(game.base.py-stq.y)<=2){
+      if (!game.ui.mode){ stopWalk(); strangerMeet(); return; }
+    }
     for (const b of BUILDINGS){
       if (b.home && !game.player.house) continue;
       if (nearBuilding(b, game.base.px, game.base.py)){ enterBuilding(b); return; }
@@ -3877,7 +4161,10 @@ function updateDungeon(){
     return;
   }
   if (ch===">"){
-    if (gateReady()){ openTheGate(); return; }
+    if (gateReady()){
+      if (game.flags.priorKeeper && !game.flags.keeperFought){ priorKeeperGate(); return; }
+      openTheGate(); return;
+    }
     d.depth++;
     game.player.deep=Math.max(game.player.deep,d.depth);
     maybeDepthLore(d.depth);
@@ -3937,6 +4224,7 @@ function updateDead(){
   if (!yesTap()) return;
   const pages=Math.max(1,Math.ceil(deadRows().length/11));
   if (deadPage<pages-1){ deadPage++; return; }
+  if (game.state==="soldout"){ startDream(); return; }
   if (game.state==="legacy"){ continueAsChild(); return; }
   game=null; titleTick=0; mapOpen=false; deadPage=0;
 }
@@ -4022,7 +4310,7 @@ function frame(){
     if (game.state==="base") updateBase();
     else if (game.state==="dungeon") updateDungeon();
     else if (game.state==="combat") updateCombat();
-    else if (game.state==="dead"||game.state==="legacy") updateDead();
+    else if (game.state==="dead"||game.state==="legacy"||game.state==="soldout") updateDead();
   }
   ctx.setTransform(RES,0,0,RES,0,0);
   const shk = (shakeT>0 || critPulse>0) && !gDice;
@@ -4038,7 +4326,7 @@ function frame(){
     if (game.state==="base") drawBase();
     else if (game.state==="dungeon") drawDungeon();
     else if (game.state==="combat") renderCombat();
-    else if (game.state==="dead"||game.state==="legacy") renderDead();
+    else if (game.state==="dead"||game.state==="legacy"||game.state==="soldout") renderDead();
     if (game.dungeon && mapOpen && game.state==="dungeon") drawMinimap();
     if (game.state!=="combat" && game.state!=="dead" && !mapOpen) renderUI();
   }
@@ -4080,6 +4368,7 @@ window.__openings={
   get earsHinted(){ return game && game.flags? !!game.flags.earsHinted : false; },
   droneHush:droneHush,
   findRumor, hasRumor, LORE_KINGDOM, RH_BY_ID, KEEPERS, WORK_JOBS, workShift, keeperGreet, bumpVisit, heirName, keeperChat, KING_STAGES, TENSION_LINES, crownYears, crownStageNum, updateKingdom, meetCommando, crownPressure, commandoFoe, corpseEvent, tavernAgents,
+  ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC,
   get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; }
 };
 </script>
