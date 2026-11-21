@@ -182,8 +182,14 @@ an auto-walk in progress.
      (drains a stat).
    - **Other adventurers** — some share rations and pay over the odds for
      loot; toll-gangs demand 30%; duelists offer winner-takes-the-kit.
-   - **Obstacles** — rubble, grown spike floors, foul air, bottomless
-     chasms (a Rope & Hook solves most things a stat check won't).
+   - **Obstacles** — rubble and foul air gather in the rooms; the corridors
+     hold the traps: grown spike floors, bottomless chasms, and thin seams
+     of pale dust hiding weighed plates (read them with Wits, or a Rope &
+     Hook solves most things a stat check won't). Every trap sits in a
+     passage you have to cross — the checks are the toll, not decoration.
+   - **Thresholds.** Where a room opens into a tunnel, the doorway is
+     drawn as a pale worn-steel line, distinct from the gold room outline,
+     so the way on is always legible.
    - **Puzzles** — a door of fused vertebrae that riddles you, a three-lever
      panel with scratched hints, a basin that trades blood for barrows.
    - **Corpses of delvers** (loot them, or bury them — one of them stands up)
