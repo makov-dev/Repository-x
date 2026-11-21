@@ -338,6 +338,37 @@ an auto-walk in progress.
    Hall or the Church. Nine fragments exist. The city will never say
    any of them aloud.
 
+   **The crown arc — fifty years on a clock that does not care who you
+   are.** The kingdom's business is anchored to the campaign's first
+   week, exactly so that heirs inherit it in progress. **Year 5:** a
+   stranger begins attending the old king — physician, say the criers;
+   and the king stops dying. **Year 9:** the king weds the stranger in a
+   closed ceremony; the archbishop signs, then retires the same week.
+   **Year 18:** the great houses stop saying the king's name aloud — they
+   say *after* — and buy rope, armor and divers' contracts; the polite
+   strangers in the Lamp stop asking what cures age and start asking
+   where the stairs open. **Year 25:** the king dies ("the treatments
+   worked the whole way down"); the consort signs as regent. **Year 33:**
+   soldiers in crown-issue mail quarter in the guild hall — the first
+   garrison in Jericho's living memory — and a corporal posts notice at
+   the Gate of Openings that dives need a **crown licence** now. That is
+   when patrol roped-off squares, deep-duty levies stamped onto your
+   collar, and market manifests marked *evidence* start bleeding into
+   street life. **Year 45:** the regent dies — a horrible accident, the
+   criers say, right on coronation day of the crowned child, who now
+   speaks in the regent's cadence and holds a pen the way she did. The
+   houses keep their doors barred.
+
+   Below, the pressure has teeth: during the legion era the dark gives up
+   **dead soldiers** (their wounds are not shaped like anything from the
+   surface, and their orders are worth reading) and patrols of **Crown
+   Commandos** stop you in the tunnels for your licence, your manifest,
+   and your purse. Kill enough of them — eight is the arithmetic nobody
+   in Jericho could have predicted — and word crawls up the stairs: the
+   banners come down along the quays, the decree says *redeployment*,
+   and Jericho toasts the withdrawal the way you toast weather. No
+   speeches. The dark does not sign contracts.
+
    **And beneath the truth, a second layer of wrong.** Jericho technically
    falls under the kingdom, and the kingdom's paper still finds its way
    in: thirteen scraps of decree, gossip and paperwork — no army ever
@@ -397,8 +428,12 @@ an auto-walk in progress.
 - Stamina economy gates everything: delving, training, burial — and
   honest work, which spends it at a loss.
 - Two ledgers of hidden lore: 9 truth fragments (they feed the Gate's
-  conditions) and 13 kingdom scraps (they feed only the city's
-  misreading of itself). Neither ledger mentions the other.
+  conditions) and 20 kingdom scraps (they feed only the city's
+  misreading of itself). Neither ledger mentions the other. Seven of
+  the kingdom's scraps arrive on the crown arc's fifty-year clock —
+  adviser, wedding, houses, regent, legions, coronation — and are
+  therefore different news depending on whether you read them as a
+  17-year-old delver or as your own child.
 - Aging: no time limits, but years pass as you train, delve, and rest;
   max HP declines past 40. Jericho keeps the receipts.
 - Inventory is slot-capped; the Deep Cellar upgrade adds 8 slots and lets

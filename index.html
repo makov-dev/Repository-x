@@ -678,7 +678,7 @@ function newGame(){
     dungeon:null,
     combat:null,
     ui:{ mode:null, menu:null, dialog:null, onclose:null, oncancel:null },
-    flags:{ news:[] },
+    flags:{ news:[], crownStage:0, kingEpoch:Math.floor(17*52) },
     npcClock:0,
     npcs: NPC_BASE.map(b=>({ name:b.name, desc:b.desc, age:b.age, ageWeeks:b.age*52, talks:(b.talks||GENERIC_TALKS).slice(),
       marriedTo:null, dead:false, widowed:false, kids:0, parentOfYou:false, aff:0, met:false }))
@@ -803,6 +803,8 @@ function loadGame(){
       if (!Array.isArray(game.flags.lore)) game.flags.lore=[];
       if (!Array.isArray(game.flags.rh)) game.flags.rh=[];
       if (!game.flags.visits) game.flags.visits={};
+      if (typeof game.flags.kingEpoch!=="number") game.flags.kingEpoch=game.week;
+      if (typeof game.flags.crownStage!=="number") game.flags.crownStage=0;
       if (typeof game.flags.funerals!=="number") game.flags.funerals=0;
       if (typeof game.flags.candles!=="number") game.flags.candles=0;
       game.state = game.dungeon? "dungeon":"base";
@@ -1211,7 +1213,7 @@ function openTavern(){
           say(["Grease, onions, mystery. You feel like a person again."], ()=>openTavern()); } },
       { t:"The Bones Game (stake 10g)", fn:()=>bonesGame(10) },
       { t:"Buy a round, listen to the room (8g)", fn:listenTavern },
-      ...(LORE_KINGDOM.some(r=>r.src==="tavern" && !hasRumor(r.id))? [{ t:"Sit near the polite strangers (8g)", d:"Court vowels. New coin. They keep asking divers what cures age.", fn:tavernAgents }]:[]),
+      ...((LORE_KINGDOM.some(r=>r.src==="tavern" && !hasRumor(r.id)) || crownStageNum()>=2)? [{ t:"Sit near the polite strangers (8g)", d:"Court vowels. New coin. They keep asking divers what cures age.", fn:tavernAgents }]:[]),
       { t:"Who is here tonight? (court here)", fn:rosterMenu }
     ];
     if (p.partner) opts.push({ t:"Court "+p.partner.name.split(" ")[0], fn:courtWith });
@@ -1283,6 +1285,8 @@ function tavernAgents(){
   if (r){
     findRumor(r.id, "the polite strangers");
     lines.push("One of them buys you a wine you did not order and pays with coin too new to be dirty.");
+  } else if (crownStageNum()>=4){
+    lines.push("They wear crown mail now. The question has changed. Not what cures age - where the stairs open, and how wide.");
   }
   say(lines, ()=>openTavern());
   saveGame();
@@ -1498,6 +1502,7 @@ function advanceWeeks(n){
   if (p.spouse && p.upgrades.indexOf("cellar")>=0 && Math.random()<0.5)
     p.gold+=4+irnd(8);
   simulateNPCs(n);
+  updateKingdom();
 }
 /* Jericho does not wait for you. NPCs age, wed, multiply, and die. */
 function simulateNPCs(n){
@@ -1686,7 +1691,8 @@ function tryMove(dx,dy){
     const evHere=f.events.find(e=>e.x===nx&&e.y===ny);
     if (!evHere && Math.random()<0.30){
       const roll=Math.random();
-      if (roll<0.55) startCombat(tierEnemy());
+      if (crownStageNum()>=4 && !game.flags.crownWaned && Math.random()<0.30) meetCommando();
+      else if (roll<0.55) startCombat(tierEnemy());
       else if (roll<0.80) meetAdventurer();
     }
   }
@@ -1898,7 +1904,9 @@ function puzzleEvent(ev){
   }
 }
 function corpseEvent(ev){
-  showText(["A delver, long dead. Leathers gone to varnish. The pack is intact. The fingers are very long."], ()=>{
+  const crownSoldier = crownStageNum()>=4 && !game.flags.crownWaned && Math.random()<0.35;
+  showText(crownSoldier? ["A dead soldier in crown-issue mail, face down in the wet. The wounds are not shaped like anything from the surface. The command signet is intact, which is its own report."]
+                       : ["A delver, long dead. Leathers gone to varnish. The pack is intact. The fingers are very long."], ()=>{
     showMenu("THE DEAD", [
       { t:"Search the body", fn:()=>{
           const roll=Math.random();
@@ -1906,6 +1914,7 @@ function corpseEvent(ev){
             const l=rollLoot(game.dungeon.tierNow,1);
             if (Math.random()<0.25) findLore("gild","a dead man's ledgers");
             else if (Math.random()<0.35) findRumor("misread","court papers, carried past the point of use");
+            if (crownSoldier && Math.random()<0.5){ const cu=LORE_KINGDOM.filter(r=>r.src==="crown" && !hasRumor(r.id)); if (cu.length) findRumor(pick(cu).id, "a dead soldier's orders"); }
             say(["You strip the pack. \"Sorry,\" you say. The corpse's jaw hangs a little lower."], ()=>{
               takeMany(l, null); }); }
           else if (roll<0.8){
@@ -2685,7 +2694,14 @@ const LORE_KINGDOM=[
   { id:"tithe",   src:"market",  text:"The crown still ships the tithe in twice a year - wax, salt, rope-heavy crates that drip. Nothing ships out. What a kingdom buys with a city is not recorded." },
   { id:"walls",   src:"dungeon", text:"The old garrison walls were built facing inward. Either the enemy was the city, or the city was something's pen." },
   { id:"heirs",   src:"market",  text:"Three heirs quarrel over a rotting throne while the agents answer to a fourth office with no name and a budget with no ceiling. The old king knows. The old king pays." },
-  { id:"hymn",    src:"church",  text:"A crown agent paid the Holy Gate a fortune to keep singing the bell-hymn exactly wrong. The sexton counts the money and asks no questions. The money is the psalm." }
+  { id:"hymn",    src:"church",  text:"A crown agent paid the Holy Gate a fortune to keep singing the bell-hymn exactly wrong. The sexton counts the money and asks no questions. The money is the psalm." },
+  { id:"adviser", src:"crown",   text:"A stranger attends the old king now - physician, the criers say; adviser, the court says; neither word survives contact with the thing's shadow. The king eats again. Nobody asks what the treatment is made of, twice." },
+  { id:"marriage", src:"crown",  text:"The old king wed the stranger in a closed ceremony. The archbishop signed, then retired to a monastery the same week. In the corridors they call the consort 'it', very quietly, and only after checking the doors." },
+  { id:"houses",  src:"crown",   text:"The great houses stopped pretending the throne is the point. Paper titles burn well. Below Jericho there is something better than a crown, and the houses have begun saying 'immortality' like men who can finally afford it." },
+  { id:"regent",  src:"crown",   text:"The king is dead. The treatments worked the whole way to the grave. The consort signs as regent now; the seals were transferred before the body was cold, and the funeral was closed to everyone who loved him." },
+  { id:"legions", src:"crown",   text:"Soldiers in the city at last - the kingdom's answer to sixty years of unanswered letters. They quarter in the guild hall, pay for drinks in new coin, and ask the barkeep who dives, and where, and at what hour." },
+  { id:"transfer", src:"crown",  text:"The regent is dead - a horrible accident, the criers say, on coronation day of the young ruler. The crowned child speaks with the regent's cadence and holds a pen the way she did. The great houses keep their doors barred and their faces very studied." },
+  { id:"withdrawn", src:"crown", text:"The banners are coming down along the quays. The commandos stopped going below; the garrison stopped asking why. The decree says 'redeployment'. Jericho's version: even the crown's best are only meat with better boots, and the dark does not sign contracts." }
 ];
 const RH_BY_ID={}; for (const r of LORE_KINGDOM) RH_BY_ID[r.id]=r;
 function hasRumor(id){ const fr=(game.flags.rh||[]); return fr.indexOf(id)>=0; }
@@ -2698,6 +2714,78 @@ function findRumor(id, via){
   sfx("gain");
   sparkBurst(W/2, 60, "#9db3d6", 22, 1.5);
   saveGame();
+}
+/* ----- the crown arc: fifty years of pressure, anchored to the campaign ----- */
+const KING_STAGES=[
+  { y:5,  id:"adviser", news:["Word from the capital: a stranger attends the old king. Physician, say the criers. Nobody in Jericho believes the criers.","The king has stopped dying for a season. The capital says 'recovered'. Jericho hears 'paid for'."] },
+  { y:9,  id:"marriage", news:["Word from the capital: the old king wed the stranger. Closed ceremony. The archbishop retired the same week, which the Lamp finds funny and the Church does not."] },
+  { y:18, id:"houses",  news:["Word from the capital: the great houses are buying rope, armor, and divers' contracts. Nobody of rank says the king's name anymore. They say 'after'.","More court strangers in the Lamp. They stopped asking about cures. Now they ask about stairs."] },
+  { y:25, id:"regent",  news:["Word from the capital: the king is dead. The treatments worked the whole way down. The stranger signs as regent, and the seals were moved before the bells finished."] },
+  { y:33, id:"legions", news:["Soldiers on the quay in crown-issue mail: the first garrison in Jericho's living memory. They quarter in the guild hall and pay too well for directions below.","A corporal posted a notice on the Gate of Openings: all dives must now hold a crown licence. The paper costs more than the rope."] },
+  { y:45, id:"transfer", news:["Word from the capital: the regent is dead - a horrible accident on coronation day, say the criers, in voices trained flat.","The crowned child speaks in the regent's cadence. The Lamp drinks to 'after' - and nobody toasts twice."] }
+];
+const TENSION_LINES=[
+  "Crown soldiers have roped off the Ossuary square 'for inspection'. The corporal keeps a list of who signs, and when, and what they carry.",
+  "A crowd is jeering a patrol outside the Stacks. Nobody remembers what started it. Everybody knows what it is.",
+  "A wagon of crown mail-clerks picks through the Grave-Market, weighing loot bought honestly. 'Evidence', the manifest says.",
+  "Soldiers drilled in the square until dark. In Jericho, drills are counted. Everyone counted."
+];
+const WANE_NEWS=[
+  "The banners are coming down along the quays. The commandos stopped going below weeks ago; the garrison stopped asking why. 'Redeployment', the decree says.",
+  "The tavern toasts the withdrawal the way you toast weather: no speeches. The guild hall already smells of somebody else's cooking."
+];
+function crownYears(){ return Math.floor((game.week-((game.flags&&game.flags.kingEpoch)||884))/52); }
+function crownStageNum(){ return (game.flags&&game.flags.crownStage)||0; }
+function updateKingdom(){
+  if (typeof game.flags.kingEpoch!=="number") game.flags.kingEpoch=game.week;
+  const y=crownYears(), p=game.player;
+  let st=game.flags.crownStage||0;
+  while (st<KING_STAGES.length && y>=KING_STAGES[st].y){
+    const s=KING_STAGES[st];
+    game.flags.news.push(...s.news);
+    findRumor(s.id, "the capital, by way of the carts");
+    st++;
+  }
+  game.flags.crownStage=st;
+  if (st>=4 && !game.flags.crownWaned){
+    const slayed=(p.killsByKind||{})["Crown Commando"]||0;
+    if (slayed>=8){
+      game.flags.crownWaned=true;
+      game.flags.news.push(...WANE_NEWS);
+      findRumor("withdrawn", "the empty barracks after the banners");
+    } else if (Math.random()<0.10) game.flags.news.push(pick(TENSION_LINES));
+  }
+}
+function commandoFoe(){
+  const hp=22+2*(game.dungeon? game.dungeon.depth : 1);
+  return { n:"Crown Commando", mhp:hp, hp:hp, atk:5, tr:null, artSeed:irnd(2147483647), human:true };
+}
+function meetCommando(){
+  showText(["A whistle, a lantern-discipline: three soldiers in crown-issue mail block the tunnel. The officer's map of Jericho is newer than yours.",
+            "\"Delving licence,\" the officer says, not asking. \"And your manifest. The crown taxes the deep now. You are aware.\""], ()=>{
+    showMenu("CROWN SOLDIERS", [
+      { t:"Pay the deep-duty (10g)", fn:()=>{ const p=game.player;
+          if (p.gold>=10){ p.gold-=10; saveGame();
+            say(["The officer stamps your licence with wax that smells of the court's idea of the deep.",
+                 "\"Profitable dropping,\" he says, and the lanterns let you pass."]); }
+          else { say(["Your purse says what your mouth won't.","The officer's arithmetic becomes a sword-draw."], ()=>startCombat(commandoFoe())); } } },
+      { t:"Slip into a side gallery (Agility)", fn:()=>{
+          if (check("agi",11)) say(["You fold sideways into a crack in the wall. The lanterns pass. The crown's arithmetic does not include you."]);
+          else say(["Your boot finds the one loose stone in the tunnel's ceiling.","The lanterns wheel."], ()=>startCombat(commandoFoe())); } },
+      { t:"Refuse. The dark was here first.", fn:()=>{
+          startCombat(commandoFoe()); } }
+    ]);
+  });
+}
+function crownPressure(){
+  if (crownStageNum()<4 || game.flags.crownWaned) return;
+  if (game.ui.mode || game.combat || gDice) return;
+  if (Math.random()>0.004) return;
+  stopWalk();
+  if (game.player.gold>=15 && Math.random()<0.5){
+    game.player.gold-=5; saveGame();
+    say(["A corporal at the corner stamps your collar: deep-duty, five gold, crown mathematics. \"The kingdom protects,\" he says, to nobody's belief."]);
+  } else say([pick(TENSION_LINES)]);
 }
 function gateConditions(){
   const p=game.player, fl=game.flags.lore||[];
@@ -2953,7 +3041,8 @@ const BESTIARY_DESC = {
   "The Hundred-Handed Host":"Fifty pairs of hands and one enormous patience. It only wants to hold you.",
   "Pale Chandelier":"The arms of the drowned, arranged as light. It hangs from ceilings that should not exist. So it hangs from yours.",
   "Wound-Warden of the Deep Ward":"A jailer of the city's worst cellar, assembled from other people's unhealed injuries.",
-  "The Long Mother":"Fifty hands, a warmth at the end of the corridor, and a story about both. Do not go to the warmth."
+  "The Long Mother":"Fifty hands, a warmth at the end of the corridor, and a story about both. Do not go to the warmth.",
+  "Crown Commando":"The kingdom's answer to the dark: drilled, sheeted in it-armor, lamps rated for inferiors. Not here for the city's sake - here to bring something back for a dying king, and now perhaps for whoever wears his seals.",
 };
 
 /* ============================================================
@@ -3726,7 +3815,7 @@ function updateBase(){
   updTownfolk();
   if (uiBlocked()){ updateUI(); return; }
   const mv=dirTap();
-  if (mv){ stopWalk(); tryBaseMove(mv[0],mv[1]); maybeMugged(); return; }
+  if (mv){ stopWalk(); tryBaseMove(mv[0],mv[1]); maybeMugged(); crownPressure(); return; }
   if (walkPath && walkPath.length){
     if (yesTap()||noTap()){ stopWalk(); return; }
     if (++walkTick>=5){
@@ -3990,7 +4079,7 @@ window.__openings={
   get hint(){ return String(hintMsg||""); },
   get earsHinted(){ return game && game.flags? !!game.flags.earsHinted : false; },
   droneHush:droneHush,
-  findRumor, hasRumor, LORE_KINGDOM, RH_BY_ID, KEEPERS, WORK_JOBS, workShift, keeperGreet, bumpVisit, heirName, keeperChat,
+  findRumor, hasRumor, LORE_KINGDOM, RH_BY_ID, KEEPERS, WORK_JOBS, workShift, keeperGreet, bumpVisit, heirName, keeperChat, KING_STAGES, TENSION_LINES, crownYears, crownStageNum, updateKingdom, meetCommando, crownPressure, commandoFoe, corpseEvent, tavernAgents,
   get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; }
 };
 </script>
