@@ -895,6 +895,9 @@ function loadGame(){
       if (typeof Pl.packs!=="number") Pl.packs=0;
       if (!Array.isArray(Pl.chest)) Pl.chest=[];
       if (!Array.isArray(Pl.ills)) Pl.ills=[];
+      if (typeof game.flags.sharkDrip!=="number") game.flags.sharkDrip=0;
+      if (typeof game.flags.loanDue!=="number") game.flags.loanDue=0;
+      if (game.flags.loan && typeof game.flags.loan.owe!=="number") game.flags.loan=null;
       if (!Array.isArray(game.townfolk)) game.townfolk=[];
       if (!Array.isArray(game.townPool)) game.townPool=[];
       if (!Array.isArray(game.flags.lore)) game.flags.lore=[];
@@ -956,6 +959,7 @@ function buildCity(){
 let cityGrid = null;
 function citySolid(x,y){
   if (x<0||y<0||x>=CW||y>=CH) return true;
+  if (!cityGrid) cityGrid=buildCity();
   return cityGrid[y][x]==="B";
 }
 function tryBaseMove(dx,dy){
@@ -1073,7 +1077,7 @@ function openGuild(){
 }
 function buyRumor(){
   const p=game.player;
-  if (p.gold<5){ say(["No coin, no whispers."]); return; }
+  if (p.gold<5){ sharkTrigger(); say(["No coin, no whispers."]); return; }
   p.gold-=5;
   const o=pick(OPENINGS);
   if (Math.random()<0.75){
@@ -1139,7 +1143,7 @@ function supplyMenu(){
 }
 function tryBuy(n, cost, kind){
   const p=game.player;
-  if (p.gold<cost){ say(["Not enough coin. The vendor's eyes go flat."], ()=>supplyMenu()); return; }
+  if (p.gold<cost){ sharkTrigger(); say(["Not enough coin. The vendor's eyes go flat."], ()=>supplyMenu()); return; }
   if (p.inv.length>=invCap() && !countItem(n)){ say(["No room in your pack."], ()=>supplyMenu()); return; }
   p.gold-=cost; addItem(n, Math.round(cost*0.5), kind);
   say(["You buy the "+n+"."], ()=>supplyMenu());
@@ -1147,7 +1151,7 @@ function tryBuy(n, cost, kind){
 function buyPack(cost, add){
   const p=game.player;
   if ((p.packs||0)+add>3){ say(["You are a pack now. Your straps have straps."], ()=>supplyMenu()); return; }
-  if (p.gold<cost){ say(["The vendor pats the pack sympathetically. Neither of you can afford it."], ()=>supplyMenu()); return; }
+  if (p.gold<cost){ sharkTrigger(); say(["The vendor pats the pack sympathetically. Neither of you can afford it."], ()=>supplyMenu()); return; }
   p.gold-=cost; p.packs=(p.packs||0)+add;
   say(["Straps over straps. Your whole life rides a little easier now. (pack "+invUsed()+"/"+invCap()+")"], ()=>supplyMenu());
   saveGame();
@@ -1167,7 +1171,7 @@ function gearMenu(){
 }
 function buyWeapon(n,d,cost){
   const p=game.player;
-  if (p.gold<cost){ say(["The smith looks at your coin, then past it."], ()=>gearMenu()); return; }
+  if (p.gold<cost){ sharkTrigger(); say(["The smith looks at your coin, then past it."], ()=>gearMenu()); return; }
   if (invUsed()+1>invCap()){ say(["No room to carry it. Lighten up or buy a pack."], ()=>gearMenu()); return; }
   p.gold-=cost;
   p.inv.push({ n:n, v:Math.round(cost*0.8), kind:"weapon", qty:1, d:d });
@@ -1177,7 +1181,7 @@ function buyWeapon(n,d,cost){
 }
 function buyArmor(n,a,cost){
   const p=game.player;
-  if (p.gold<cost){ say(["The smith looks at your coin, then past it."], ()=>gearMenu()); return; }
+  if (p.gold<cost){ sharkTrigger(); say(["The smith looks at your coin, then past it."], ()=>gearMenu()); return; }
   if (invUsed()+1>invCap()){ say(["You could not carry a chimney. Pack first."], ()=>gearMenu()); return; }
   p.gold-=cost;
   p.inv.push({ n:n, v:Math.round(cost*0.8), kind:"armor", qty:1, a:a });
@@ -1193,7 +1197,7 @@ function autoEquip(n){
 }
 function tryGearBuy(cost){
   const p=game.player;
-  if (p.gold<cost){ say(["Not enough coin."], ()=>gearMenu()); return false; }
+  if (p.gold<cost){ sharkTrigger(); say(["Not enough coin."], ()=>gearMenu()); return false; }
   p.gold-=cost; return true;
 }
 
@@ -1204,18 +1208,18 @@ function openClinic(){
     { t:"Tend wounds ("+(wounds*20)+"g)"+(wounds? " - you have "+wounds:""), fn:()=>{
         if (!wounds){ say(["\"Nothing wrong with you that the city won't fix later.\""]); return; }
         const cost=wounds*20;
-        if (p.gold<cost){ say(["\"Twenty a wound. The city owes you nothing.\""]); return; }
+        if (p.gold<cost){ sharkTrigger(); say(["\"Twenty a wound. The city owes you nothing.\""]); return; }
         p.gold-=cost; p.wounds=[];
         say(["Needles. Wire. A smell like a lit match in a butcher's shop.",
              "You keep all your blood this time."]); } },
     ...(p.ills && p.ills.length? [{ t:"Sweat the fevers out (10g each) - you carry "+p.ills.length, fn:()=>{
         const cost=p.ills.length*10;
-        if (p.gold<cost){ say(["\"Sickness costs sweat and ten a fever. Bring the difference.\""]); return; }
+        if (p.gold<cost){ sharkTrigger(); say(["\"Sickness costs sweat and ten a fever. Bring the difference.\""]); return; }
         p.gold-=cost; p.ills=[]; advanceWeeks(1);
         say(["Brandy, blankets, and a night that never ends properly.",
              "The fevers break. Your body is yours again."]); saveGame(); } }] : []),
     { t:"Bloodrest draught (30g) - full HP", fn:()=>{
-        if (p.gold<30){ say(["You are short."]); return; }
+        if (p.gold<30){ sharkTrigger(); say(["You are short."]); return; }
         p.gold-=30; p.hp=p.maxhp; say(["It tastes like copper pennies and sleep. You feel whole."]); } },
     { t:"Leave", fn:()=>{} }
   ]);
@@ -1237,7 +1241,7 @@ function openChurch(){
             say(["You kneel in the dust of a hundred funerals. Nothing answers. But something in you stands easier.","(+3 HP)"], ()=>openChurch()); saveGame(); }
           else say(["You kneel until your knees ache. The silence is total, honest, and utterly uninterested.","Perhaps this too is practice."], ()=>openChurch()); } },
       { t:"Light a candle for the dead (3g) - +2 HP", fn:()=>{
-          if (p.gold<3){ say(["You have less than a candle. The sexton pretends not to have heard."], ()=>openChurch()); return; }
+          if (p.gold<3){ sharkTrigger(); say(["You have less than a candle. The sexton pretends not to have heard."], ()=>openChurch()); return; }
           p.gold-=3; p.hp=clamp(p.hp+2,0,p.maxhp);
           game.flags.candles=(game.flags.candles||0)+1;
           if (game.flags.candles===13) findLore("bellhymn","the thirteenth candle, lit for no one in particular");
@@ -1247,7 +1251,7 @@ function openChurch(){
       opts.push({ t:"Pay for "+list.length+" funeral"+(list.length>1?"s":"")+" (30g)",
         d:"Unburied: "+list.join(", ").slice(0,60),
         fn:()=>{
-          if (p.gold<30){ say(["The sexton names the price a second time: thirty gold, shovel-work included."], ()=>openChurch()); return; }
+          if (p.gold<30){ sharkTrigger(); say(["The sexton names the price a second time: thirty gold, shovel-work included."], ()=>openChurch()); return; }
           const names=list.join(", ");
           p.gold-=30; advanceWeeks(1);
           game.flags.unburied=[];
@@ -1290,7 +1294,7 @@ function openYard(){
 }
 function train(stat, label){
   const p=game.player;
-  if (p.gold<10){ say(["The yard master spits. \"Coin first, sweat second.\""]); return; }
+  if (p.gold<10){ sharkTrigger(); say(["The yard master spits. \"Coin first, sweat second.\""]); return; }
   if (p.stam<25){ say(["You can barely lift your arms. Rest first."]); return; }
   p.gold-=10; p.stam-=25;
   advanceWeeks(2);
@@ -1311,7 +1315,7 @@ function openTavern(){
   say(news.length? intro.concat(news) : intro, ()=>{
     const opts=[
       { t:"Hot meal (6g) - stamina +40", fn:()=>{
-          if (p.gold<6){ say(["The barkeep slides your empty bowl back, unimpressed."], ()=>openTavern()); return; }
+          if (p.gold<6){ sharkTrigger(); say(["The barkeep slides your empty bowl back, unimpressed."], ()=>openTavern()); return; }
           p.gold-=6; p.stam=clamp(p.stam+40,0,maxStam());
           say(["Grease, onions, mystery. You feel like a person again."], ()=>openTavern()); } },
       { t:"The Bones Game (stake 10g)", fn:()=>bonesGame(10) },
@@ -1366,7 +1370,7 @@ function aboutNpc(np){
 }
 function listenTavern(){
   const p=game.player;
-  if (p.gold<8){ say(["You have empty pockets and excellent hearing."], ()=>openTavern()); return; }
+  if (p.gold<8){ sharkTrigger(); say(["You have empty pockets and excellent hearing."], ()=>openTavern()); return; }
   p.gold-=8;
   say([pick([
     "\"The Cessgate worms burrow up through the Ossuary floors these days.\"",
@@ -1379,7 +1383,7 @@ function listenTavern(){
 }
 function tavernAgents(){
   const p=game.player;
-  if (p.gold<8){ say(["They glance at your empty hands and pour their wine thinner."], ()=>openTavern()); return; }
+  if (p.gold<8){ sharkTrigger(); say(["They glance at your empty hands and pour their wine thinner."], ()=>openTavern()); return; }
   p.gold-=8;
   const unfound=LORE_KINGDOM.filter(r=>r.src==="tavern" && !hasRumor(r.id));
   const r=unfound.length? pick(unfound) : null;
@@ -1501,7 +1505,7 @@ function openOffice(){
   } else {
     const opts=UPGRADES.filter(u=>p.upgrades.indexOf(u.id)<0).map(u=>({
       t:u.n+" ("+fmt(u.cost)+")", d:u.d,
-      fn:()=>{ if (p.gold<u.cost){ say(["Short by "+fmt(u.cost-p.gold)+". The clerk shrugs like the weather."], ()=>openOffice()); return; }
+      fn:()=>{ if (p.gold<u.cost){ sharkTrigger(); say(["Short by "+fmt(u.cost-p.gold)+". The clerk shrugs like the weather."], ()=>openOffice()); return; }
         p.gold-=u.cost; p.upgrades.push(u.id);
         p.stam=clamp(p.stam,0,maxStam());
         checkTitles();
@@ -1521,7 +1525,7 @@ function openOffice(){
 }
 function buyHouse(){
   const p=game.player;
-  if (p.gold<250){ say(["The clerk quotes the price again, slower, like you are hard of hearing."], ()=>openOffice()); return; }
+  if (p.gold<250){ sharkTrigger(); say(["The clerk quotes the price again, slower, like you are hard of hearing."], ()=>openOffice()); return; }
   p.gold-=250; p.house="Leaning Tenement";
   cityGrid=buildCity();
   earnTitle("Householder of Ward Nine");
@@ -2240,6 +2244,58 @@ function meetAdventurer(){
       ]);
     });
   }
+}
+
+/* ----- the Kindly Fellows: money has a collection schedule ----- */
+function sharkTrigger(){
+  const fl=game.flags;
+  if (fl.loan) return;
+  fl.sharkDrip=(fl.sharkDrip||0)+1;
+}
+function sharkMeet(){
+  const p=game.player, fl=game.flags;
+  fl.sharkDrip=0;
+  sfx("click");
+  showMenu("A PATIENT MAN", [
+    { t:"Take the loan (100 gold now; 300 owed)", fn:()=>{
+        p.gold+=100; fl.loan={ owe:300, took:game.week };
+        say(["Coins, counted out slow, like a kindness he plans to describe later.",
+             "\"The Fellows collect the day you come up. Three hundred. Bring it breathing.\""],
+            ()=>saveGame()); } },
+    { t:"Refuse him", fn:()=>{
+        say(["He does not move, exactly. \"Someday soon, then. Your face is easier to remember than most.\""],
+            ()=>saveGame()); } }
+  ]);
+}
+function fellowsBeat(owe){
+  const p=game.player;
+  hurt(Math.max(1,Math.ceil(p.maxhp*0.10)), "The Fellows' hands are patient and professional.");
+  if (game.state==="dead") return;
+  const fee=Math.max(1,Math.round(p.gold*0.2));
+  p.gold=Math.max(0,p.gold-fee);
+  say(["They take "+fee+"g as the waiting fee. It is not called interest. It is not called anything.",
+       "(-"+owe+"g still owed. They will be outside the Gate the day you climb out.)"], ()=>fellowsMenu(owe));
+}
+function fellowsMenu(owe){
+  const p=game.player;
+  const pay=()=>{ p.gold-=owe; game.flags.loan=null;
+      say(["Coins across a palm, counted twice, pocketed slow.",
+           "\"The Fellows mark it paid. A rarity: a closed line in their book.\""], ()=>saveGame()); };
+  const opts=[];
+  if (p.gold>=owe) opts.push({ t:"Pay the "+owe+"g you owe", fn:pay });
+  opts.push({ t:"Talk your way into paying later (Wits)", fn:()=>{
+      if (check("wit",11)){
+        say(["Your story about the weather, the market, the next dive - and it buys you this once, exactly one more dive.",
+             "\"Later, then. The Fellows keep a patient book.\""], ()=>saveGame());
+      } else fellowsBeat(owe); } });
+  opts.push({ t:"Take the beating", fn:()=>fellowsBeat(owe) });
+  showMenu("THE KINDLY FELLOWS WAIT", opts);
+}
+function fellowsCollect(){
+  const owe=game.flags.loan.owe;
+  sfx("growl");
+  say(["Three shy gentlemen wait outside the Gate of Openings. It is collection day.",
+       "The one holding the ledger-book taps the cover: "+owe+"g, as agreed."], ()=>fellowsMenu(owe));
 }
 
 /* ----- checks, wounds, death ----- */
@@ -3466,7 +3522,7 @@ function maneuverMenu(){
     fn:()=>{
       if (p[m.stat]<m.req){ say(["The yard master watches two of your kicks, shakes his head.",
         "\"Not yet. "+statName(m.stat)+" "+m.req+" first. You will get there. Or the dark will.\""], ()=>maneuverMenu()); return; }
-      if (p.gold<m.cost){ say(["Short by "+fmt(m.cost-p.gold)+". The yard master waits like wage day."], ()=>maneuverMenu()); return; }
+      if (p.gold<m.cost){ sharkTrigger(); say(["Short by "+fmt(m.cost-p.gold)+". The yard master waits like wage day."], ()=>maneuverMenu()); return; }
       p.gold-=m.cost; p.maneuvers.push(m.id); advanceWeeks(3);
       setBanner(["MANEUVER LEARNED","You know "+m.n+" now. The body remembers."]);
       say(["Weeks of falling and getting up. Then one morning the motion is simply yours.", m.n+": learned."], ()=>openYard());
@@ -3479,7 +3535,7 @@ function maneuverMenu(){
 }
 function bonesGame(stake){
   const p=game.player;
-  if (p.gold<stake){ say(["The stickman eyes your purse. \"Empty hands pull no bones.\""], ()=>openTavern()); return; }
+  if (p.gold<stake){ sharkTrigger(); say(["The stickman eyes your purse. \"Empty hands pull no bones.\""], ()=>openTavern()); return; }
   p.gold-=stake;
   say(["A scarred man rattles two knuckle-dice in a cup and slides it across the table.",
        "\"Catch twin sixes and it triples. One six, stake back. Nothing - to the pot.\"",
@@ -3936,12 +3992,13 @@ function drawBase(){
     ctx.fillStyle="rgba(150,165,185,0.05)"; ctx.fillRect(0,fy,W,16);
   }
   const p=game.player;
-  box(0,0,148,38,"rgba(8,6,10,0.92)");
+  box(0,0,148,game.flags.loan? 48:38,"rgba(8,6,10,0.92)");
   txt(p.name+"  "+Math.floor(game.week/52)+"y  "+fmt(p.gold),3,3,PAL.gold);
   txt("HP "+p.hp+"/"+p.maxhp+" STAM "+Math.round(p.stam)+(p.stam<0?" DEBT":""),3,14, p.stam<0? PAL.bloodHi : PAL.bone);
   if (p.wounds.length) txt("wounds: "+p.wounds.join(","),3,25,PAL.bloodHi);
   if (p.ills && p.ills.length) txt("unwell: "+p.ills.join(","),3,36,"#8faf7a");
   else if (p.titles.length) txt("\""+p.titles[p.titles.length-1]+"\"",3,25,"#a89762");
+  if (game.flags.loan) txt("the Fellows are owed "+game.flags.loan.owe+"g",3,47,"#c97a4a");
   cornerChips();
 }
 
@@ -4393,6 +4450,8 @@ function updateTitle(){
 function updateBase(){
   updTownfolk();
   if (uiBlocked()){ updateUI(); return; }
+  if (game.flags.sharkDrip){ game.flags.sharkDrip=0; if (!game.flags.loan){ sharkMeet(); return; } }
+  if (game.flags.loanDue){ game.flags.loanDue=0; if (game.flags.loan){ fellowsCollect(); return; } }
   const mv=dirTap();
   if (mv){ stopWalk(); tryBaseMove(mv[0],mv[1]); maybeMugged(); crownPressure(); strangerPressure(); return; }
   if (walkPath && walkPath.length){
@@ -4498,6 +4557,7 @@ function leaveDungeon(){
        "Delves: "+p.delves+"  |  kills: "+p.kills+"  |  purse: "+fmt(p.gold)];
   const news=drainNews();
   if (news.length) lines.push("Word from the surface:", ...news);
+  if (game.flags.loan) game.flags.loanDue=1;
   say(lines, ()=>saveGame());
 }
 function updateCombat(){
@@ -4669,6 +4729,8 @@ window.__openings={
   findRumor, hasRumor, LORE_KINGDOM, RH_BY_ID, KEEPERS, WORK_JOBS, workShift, keeperGreet, bumpVisit, heirName, keeperChat, KING_STAGES, TENSION_LINES, crownYears, crownStageNum, updateKingdom, meetCommando, crownPressure, commandoFoe, corpseEvent, tavernAgents,
   updateBattleMusic, chasmGo, fireSpots:()=>FIRE_SPOTS, trashList:()=>TRASH, lightMap:()=>cityLight,
   drainStam, exhaustHit, exhaustAilment, check, tryMove, openClinic, staminaFloor:()=>STAM_FLOOR,
+  sharkTrigger, sharkMeet, fellowsCollect, fellowsMenu, fellowsBeat, leaveDungeon,
+  get loan(){ return game && game.flags? (game.flags.loan||null) : null; },
   ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC,
   get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; }
 };

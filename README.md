@@ -95,6 +95,9 @@ your view. No virtual pad; the canvas is the only control surface.
 - Walking rich (70g+ on you, or 80g+ in loot) can attract **muggers of
   your own trade**: pay a tithe, show steel, run, or fight — street
   fights end back in the street.
+- Running out of coin mid-purchase does more than embarrass you: somewhere
+  outside, **a loan shark** has already noticed. His arithmetic is simple
+  (100 in, 300 out, collected after your next delve).
 - **Click / tap the map** → the hero walks there (pathfinding handles walls;
   in the city, tapping a building walks you to it and takes you inside).
 - **Click / tap dialog text** → advance it.
@@ -148,6 +151,7 @@ an auto-walk in progress.
    - **Grave-Market: packs.** Carry **10** items; buy a **Satchel (35g,
      +3)** or **Expedition pack (90g, +6)** up to 19. Items stack, slots
      don't; the deep-cellar widens the chest instead.
+   - **The Kindly Fellows.** Not on any street you'll find them on; they find you. Go to buy something and come up short, and outside the door waits a patient man: **100 gold now, 300 when you climb back out** of the Openings - collection day is the day you surface. He can be refused; he keeps the face. When the thugs wait by the Gate, you pay the 300, or **talk your way into paying later (Wits)** - succeed and you get exactly one more dive; fail and the fee for waiting is a **beatdown for 10% of your max HP and 20% of your purse**, and they ask again, right there, and every delve after, until the book closes. A frail body can genuinely die of debt. The debt rides your HUD until it is paid.
    - **Honest work, if you want it badly enough.** The Washhouse, the
      Bone Carver, the Tallowworks and the Pawnbroker will take a shift
      off you - two weeks and 35 stamina (more than the Yard ever asks)
