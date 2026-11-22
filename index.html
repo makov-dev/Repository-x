@@ -228,6 +228,7 @@ const ITEM_DESC={
   "Bandage":"Woven tight enough to argue with a wound and win.",
   "Rope & Hook":"For the gaps the city forgot to bridge and the dark forgot to fill.",
   "Antitoxin":"Bitter as a landlady's goodbye, effective like one.",
+  "Traveller's Bloodrest":"The flesh-setter bottles sleep nowadays. Wholeness in one swallow, priced for people with reasons.",
   "Bone Ring":"Carved from something patient. For promises that must outlast you.",
   "Pale Rose":"A grave-flower that lives in the dark. Courting armor.",
   "Iron Shard":"A better edge than hope.",
@@ -623,10 +624,10 @@ const HORRORS = {
     { n:"Flayed Choir", hp:18, atk:5, tr:"swarm" }
   ],
   3: [
-    { n:"The Hundred-Handed Host", hp:38, atk:6, tr:"grasp" },
     { n:"Pale Chandelier", hp:34, atk:7, tr:"swarm" },
-    { n:"Wound-Warden of the Deep Ward", hp:44, atk:6, tr:"weep" },
-    { n:"The Long Mother", hp:55, atk:8, tr:null }
+    { n:"Palanquin of Gristle", hp:36, atk:6, tr:"grasp" },
+    { n:"The Tithe-Slug", hp:40, atk:5, tr:null },
+    { n:"Host of the Bell Throat", hp:30, atk:6, tr:"weep" }
   ]
 };
 
@@ -881,9 +882,11 @@ function rollLoot(tier, rolls){
   const out=[];
   const pool=LOOT.slice();
   const total=pool.reduce((s,l)=>s+l.w,0);
+  const dep=(game && game.dungeon && game.dungeon.depth) || 1;
+  const dfac=1+0.15*(dep-1);
   for (let i=0;i<rolls;i++){
     let r=Math.random()*total;
-    for (const l of pool){ r-=l.w; if (r<=0){ out.push({n:l.n, v:Math.max(1,Math.round(l.v*(0.8+0.4*tier*0.35)*ngLootMul())), kind:"loot", qty:1}); break; } }
+    for (const l of pool){ r-=l.w; if (r<=0){ out.push({n:l.n, v:Math.max(1,Math.round(l.v*(0.8+0.4*tier*0.35)*dfac*ngLootMul())), kind:"loot", qty:1}); break; } }
   }
   return out;
 }
@@ -1163,6 +1166,7 @@ function supplyMenu(){
     { t:"Bandage (10g) - sew a wound shut", fn:()=>tryBuy("Bandage",10,"heal") },
     { t:"Rope & Hook (15g) - cross the gaps", fn:()=>tryBuy("Rope & Hook",15,"tool") },
     { t:"Antitoxin (12g)", fn:()=>tryBuy("Antitoxin",12,"heal") },
+    { t:"Traveller's Bloodrest (35g) - full HP, drunk in the dark", d:"The flesh-setter bottles sleep nowadays.", fn:()=>tryBuy("Traveller's Bloodrest",35,"heal") },
     { t:"Bone Ring (60g) - for a promise", fn:()=>tryBuy("Bone Ring",60,"gift") },
     { t:"Pale Rose (25g) - grave-flower that lives in the dark", fn:()=>tryBuy("Pale Rose",25,"gift") },
     { t:"Satchel (35g) - carry 3 more", d:"Old leather, honest buckles.", fn:()=>buyPack(35,1) },
@@ -2181,7 +2185,7 @@ function genFloor(d){
   let fi=0;
   const nextFree=()=>freeTiles[fi++];
   const tierNow=clamp(d.opening.tier+(d.depth-1),1,3);
-  const nLoot=3+irnd(3);
+  const nLoot=3+irnd(3)+Math.min(3,Math.floor((d.depth-1)/3));
   for (let i=0;i<nLoot;i++){ const t=nextFree(); if(!t) break;
     evs.push({x:t[0],y:t[1],type:"loot",items:rollLoot(tierNow,1+irnd(2))}); }
   const nObs=2+irnd(2);
@@ -2295,7 +2299,11 @@ function tileAt(x,y){
 }
 function tierEnemy(){
   const tier=game.dungeon.tierNow;
-  const base= game.dungeon.opening.undead? UNDEAD[irnd(UNDEAD.length)] : HORRORS[tier][irnd(HORRORS[tier].length)];
+  const dep=game.dungeon.depth||1;
+  let base;
+  if (!game.dungeon.opening.undead && dep>=4 && Math.random()<(dep-3)*0.08){
+    base=APEX_HORRORS[irnd(APEX_HORRORS.length)];
+  } else base= game.dungeon.opening.undead? UNDEAD[irnd(UNDEAD.length)] : HORRORS[tier][irnd(HORRORS[tier].length)];
   const hp=ngHp(Math.max(3,Math.round(base.hp*(0.85+Math.random()*0.3))));
   return { n:base.n, mhp:hp, hp:hp, atk:base.atk+ngAtkBump(), tr:base.tr, artSeed:irnd(2147483647), human:false };
 }
@@ -2971,7 +2979,7 @@ function startCombat(enemy){
   const lore=BESTIARY_DESC[enemy.n] || (enemy.human? "A delver with a knife and an argument. Jericho breeds them faster than grief does." : "Something the city never bothered to name twice.");
   const origin= game.state==="base"? "base":"dungeon";
   if (game.dungeon){ const cf=curFloor(); if (cf && cf.lurker) cf.lurker=null; }
-  game.combat={ e:enemy, log:["The "+enemy.n+" comes out of the dark.", lore], turn:"player", choice:0, guard:false, won:false, critKill:false, riposte:false, origin:origin };
+  game.combat={ e:enemy, log:[(String(enemy.n).indexOf("The ")===0? enemy.n : "The "+enemy.n)+" comes out of the dark.", lore], turn:"player", choice:0, guard:false, won:false, critKill:false, riposte:false, origin:origin };
   if (!foeKnown(enemy.n)) game.combat.log.push("You have never seen its like up close. Survive it, and you will know it.");
   game.combat.intro = foeKnown(enemy.n)? 0 : 46;
   sfx("growl");
@@ -3030,6 +3038,10 @@ function combatPlayerAction(a){
       useFromInv("Bandage",1);
       p.hp=clamp(p.hp+8,0,p.maxhp);
       clog("Needle and thread, mid-fight. +8 HP. Ugly. Alive.");
+    } else if (countItem("Traveller's Bloodrest")){
+      useFromInv("Traveller's Bloodrest",1);
+      p.hp=p.maxhp;
+      clog("The bottled draught. Wholeness in one swallow. You have no business surviving this, and now you do.");
     } else if (countItem("Ration")){
       useFromInv("Ration",1);
       p.stam=clamp(p.stam+35,0,maxStam()); p.hp=clamp(p.hp+2,0,p.maxhp);
@@ -3191,9 +3203,8 @@ function winCombat(){
   p.gold+=g;
   addFloat("+"+fmt(g), PAL.coin, W/2+16, 92);
   sfx("coin"); sparkBurst(W/2, 88, "#e0b95a", 14, 1.1);
-  if (game.dungeon && game.dungeon.depth>=5) clog("Below the fifth, the dark pays time and a half.");
   const l=rollLoot(tilt, Math.random()<0.4?2:1);
-  if (game.dungeon && game.dungeon.depth>=5) l.forEach(it=>{ it.v=Math.round(it.v*1.5); });
+  if (game.dungeon && game.dungeon.depth>=5) clog("Below the fifth, the dark pays. Even its dead carry more.");
   const got=[];
   takeMany(l, (it)=>{
       got.push(it.n);
@@ -3619,6 +3630,11 @@ const LORE_FRAG=[
 ];
 const LORE_BY_ID={}; for (const fr of LORE_FRAG) LORE_BY_ID[fr.id]=fr;
 const KEEPER_APEXES=["The Hundred-Handed Host","Wound-Warden of the Deep Ward","The Long Mother"];
+const APEX_HORRORS=[
+  { n:"The Hundred-Handed Host", hp:38, atk:6, tr:"grasp" },
+  { n:"Wound-Warden of the Deep Ward", hp:44, atk:6, tr:"weep" },
+  { n:"The Long Mother", hp:55, atk:8, tr:null }
+];
 function hasLore(id){ const fl=(game.flags.lore||[]); return fl.indexOf(id)>=0; }
 function findLore(id, via){
   if (!game || hasLore(id)) return;
@@ -4245,6 +4261,9 @@ const BESTIARY_DESC = {
   "Flayed Choir":"A dozen skins hung on hooks, singing in parts. You are not being recruited. You are being scored.",
   "The Hundred-Handed Host":"Fifty pairs of hands and one enormous patience. It only wants to hold you.",
   "Pale Chandelier":"The arms of the drowned, arranged as light. It hangs from ceilings that should not exist. So it hangs from yours.",
+  "Palanquin of Gristle":"A wedding chair that grew legs and an appetite for vows. The canopy is still breathing.",
+  "The Tithe-Slug":"A pale mount of centuries wearing every dropped coin like a shell. Generous to nobody, ever.",
+  "Host of the Bell Throat":"A hanging mass of throats that rings when it screams. The bell tower learned it from the hole below.",
   "Wound-Warden of the Deep Ward":"A jailer of the city's worst cellar, assembled from other people's unhealed injuries.",
   "The Gnawing Chancel":"Furniture that grew. A pew of jaws. It has no thoughts to interrupt, and would not use them.",
   "The Sow of Small Deaths":"A mother of teeth, veils on the hide. Honest hunger; you cannot reason with breakfast.",
@@ -5482,7 +5501,7 @@ loop();
 /* debug handle for testing */
 window.__openings={
   get game(){ return game; },
-  newGame, launchDelve, startCombat, combatPlayerAction, endCombat, genFloor, buildCity,
+  newGame, launchDelve, startCombat, combatPlayerAction, endCombat, genFloor, buildCity, rollLoot,
   addItem, meetAdventurer, triggerEvent, advanceWeeks, openGate, openTavern, openOffice,
   buildHome, homeInteract, updateHome, leaveHome, homeAdjacent, homeApproach,
   houseRoom, roomsBuilt, houseRoomCost, HOUSE_ROOMS, buildCellar, updateCellar, homeTrain, UNDEAD, courtBonus, tierEnemy,

@@ -276,3 +276,72 @@ own traps - the poverty spiral is the leading killer now, not the horrors.
   after a delve payday), and courtship "bites" never register because nobody
   holds a partner long enough to wed - the race is won by the deadline of
   death rather than by other suitors, in this sample.
+## 15. Two hundred lives, four ways to live — smart-player audit (this round)
+
+Run: the `personas` rig on the post-`8aae4a2` build **plus** the flesh-setter's
+`Traveller's Bloodrest` (35g, full HP, drinkable mid-fight) — 50 lives each of
+four personas = 200 lives, one process per life (the sandbox OOM-kills wider
+parallelism; with heap caps and 3 lanes every life completes clean):
+
+| persona | style |
+|---|---|
+| Door-Chaser (skill .8) | dives at 22g gear, no house, shallow courage |
+| Roof-Mender (skill .4) | cautious, wants house+family, works shifts |
+| Deep-Sage (skill .85) | trains, buys the house, marries, pays funerals |
+| Depth-Pilgrim (skill .85) | 9 rations + 3 Bloodrests, depthCap 12, wants the deep |
+
+### Ladder audit (new this round, `/tmp/ladder.js` pattern)
+
+A competent wanderer who paths straight to `>` each floor was walked down the
+Cathedral twelve times: **each floor costs ~3–6 stamina** (occasionally ~25 when
+a wounded fight drags), full descent to depth 12 fits inside one stamina bar
+plus a handful of rations (~40–90 stam total, 1–2 rations of HP). Descent is
+*not* stamina-prohibitive — the sim personas' 260-step-per-dive cap was what
+kept re-launching them at floor 1, so their medians (below) understate what a
+map-reading human reaches trivially.
+
+### What 200 lives proved illogical (and the engine fixes this round)
+
+1. **Depth paid almost nothing.** Loot value capped at ×1.22 (tier factor only);
+   kill-drops below depth 5 even got a secret ×1.5 the floor lists never saw.
+   Result: every persona farmed depth 1–3 forever (sage: 1,178 dives, deepest 3).
+   **Fix:** `rollLoot` now scales value by true floor depth (+15%/floor below
+   the first — ~2.2× at depth 9, ~2.6× combined with tier), so *the deep is the
+   money*, and the kill-drop's ad-hoc bonus rides the same honest rule.
+2. **"Great horrors of the deep" didn't live in the deep.** The three gate
+   apexes (Hundred-Handed Host, Wound-Warden, Long Mother) *were* the tier-3
+   pool, so the Cathedral fought the Long Mother on floor 1 — 108 of the first
+   200 lives killed all three while never passing depth 5, making the gate
+   condition "3 great horrors of the deep" a shallow formality. **Fix:** the
+   apexes now live only below the fourth depth (weight rises 8%/floor); tier 3
+   instead fields three new beast-tier critters (Palanquin of Gristle, The
+   Tithe-Slug, Host of the Bell Throat) with their own bestiary entries.
+3. **Deeper floors held no more loot than shallow ones.** **Fix:** one extra
+   loot pile per three floors of depth (depth 9≈10 piles).
+
+### Lives on the fixed engine (200 fresh, same rig)
+
+- 0 rig crashes in all 200 lives; fuzz still 0 errors (42000 frames).
+- **Apex placement now behaves**: only Depth-Pilgrims — the ones that actually
+  push past depth 4–5 — meet apexes (25/50 met ≥1, and every
+  pilgrim who met one met all three — meaning every one of them crossed below
+  the fifth), and the chasers/sages/menders meet none at their depths: the deep
+  keeps its own monsters now.
+- Door-Chaser/Roof-Mender economics unchanged at shallow depth (0.95×–1.25×
+  loot): still die ~17–18 of exhaustion between the house they can't reach and
+  the work they can't skip — that is the poverty spiral, working as designed.
+- Sage line (the "smart player" archetype): 45/50 survive the 40-year cap, 30
+  married, 49 housed, funerals paid, apex-horror lore now comes from *going
+  deep* with the truths instead of one Cathedral floor — truths median 2 max 3
+  for sages (down from 4), because the apex truths left the shallows with the
+  apexes. That is the intended cost of "lore hidden, kill them to learn them".
+- Purse peaks rose where depth was reached (pilgrim peak median 914g vs 825g).
+- Still no Gatekeeper in any sim life — with descent ladder cost audited above,
+  the remaining blocker is the persona rigs' own courage, not the engine; a
+  human pathing floor-to-floor has every condition reachable.
+
+### Suggested human play pattern this unlock invites
+Drill Strength/Agility to hold the tier-3 pool, buy 8–10 rations + a Bloodrest,
+take the Cathedral, path to `>` deliberately (map first), camp between floors,
+and only loot the floor you intend to leave. The deep pays for the house, the
+nursery, the funerals — and below the fourth depth, the horrors are waiting.

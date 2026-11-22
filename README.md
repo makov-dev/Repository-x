@@ -216,6 +216,10 @@ an auto-walk in progress.
    end of the body's credit**: past that line **every further step is a
    death roll** at the body's table. No time limits - the body keeps
    count instead, and rations and hot meals climb you back out of debt.
+   For people with reasons, the flesh-setter now bottles sleep itself:
+   **Traveller's Bloodrest**, 35g, wholeness in one swallow — full HP,
+   drunk in the dark, even mid-fight, when you have no business
+   surviving but intend to anyway.
 
 3. **Encounters.** On first entering rooms, and at placed sites:
    - **Abominations** — 12 horrors across 3 tiers (Grinworm Clusters to
@@ -285,10 +289,15 @@ an auto-walk in progress.
    stairs, if rooms are still unemptied, the dark leans close and
    recites the gambler's whole liturgy: *one more room, one more
    room* — and if you refuse, it lets you out while the out is still
-   open: you climb back to Jericho right then and there. Below the fifth
-   depth, everything pays time-and-a-half —
-   the dark wants you deep. Greed is a stat here; it just reads as
-   stamina.
+   open: you climb back to Jericho right then and there. Depth is the
+   money: everything the dark gives is worth more the further down it
+   gave it (+15% value and roughly a pile more per three floors), the
+   kill-drops included. Greed is a stat here; it just reads as stamina.
+   And the deep keeps its aristocracy: the three great horrors — the
+   Hundred-Handed Host, the Wound-Warden of the Deep Ward, the Long
+   Mother — are never met above the fourth depth, and below it they come
+   looking for you more and more frankly the deeper you climb. Kill
+   them there, or don't write home.
 
 4. **Combat.** Turn-based: Strike, Cut Deep (risky), Guard, Bandage/Ration,
    Flee (AGI check). Damage from weapon dice + STR; wounds are applied when
