@@ -148,17 +148,32 @@ an auto-walk in progress.
      story and, if they are unattached, lets you **Begin courting** them
      on the spot.
    - **Housing Office** — buy the Leaning Tenement (500g), then upgrade it:
-     leakproofing, warm hearth, nursery, deep cellar, reinforced door.
-     **Your house is its own small map now**: step through the door and you
-     are standing in a crooked room with a **bed** and a
+     leakproofing, warm hearth, nursery, reinforced door — and then
+     **build rooms**. Each room costs **500 + everything before it** (first
+     room 500g, then 1000g, 1500g…), and each is built and walks the
+     floor as furniture: the **Kitchen** fattens the pantry (+60, once
+     per delve), the **Bedchamber** teaches sleep to hurry (3 days
+     instead of 7), the **Washroom** draws one bath per delve that
+     sweats out a sickness and sends you out scrubbed — **prettiness
+     counts, in courtship** (+2 affection while the rosewater lasts).
+     The **Gymnasium** (Strength or Agility) and the **Study** (Wits)
+     and the **Corner Shrine** (Will) each sell a chance at a stat for
+     50 stamina; the house keeps its own hours and does not always pay.
+     The **Cellar** doubles storage and puts crates and barrels
+     downstairs — and **one of those barrels was never in any
+     inventory**. Heave the right one aside and a stair opens to the
+     **Barrow Cellars**, an undead opening under your own house, chalked
+     into the Gate's map from then on.
+     **Your house is its own small map already**: step through the door
+     and you are standing in a crooked room with a **bed** and a
      **small chest** under the floorboards, a pantry shelf, a lamp-stand,
-     and corners that stay swept until you buy the reasons to fill them
-     (hearth, nursery). Walk to the bed and press to sleep the week away;
-     the chest opens storage (24 slots with the cellar upgrade) — the place
+     and corners that stay swept until you build the reasons to fill
+     them. Walk to the bed and press to sleep (three days or seven);
+     the chest opens storage (36 slots with the Cellar) — the place
      where a career, not a shopping trip, gets parked between delves.
    - **Grave-Market: packs.** Carry **10** items; buy a **Satchel (35g,
      +3)** or **Expedition pack (90g, +6)** up to 19. Items stack, slots
-     don't; the deep-cellar widens the chest instead.
+     don't; the Cellar room widens the chest instead.
    - **The Kindly Fellows.** Not on any street you'll find them on; they find you. Go to buy something and come up short, and outside the door waits a patient man: **100 gold now, 300 when you climb back out** of the Openings - collection day is the day you surface. He can be refused; he keeps the face. When the thugs wait by the Gate, you pay the 300, or **talk your way into paying later (Wits)** - succeed and you get exactly one more dive; fail and the fee for waiting is a **beatdown for 10% of your max HP and 20% of your purse**, and they ask again, right there, and every delve after, until the book closes. A frail body can genuinely die of debt. The debt rides your HUD until it is paid.
    - **Honest work, if you want it badly enough.** The Washhouse, the
      Bone Carver, the Tallowworks and the Pawnbroker will take a shift

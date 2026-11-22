@@ -192,7 +192,8 @@ const OPENINGS = [
 const SECRET_OPENINGS=[
   { name:"The Maw Behind Plaster", tier:2, desc:"Between two ruined tenements the plaster hangs like skin over a mouth. It was always there. Now it is a door.", tint:[150,95,80] },
   { name:"The Debt Vaults", tier:3, desc:"A counting-house went down whole - ledgers, debtors, and all. The interest has never stopped compounding.", tint:[120,105,150] },
-  { name:"The Ninth Seam", tier:3, desc:"Where the ninth seam opens, the city's arithmetic ends. The Holy Gate sings it wrong on purpose.", tint:[95,110,140] }
+  { name:"The Ninth Seam", tier:3, desc:"Where the ninth seam opens, the city's arithmetic ends. The Holy Gate sings it wrong on purpose.", tint:[95,110,140] },
+  { name:"The Barrow Cellars", tier:2, desc:"Under the city, under the house: the first Jericho buried its patience here. The dead did not stay done.", tint:[105,120,105], undead:true }
 ];
 const SEC_BY_NAME=n=>SECRET_OPENINGS.find(o=>o.name===n);
 
@@ -629,6 +630,14 @@ const HORRORS = {
   ]
 };
 
+const UNDEAD = [
+  { n:"Gray Bellringer", hp:14, atk:3, tr:null },
+  { n:"Campaigner of the Ninth March", hp:16, atk:4, tr:null },
+  { n:"Smallpox Bride", hp:18, atk:4, tr:"weep" },
+  { n:"Christened Corpse", hp:22, atk:5, tr:"grasp" },
+  { n:"The Patient Groom", hp:26, atk:5, tr:null }
+];
+
 const ADV_NAMES = ["Halvard","Sessa","Dree","Old Maud","Ketch","Ilbre","Vosk","Brother Ansel","Renta the Squint","Loom"];
 
 const NPC_BASE = [
@@ -705,7 +714,6 @@ const UPGRADES = [
   { id:"leak",   n:"Leakproofing",    cost:120, d:"Monsoon rains no longer soak your bed. Max stamina +15." },
   { id:"hearth", n:"Warm Hearth",     cost:180, d:"Your spouse keeps broth on the fire. Resting restores much more." },
   { id:"nursery",n:"Nursery",         cost:260, d:"A small room with a smooth cradle. Allows children." },
-  { id:"cellar", n:"Deep Cellar",     cost:200, d:"Room for loot below the floorboards. Inventory +8 slots. Spouse salvages coin." },
   { id:"door",   n:"Reinforced Door", cost:150, d:"Thieves stop using your keyhole as a mailbox." }
 ];
 
@@ -725,7 +733,7 @@ function newGame(){
       armor:{n:"Padded Rags", a:1},
       inv:[ {n:"Ration", v:8, qty:3, kind:"food"}, {n:"Bandage", v:10, qty:1, kind:"heal"} ],
       wounds:[], ills:[],
-      house:null, upgrades:[],
+      house:null, upgrades:[], rooms:[],
       spouse:null, partner:null, tryChild:0, child:null,
       kills:0, delves:0, deep:0,
       titles:[], killsByKind:{}, bestiary:{}, maneuvers:[],
@@ -787,7 +795,19 @@ function maxStam(){
 }
 function invCap(){ return 10 + (game.player.packs||0)*3; }
 function invUsed(){ let s=0; for (const it of game.player.inv) s+=(it.qty||1); return s; }
-function storageCap(){ return game.player.upgrades.indexOf("cellar")>=0? 24 : 12; }
+function storageCap(){ return houseRoom("cellar")? 36 : 12; }
+function houseRoom(id){
+  const p=game.player;
+  if (p.rooms && p.rooms.indexOf(id)>=0) return true;
+  return id==="cellar" && p.upgrades && p.upgrades.indexOf("cellar")>=0;
+}
+function roomsBuilt(){
+  const p=game.player;
+  let n=0;
+  for (const r of HOUSE_ROOMS) if (houseRoom(r.id)) n++;
+  return n;
+}
+function houseRoomCost(){ return 500+500*roomsBuilt(); }
 function healPerRest(){
   const p=game.player;
   let h=8;
@@ -895,6 +915,11 @@ function loadGame(){
       if (typeof Pl.packs!=="number") Pl.packs=0;
       if (!Array.isArray(Pl.chest)) Pl.chest=[];
       if (!Array.isArray(Pl.ills)) Pl.ills=[];
+      if (!Array.isArray(Pl.rooms)) Pl.rooms=[];
+      if (Pl.upgrades.indexOf("cellar")>=0 && Pl.rooms.indexOf("cellar")<0){ Pl.rooms=["cellar"].concat(Pl.rooms); Pl.upgrades.splice(Pl.upgrades.indexOf("cellar"),1); }
+      if (typeof Pl.pantryUsed!=="boolean") Pl.pantryUsed=false;
+      if (typeof Pl.washUsed!=="boolean") Pl.washUsed=false;
+      if (typeof Pl.scrubbed!=="boolean") Pl.scrubbed=false;
       if (typeof game.flags.sharkDrip!=="number") game.flags.sharkDrip=0;
       if (typeof game.flags.loanDue!=="number") game.flags.loanDue=0;
       if (game.flags.loan && typeof game.flags.loan.owe!=="number") game.flags.loan=null;
@@ -910,7 +935,8 @@ function loadGame(){
       if (typeof game.flags.crownStage!=="number") game.flags.crownStage=0;
       if (typeof game.flags.funerals!=="number") game.flags.funerals=0;
       if (typeof game.flags.candles!=="number") game.flags.candles=0;
-      game.state = game.dungeon? "dungeon" : (game.player.house && game.state==="home" && game.home? "home" : "base");
+      game.state = game.dungeon? "dungeon" : (game.player.house && ((game.state==="home"&&game.home) || game.state==="cellar")? game.state : "base");
+      if (game.state==="cellar" && !game.cellar) game.cellar=buildCellar();
     }
   } catch(e){}
 }
@@ -1438,8 +1464,11 @@ function courtWith(){
   ], openTavern);
 }
 function affWord(a){ return a>=80?"hopeless for you":a>=50?"warms to you":a>=25?"tolerates you":"cold"; }
+function courtBonus(){ return game.player.scrubbed? 2:0; }
 function partnerTalk(pt){
-  pt.aff=clamp(pt.aff+4,0,100);
+  const cb=courtBonus();
+  pt.aff=clamp(pt.aff+4+cb,0,100);
+  if (cb) game.player.scrubbed=false;
   const bank=(pt.talks && pt.talks.length)? pt.talks : GENERIC_TALKS;
   say([pick(bank)], ()=>courtWith());
 }
@@ -1449,10 +1478,12 @@ function giftMenu(pt){
     t:i.n+" x"+i.qty+(i.kind==="gift"?" - true gift":""),
     fn:()=>{
       let gain=clamp(Math.round(i.v/10),1,14);
+      const cb=courtBonus();
       if (i.kind==="gift") gain=18;
-      useFromInv(i.n,1); pt.aff=clamp(pt.aff+gain,0,100);
+      game.player.scrubbed=false;
+      useFromInv(i.n,1); pt.aff=clamp(pt.aff+gain+cb,0,100);
       say(["You offer the "+i.n+". "+pt.name.split(" ")[0]+" accepts it like it means something.",
-           "Affection +"+gain+"."], ()=>courtWith());
+           "Affection +"+(gain+cb)+(cb? " - you smell of soap and rosewater. It helps." : ".")+"."], ()=>courtWith());
     }
   }));
   if (!opts.length){ say(["Empty hands. Somehow that reads as honesty, in here."], ()=>courtWith()); return; }
@@ -1515,6 +1546,13 @@ function openOffice(){
         say(["Work crews come. They hammer. They argue. They leave. "+u.n+": done."], ()=>openOffice());
         saveGame(); }
     }));
+    const rc=houseRoomCost();
+    for (const r of HOUSE_ROOMS){
+      if (houseRoom(r.id)) continue;
+      opts.push({ t:"Build "+r.n+" ("+fmt(rc)+")", d:r.d, fn:()=>buildAddition(r.id) });
+    }
+    const standing=HOUSE_ROOMS.filter(r=>houseRoom(r.id)).map(r=>r.n).join(", ");
+    if (standing) opts.push({ t:"(standing: "+standing+")", fn:()=>{} });
     if (p.spouse && !p.child && p.upgrades.indexOf("nursery")>=0 && p.tryChild!==1){
       opts.push({ t:"Speak of children", fn:()=>{
         p.tryChild=1; advanceWeeks(4);
@@ -1526,6 +1564,37 @@ function openOffice(){
     showMenu("HOUSING OFFICE - improvements", opts);
   }
 }
+const HOUSE_ROOMS=[
+  { id:"kitchen",    n:"the Kitchen",        d:"A stove and a heavy table. The pantry feeds you properly: once per delve, stamina +60." },
+  { id:"bedchamber", n:"the Bedchamber",     d:"A real bed, a door that shuts. Sleep heals you in three days instead of seven." },
+  { id:"washroom",   n:"the Washroom",       d:"A copper tub. Once per delve: sweat out one sickness, and walk out scrubbed - prettiness counts, in courtship." },
+  { id:"cellar",     n:"the Cellar",         d:"A stair down to a cold room of crates and barrels. Storage doubled. The barrels were here before the house. One of them hides something." },
+  { id:"gym",        n:"the Gymnasium",      d:"A worn floor, a barrel-tree, dead man's rope. Train Strength or Agility for 50 stamina." },
+  { id:"study",      n:"the Study",          d:"A desk, a lamp, borrowed carts of paper. Train Wits for 50 stamina." },
+  { id:"shrine",     n:"the Corner Shrine",  d:"Stones arranged the way the city's first gods might have liked. Train Will for 50 stamina. It watches back, politely." }
+];
+function buildAddition(id){
+  const p=game.player, r=HOUSE_ROOMS.find(x=>x.id===id);
+  if (!r || houseRoom(id)) return;
+  const cost=houseRoomCost();
+  if (p.gold<cost){ sharkTrigger(); say(["Work crews price honesty, not hope. You are short by "+fmt(cost-p.gold)+"."], ()=>openOffice()); return; }
+  p.gold-=cost;
+  p.rooms.push(id);
+  advanceWeeks(2);
+  const done={
+    kitchen:"A stove is lit once, for luck. It never fully goes out again.",
+    bedchamber:"They carry the bed up in pieces and take the old one away respectfully, like a veteran.",
+    washroom:"The copper tub arrives by four men and one argument. The house creaks and accepts it.",
+    cellar:"The stair down is chalked with someone's old handmarks. They do not match yours.",
+    gym:"The floor under the barrel-tree is already worn. By whom, nobody will say.",
+    study:"The desk is second-hand. The ink stains are paragraph-shaped.",
+    shrine:"The stones settle into their corner as if they had been waiting for the address."
+  };
+  say(["Work crews come. They hammer. They argue. They leave. "+r.n+": done.",
+       done[id] || "The house leans differently now."], ()=>openOffice());
+  saveGame();
+}
+
 function buyHouse(){
   const p=game.player;
   if (p.gold<500){ sharkTrigger(); say(["The clerk quotes the price again, slower, like you are hard of hearing."], ()=>openOffice()); return; }
@@ -1540,24 +1609,26 @@ function buyHouse(){
 
 /* ----- the house: its own small map ----- */
 const HOME_ROWS=[
-  "##############",
-  "#.....w......#",
-  "#B...........#",
-  "#....P.......#",
-  "#C.......L...#",
-  "#........N...#",
-  "#....H.......#",
-  "######D#######"
+  "################",
+  "#.....w........#",
+  "#B...........T.#",
+  "#....P.........#",
+  "#C.......L.....#",
+  "#...Y....N.....#",
+  "#....H.......S.#",
+  "#..R....W......#",
+  "#..............#",
+  "#######D########"
 ];
 function buildHome(){
-  return { w:HOME_ROWS[0].length, h:HOME_ROWS.length, rows:HOME_ROWS.slice(), px:6, py:6 };
+  return { w:HOME_ROWS[0].length, h:HOME_ROWS.length, rows:HOME_ROWS.slice(), px:7, py:8 };
 }
 function homeTile(x,y){ const hm=game.home; if (!hm||x<0||y<0||x>=hm.w||y>=hm.h) return "#"; return hm.rows[y][x]; }
 function homeSolid(x,y){ const c=homeTile(x,y); return c!=="." && c!=="D"; }
 function homeAdjacent(){
   const hm=game.home; if (!hm) return null;
   const px=hm.px, py=hm.py;
-  for (const ch of ["B","C","H","N","L","P"]){
+  for (const ch of ["B","C","H","N","L","P","T","Y","S","R","W"]){
     if (homeTile(px,py-1)===ch) return ch;
     if (homeTile(px,py+1)===ch) return ch;
     if (homeTile(px-1,py)===ch) return ch;
@@ -1568,15 +1639,22 @@ function homeAdjacent(){
 function homeInteract(ch){
   const p=game.player;
   if (ch==="B"){
+    const days=houseRoom("bedchamber")? 3:7;
     showMenu("THE BED", [
-      { t:"Sleep (7 days, stamina to full)", d:"The straw is yours. The dreams are on loan.", fn:homeRest },
+      { t:"Sleep ("+days+" days, stamina to full)", d:houseRoom("bedchamber")? "A real bed in a shut room. Sleep has learned to hurry.":"The straw is yours. The dreams are on loan.", fn:homeRest },
       { t:"Not yet", fn:()=>{} }
     ]);
   } else if (ch==="C"){
     openChest();
   } else if (ch==="P"){
+    if (p.pantryUsed){ say(["The pantry was raided for the road. The shelves hold honest air until you delve again."]); return; }
     if (p.stam>=maxStam()){ say(["You are not hungry. The pantry disagrees and wins later."]); return; }
-    p.stam=clamp(p.stam+25,0,maxStam()); say(["Bread of questionable ancestry. It does its job."]); saveGame();
+    const gain=houseRoom("kitchen")? 60:25;
+    p.pantryUsed=true;
+    p.stam=clamp(p.stam+gain,0,maxStam());
+    say([houseRoom("kitchen")? "Stove-warm bread, real broth, the stove ticking to itself. Stamina +"+gain+"."
+                            : "Bread of questionable ancestry. It does its job. Stamina +"+gain+"."], null);
+    saveGame();
   } else if (ch==="L"){
     if (p.gatekeeper){
       showMenu("THE LAMP", [
@@ -1594,6 +1672,47 @@ function homeInteract(ch){
          "Stamina +6. An evening passes."]);
     if (game.flags.posthumous) say(["The chair by the hearth still holds the shape of the one the house buried."]);
     saveGame();
+  } else if (ch==="Y"){
+    if (!houseRoom("gym")){ say(["A corner with a ceiling stain shaped like a fist. Nothing more. Yet."]); return; }
+    showMenu("THE GYMNASIUM", [
+      { t:"Train Strength (50 stamina)", d:"The barrel-tree has held heavier regrets than yours.", fn:()=>homeTrain("str","Strength") },
+      { t:"Train Agility (50 stamina)", d:"Rope, footwork, and falling correctly, mostly.", fn:()=>homeTrain("agi","Agility") },
+      { t:"Not today", fn:()=>{} }
+    ]);
+  } else if (ch==="S"){
+    if (!houseRoom("study")){ say(["A corner good only for storage of things you refuse to sell."]); return; }
+    showMenu("THE STUDY", [
+      { t:"Train Wits (50 stamina)", d:"Hours of lamps and marginalia. The paper fights back.", fn:()=>homeTrain("wit","Wits") },
+      { t:"Not tonight", fn:()=>{} }
+    ]);
+  } else if (ch==="R"){
+    if (!houseRoom("shrine")){ say(["Dust, and a shape on the boards, as if something square stood here a very long time."]); return; }
+    showMenu("THE CORNER SHRINE", [
+      { t:"Whisper to the lost stones (50 stamina)", d:"The city's first gods. They do not answer. They listen. That is more than most.", fn:()=>homeTrain("wll","Will") },
+      { t:"Look away", fn:()=>{} }
+    ]);
+  } else if (ch==="W"){
+    if (!houseRoom("washroom")){ say(["A gray tub gone to splinters. Somebody bathed here once, unhappily."]); return; }
+    if (p.washUsed){ say(["The tub was drained before the kettle cooled. It draws a bath once a delve."]); return; }
+    if (p.ills && p.ills.length){
+      const gone=p.ills.shift();
+      p.washUsed=true; p.scrubbed=true;
+      advanceWeeks(1);
+      say(["You soak until the water goes the color of "+gone+" leaving. The sickness pour out the drain, offended.",
+           "You come out scrubbed and scented. Prettiness counts, in courtship."]);
+    } else {
+      p.washUsed=true; p.scrubbed=true;
+      say(["Hot water, harsh soap, rosewater somebody left behind years ago. You come out scrubbed and scented.",
+           "Prettiness counts, in courtship."]);
+    }
+    saveGame();
+  } else if (ch==="T"){
+    if (!houseRoom("cellar")){ say(["You knock on your own floor, near the wall. It answers differently: hollow, and patient, and not loud."]); return; }
+    game.cellar=buildCellar();
+    game.state="cellar";
+    stopWalk();
+    say(["Down the stair into the cold-room. It is as cold as the thing under a house should be.",
+         game.flags.cellarBarrel? "Barrels, crates, and one barrel that was never in any inventory." : "Barrels and crates."]);
   } else if (ch==="N"){
     if (p.upgrades.indexOf("nursery")<0){ say(["A corner swept clean, waiting for a reason to fill it."]); return; }
     if (p.child){
@@ -1651,6 +1770,117 @@ function openHome(quiet){
                : "No one waits up for you. Yet."];
   if (p.child) lines.push(p.child.name+" babbles at a dust mote, near the crib.");
   say(lines);
+}
+function buildCellar(){
+  const rows=[
+    "############",
+    "#k..o...c..#",
+    "#..c..k..o.#",
+    "#.o...c...k#",
+    "#..k..o....#",
+    "#####S######"
+  ];
+  const hm={ w:rows[0].length, h:rows.length, rows:rows, px:5, py:4 };
+  if (!game.flags.cellarBarrel){
+    const bl=[];
+    for (let y=0;y<hm.h;y++) for (let x=0;x<hm.w;x++) if (rows[y][x]==="o") bl.push([x,y]);
+    game.flags.cellarBarrel=pick(bl);
+  }
+  return hm;
+}
+function cellarTile(x,y){ const cm=game.cellar; if (!cm||x<0||y<0||x>=cm.w||y>=cm.h) return "#"; return cm.rows[y][x]; }
+function cellarSolid(x,y){ const c=cellarTile(x,y); return c!=="." && c!=="S"; }
+function cellarAdjacentBarrel(){
+  const cm=game.cellar; if (!cm) return null;
+  for (const d of [[0,-1],[0,1],[-1,0],[1,0]]){
+    const x=cm.px+d[0], y=cm.py+d[1];
+    if (cellarTile(x,y)==="o") return [x,y];
+  }
+  return null;
+}
+function leaveCellar(){
+  game.cellar=null; stopWalk();
+  game.state="home";
+  if (game.home){ game.home.px=12; game.home.py=2; }
+  saveGame();
+}
+function cellarInteract(x,y){
+  const theOne= game.flags.cellarBarrel && game.flags.cellarBarrel[0]===x && game.flags.cellarBarrel[1]===y;
+  showMenu("THE BARREL", [
+    { t:"Heave it aside", d:"It is heavier than its size votes. It has been deciding things for a long time.", fn:()=>{
+        if (!theOne){
+          drainStam(6);
+          say([pick(["Vinegar gone to mother. Sour decades deep.",
+                     "A dead rat, mummified with dignity.",
+                     "Letters fused into one brick of paper. The address has washed away.",
+                     "Nails. Rust, arranged by size. Organized boredom."]),
+               pick(["Behind it: a crate. Behind the crate: nothing. The nothing has a draft, though.",
+                     "The floor beneath shows a brighter square where the barrel stood for years.",
+                     "Nothing. The cellar likes you guessing."])], null);
+          if (Math.random()<0.2){ game.player.gold+=3+irnd(6); sfx("gain"); }
+          saveGame();
+          return;
+        }
+        drainStam(10);
+        if (!game.flags.secrets) game.flags.secrets=[];
+        const fresh=game.flags.secrets.indexOf("The Barrow Cellars")<0;
+        if (fresh) game.flags.secrets.push("The Barrow Cellars");
+        sfx("bell");
+        setBanner(["UNDER YOUR OWN HOUSE","A stair that was always there: the Barrow Cellars are chalked into the Gate's map."]);
+        say(["The barrel rolls aside with a sound like a held breath let go.",
+             "Behind it: a stair, going down from your cellar. Older than the deed. Older than the street.",
+             "The first Jericho buried its patience down there. The dead did not stay done.",
+             fresh? "The Barrow Cellars wait under your own floor, whenever you choose the Gate." : "The stair is already chalked into your map of the Gate."]);
+        saveGame();
+      } },
+    { t:"Leave it be", fn:()=>{} }
+  ]);
+}
+function updateCellar(){
+  if (!game.cellar) game.cellar=buildCellar();
+  if (uiBlocked()){ updateUI(); return; }
+  const cm=game.cellar;
+  const mv=dirTap();
+  if (mv){ stopWalk(); tryCellarMove(mv[0],mv[1]); return; }
+  if (walkPath && walkPath.length){
+    if (yesTap()||noTap()){ stopWalk(); return; }
+    if (++walkTick>=4){
+      walkTick=0;
+      const st=walkPath.shift();
+      if (cellarSolid(st[0],st[1])){ stopWalk(); }
+      else {
+        cm.px=st[0]; cm.py=st[1];
+        if (cellarTile(st[0],st[1])==="S"){ leaveCellar(); return; }
+        if (!walkPath.length && walkCb){ const cb=walkCb; walkCb=null; cb(); }
+      }
+    }
+    return;
+  }
+  walkPath=null; walkCb=null;
+  if (tap("x")||tap("escape")){ leaveCellar(); return; }
+  if (yesTap()){
+    stopWalk();
+    const b=cellarAdjacentBarrel();
+    if (b){ cellarInteract(b[0],b[1]); return; }
+    if (cellarTile(cm.px+1,cm.py)==="k"||cellarTile(cm.px-1,cm.py)==="k"||cellarTile(cm.px,cm.py+1)==="k"||cellarTile(cm.px,cm.py-1)==="k")
+      say(["Crates: the surplus of the city, sunk to its underfloor. You take inventory of other people's hopes."]);
+    else
+      say(["Crates and barrels, and the cold. Under Jericho there is always one more floor."]);
+  }
+}
+function tryCellarMove(dx,dy){
+  const cm=game.cellar;
+  const nx=cm.px+dx, ny=cm.py+dy;
+  if (cellarSolid(nx,ny)) return;
+  cm.px=nx; cm.py=ny;
+  if (cellarTile(nx,ny)==="S") leaveCellar();
+}
+function cellarWalkTo(tx,ty,cb){
+  const cm=game.cellar; if (!cm) return;
+  if (tx===cm.px && ty===cm.py){ if (cb) cb(); return; }
+  const path=bfsPath(cm.px,cm.py,tx,ty,(x,y)=>!cellarSolid(x,y),cm.w,cm.h);
+  if (!path){ showHint("No path there."); return; }
+  walkPath=path; walkCb=cb||null; walkTick=4;
 }
 function updateHome(){
   if (!game.home) game.home=buildHome();
@@ -1747,6 +1977,20 @@ function drawHome(){
     }
   }
 }
+function homeTrain(stat,label){
+  const p=game.player;
+  if (p.stam<50){ say(["Your body votes no. This purchase is 50 stamina, and you are short."]); return; }
+  p.stam-=50;
+  advanceWeeks(1);
+  if (Math.random()<0.25){
+    p[stat]+=1; sfx("gain"); sparkBurst(W/2,80,"#e0b95a",10,1);
+    say(["The house keeps its own hours. Tonight it owes you one.",label+" rises to "+p[stat]+"."]);
+  } else {
+    sfx("dud");
+    say(["You work until the lamp burns low. Nothing changes tonight, except how tired you are."]);
+  }
+  saveGame();
+}
 function tryForChild(){
   const p=game.player;
   p.tryChild=1; advanceWeeks(4);
@@ -1756,7 +2000,7 @@ function tryForChild(){
 function childStage(c){ return c.weeks<52?"newborn":c.weeks<156?"toddler":c.weeks<416?"child":"grown tall"; }
 function homeRest(){
   const p=game.player;
-  advanceWeeks(7);
+  advanceWeeks(houseRoom("bedchamber")? 3:7);
   p.stam=maxStam();
   p.hp=clamp(p.hp+healPerRest(),0,p.maxhp);
   const msgs=["Days blur into soup and sleep. You heal. You dread the doors again. Good. That is health."];
@@ -1803,7 +2047,7 @@ function advanceWeeks(n){
   if (after>before){
     if (after>=40){ p.maxhp=Math.max(12,p.maxhp-(after-before)); p.hp=clamp(p.hp,0,p.maxhp); }
   }
-  if (p.spouse && p.upgrades.indexOf("cellar")>=0 && Math.random()<0.5)
+  if (p.spouse && houseRoom("cellar") && Math.random()<0.5)
     p.gold+=4+irnd(8);
   simulateNPCs(n);
   updateKingdom();
@@ -1885,6 +2129,7 @@ function launchDelve(opening){
   game.state="dungeon";
   game.player.delves++;
   game.player.echoUsed=false;
+  game.player.pantryUsed=false; game.player.washUsed=false; game.player.scrubbed=false;
   genFloor(d);
   say(["You descend into "+opening.name+".",
        "The city noise dies in about nine steps. Something else starts."]);
@@ -2050,7 +2295,7 @@ function tileAt(x,y){
 }
 function tierEnemy(){
   const tier=game.dungeon.tierNow;
-  const base=HORRORS[tier][irnd(HORRORS[tier].length)];
+  const base= game.dungeon.opening.undead? UNDEAD[irnd(UNDEAD.length)] : HORRORS[tier][irnd(HORRORS[tier].length)];
   const hp=ngHp(Math.max(3,Math.round(base.hp*(0.85+Math.random()*0.3))));
   return { n:base.n, mhp:hp, hp:hp, atk:base.atk+ngAtkBump(), tr:base.tr, artSeed:irnd(2147483647), human:false };
 }
@@ -3984,6 +4229,11 @@ function bonesGame(stake){
 
 /* ----- known lore of the deep: first meetings are blind ----- */
 const BESTIARY_DESC = {
+  "Gray Bellringer":"Dust in the shape of a sexton, ringing no bell anyone admits to. The rings mark the hours the dead keep, which are all of them.",
+  "Campaigner of the Ninth March":"A soldier of a march no banner survived. It still holds its line. The line is wherever it is standing.",
+  "Smallpox Bride":"Veiled in pocked lace. Died pretty, for a wedding that kept happening anyway. Her vows need only one living witness.",
+  "Christened Corpse":"The Holy Gate buried it under the wrong words. It came back to collect the correct ones, with interest.",
+  "The Patient Groom":"Dead in his wedding clothes, at the altar, on time. Time being the one thing he has entirely too much of.",
   "Grinworm Cluster":"A heap of pale worms arranged, loosely, into the shape of a smile. One of them blinks.",
   "Milk-Toothed Thing":"Soft, huge, nearly warm. Its mouth is a child's first teeth - all of them at once, and all of them yours.",
   "Raft of Skin":"Tanned hide of many owners stretched taut on nothing. It moves like a raft and holds like regret.",
@@ -4918,6 +5168,52 @@ function updateTitle(){
     say(["Jericho does not greet you. Jericho does not notice you.",
          "You are one more body that owns a knife and an appetite. Unless you become more."]); }
 }
+function drawCellar(){
+  const p=game.player;
+  if (!game.cellar) game.cellar=buildCellar();
+  const cm=game.cellar;
+  ctx.fillStyle="#0e0b10"; ctx.fillRect(0,0,W,H);
+  ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
+  const ox=Math.floor((W-cm.w*T)/2), oy=Math.floor((H-cm.h*T)/2);
+  for (let y=0;y<cm.h;y++) for (let x=0;x<cm.w;x++){
+    const c=cm.rows[y][x], sx=ox+x*T, sy=oy+y*T;
+    if (c==="#"){ ctx.fillStyle="#1c161f"; ctx.fillRect(sx,sy,T,T); continue; }
+    ctx.fillStyle=((x+y)%2)? "#26202a":"#2b2430";
+    ctx.fillRect(sx,sy,T,T);
+    ctx.fillStyle="#1e1822"; ctx.fillRect(sx,sy+7,T,1);
+    if (c==="S"){ ctx.fillStyle="#3a2c20"; ctx.fillRect(sx+1,sy+1,T-2,T-2); ctx.fillStyle="#100c14"; for (let s2=0;s2<3;s2++) ctx.fillRect(sx+2,sy+2+s2*2,T-4,1); ctx.fillStyle="#8ab0c8"; ctx.fillRect(sx+3,sy+1,2,1); }
+    else if (c==="k"){ ctx.fillStyle="#4a3a26"; ctx.fillRect(sx,sy+1,T,T-2); ctx.strokeStyle="#2c2218"; ctx.lineWidth=1; ctx.strokeRect(sx+.5,sy+1.5,T-1,T-3); ctx.fillStyle="#2c2218"; ctx.fillRect(sx+3,sy+1,1,T-2); }
+    else if (c==="o"){ ctx.fillStyle="#503c28"; ctx.fillRect(sx,sy+1,T,T-2); ctx.fillStyle="#3a2c1e"; ctx.fillRect(sx,sy+3,T,1); ctx.fillStyle="#6d5236"; ctx.fillRect(sx+1,sy+2,T-2,1); ctx.fillStyle="#2c2218"; ctx.fillRect(sx+2,sy+1,1,1); ctx.fillRect(sx+5,sy+5,1,1); }
+  }
+  glow(ox+cm.w*T/2, oy+cm.h*T/2, 60, [120,140,170], 0.05);
+  drawHero(ox+cm.px*T, oy+cm.py*T, false);
+  if (!game.ui.mode){
+    cornerChips();
+    hit(0,0,W,H,(gx,gy)=>{
+      if (game.state!=="cellar" || game.ui.mode) return;
+      const wx=Math.floor((gx-ox)/T), wy=Math.floor((gy-oy)/T);
+      if (wx<0||wy<0||wx>=cm.w||wy>=cm.h) return;
+      const c=cm.rows[wy][wx];
+      if (c==="S"){ stopWalk(); cellarWalkTo(wx,wy, leaveCellar); return; }
+      if (c==="o"){ stopWalk(); cellarBarrelApproach(wx,wy); return; }
+      if (!cellarSolid(wx,wy)) cellarWalkTo(wx,wy,null);
+    });
+    for (let y=0;y<cm.h;y++) for (let x=0;x<cm.w;x++){
+      const c=cm.rows[y][x];
+      if (c==="o"){ const wx=x, wy=y; hit(ox+x*T,oy+y*T,T,T,()=>{ if (game.state!=="cellar"||game.ui.mode) return; stopWalk(); cellarBarrelApproach(wx,wy); }); }
+      if (c==="S"){ const wx=x, wy=y; hit(ox+x*T,oy+y*T,T,T,()=>{ if (game.state!=="cellar"||game.ui.mode) return; stopWalk(); cellarWalkTo(wx,wy, leaveCellar); }); }
+    }
+  }
+}
+function cellarBarrelApproach(tx,ty){
+  const cm=game.cellar; if (!cm) return;
+  const cands=[[tx,ty-1],[tx,ty+1],[tx-1,ty],[tx+1,ty]].filter(cc=>!cellarSolid(cc[0],cc[1]));
+  let best=null, bd=1e9;
+  for (const c of cands){ const dd=Math.abs(c[0]-cm.px)+Math.abs(c[1]-cm.py); if (dd<bd){ bd=dd; best=c; } }
+  if (!best) return;
+  if (best[0]===cm.px && best[1]===cm.py){ cellarInteract(tx,ty); return; }
+  cellarWalkTo(best[0],best[1],()=>cellarInteract(tx,ty));
+}
 function updateBase(){
   updTownfolk();
   if (uiBlocked()){ updateUI(); return; }
@@ -5139,6 +5435,7 @@ function frame(){
   else {
     if (game.state==="base") updateBase();
     else if (game.state==="home") updateHome();
+    else if (game.state==="cellar") updateCellar();
     else if (game.state==="dungeon") updateDungeon();
     else if (game.state==="combat") updateCombat();
     else if (game.state==="dead"||game.state==="legacy"||game.state==="soldout") updateDead();
@@ -5156,6 +5453,7 @@ function frame(){
   else {
     if (game.state==="base") drawBase();
     else if (game.state==="home") drawHome();
+    else if (game.state==="cellar") drawCellar();
     else if (game.state==="dungeon") drawDungeon();
     else if (game.state==="combat") renderCombat();
     else if (game.state==="dead"||game.state==="legacy"||game.state==="soldout") renderDead();
@@ -5186,6 +5484,7 @@ window.__openings={
   newGame, launchDelve, startCombat, combatPlayerAction, endCombat, genFloor, buildCity,
   addItem, meetAdventurer, triggerEvent, advanceWeeks, openGate, openTavern, openOffice,
   buildHome, homeInteract, updateHome, leaveHome, homeAdjacent, homeApproach,
+  houseRoom, roomsBuilt, houseRoomCost, HOUSE_ROOMS, buildCellar, updateCellar, homeTrain, UNDEAD, courtBonus, tierEnemy,
   openHome, openMarket, updateUI, closeUI, frame, press:(k)=>{ pressed[k.toLowerCase()]=true; },
   curFloor, hurt, die, continueAsChild, saveGame, loadGame,
   earnTitle, checkTitles, foeKnown, hasManeuver, quickActs, actLabel, bonesGame, addr,
