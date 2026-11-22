@@ -193,3 +193,86 @@ check that the new systems didn't distort the economy the personas play:
 - Conclusion: the new layers ride alongside; the Gate remains unreached in
   100 lives, and work shifts do not yet appear in persona playbooks (they
   are below the survival bar the rig is tuned for - as designed).
+
+## 14. Re-run after the rooms ladder (census walkers, loan sharks, stamina
+floor -25, per-floor landlords, house map, room costs 500 + 500 each)
+
+Run: the `personas` rig, 50 lives each, split across five workers with seeded
+stress (fixed per-index RNG state), against the `daf2f29` engine plus two
+correctness fixes the runs themselves flushed out (see below).
+
+### Rig changes this pass
+
+- the delve loop now runs until the character is back in base or dead; it
+  resolves fights and event menus inside the loop instead of abandoning them,
+  and stays null-safe when a z-press leaves the dungeon mid-iteration;
+- revised survival policy: camp below 75% HP, retreat below 35% HP or
+  stamina -14, never descend below 50% HP, flee below 30%; die-catching runs
+  both dice with persona skill (z for the first, x for the second);
+- the poor recover now: at-home sleep (bed), the pantry shelf, and hot meals
+  (6g) for the houseless;
+- cheap first-dive gear allowed (the Door-Chaser buys a blade at 22g), and a
+  render-skip in the harness so 50 lives fit in wall-clock.
+
+### Engine bugs the sims caught (fixed in `index.html` this round)
+
+1. `winCombat` was re-entrant. With a full pack, the loot drop menu defers the
+   win callback while the fight still reads as a live player turn, so every
+   next strike re-awarded the kill: kills into the tens of thousands and gold
+   into the billions inside nine dives. Now a kill settles once.
+2. `clog()` crashed when the deferred pack-full callback resolved after the
+   combat had already been torn down. It now just exits.
+3. Cosmetic: death reports read "Torn apart in the The Weeping Cessgate";
+   the doubled article is gone.
+
+### Results (50 lives each)
+
+| metric | Door-Chasers | Roof-Menders |
+|---|---|---|
+| died in the dark | 20/50 | 39/50 |
+| survived to the 40-year cap | 30/50 | 11/50 |
+| became Gatekeeper / ever gate-ready | 0/50 | 0/50 |
+| great horrors killed (>=1 / all three) | 38 / 18 | 4 / 0 |
+| deepest depth (median / max) | 2 / 4 | 2 / 3 |
+| lore truths (median / max) | 3 / 5 | 1 / 3 |
+| kingdom rumors (median) | 7/25 | 4/25 |
+| dives (median) | ~1,100 | 140 |
+| kills (median) | 36 | 75 |
+| married / child | 0/50 | 0/50 |
+| housed / rooms built | 0/50 | 0/50 |
+| death age of the dead (median) | 17 | 18 |
+| purse (end / peak, median g) | 5 / 282 | 87 / 352 |
+
+Death causes across complete lives: ~74% are stamina exhaustion ("your body
+quit in the dark/water/deep"), ~21% combat, the rest finished by the room's
+own traps - the poverty spiral is the leading killer now, not the horrors.
+
+### What the run says
+
+- The dive loop itself is healthy: crash-free 100 lives, no runaway economy,
+  apex horrors fall to good dice (18 chasers killed all three).
+- **The 500g house is now a marriage gate.** `proposeCourt` requires `house`,
+  and no persona life in 100 ever reached a peak purse of 500 (medians: 282g
+  chasers, 352g menders). Marriage 0/100, children 0/100, rooms 0/100 - so
+  the heir line and every house-anchored story is closed behind one price
+  point. This is the sharpest tuning signal of the round.
+- Exhaustion dominates death. Sleep is house-gated, and the house is
+  unaffordable, so the cautious Roof-Menders (who plan to sleep) die at 18
+  in the field: the *intent* of the room ladder - a safe rest - is priced out
+  of the lives that want it most.
+- Depth courage vs. survival is a hand you set: with a cautious descent
+  policy (this run) the chasers settle at depth 2-4; the older, braver
+  policy in section 13 reached 6-9 and died for it 41/50. There is no
+  observed policy in the current economy that both stays alive and reaches
+  the ninth depth - which keeps the Gate as an event, not a routine, but the
+  house-gate above is what locks the arc, not the depth.
+  Probe (8 lives each, small sample): loosening the descend-gate to 35% HP
+  gave depth median 3 max 5 with 4/8 dead; an eager 25% gate gave median 2
+  max 3 with 4/8 dead - the menders died out entirely both times. Neither
+  regained the old 6-9 depths: descent courage alone no longer buys depth,
+  the retreat/do-not-descend supply rules spend it instead. The knob stays
+  in the rig (`GATE_C`) as a dial worth pulling again after any economy fix.
+- Loan sharks never fire for these personas (they never carry coin into town
+  after a delve payday), and courtship "bites" never register because nobody
+  holds a partner long enough to wed - the race is won by the deadline of
+  death rather than by other suitors, in this sample.
