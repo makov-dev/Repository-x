@@ -2977,7 +2977,7 @@ function startCombat(enemy){
   sfx("growl");
   game.state="combat";
 }
-function clog(s){ const c=game.combat; c.log.push(s); if (c.log.length>4) c.log.shift(); }
+function clog(s){ const c=game.combat; if(!c) return; c.log.push(s); if (c.log.length>4) c.log.shift(); }
 function playerAtk(){ const p=game.player; return p.weapon.d + irnd(3) + Math.floor(p.str/2); }
 function playerDef(){ return game.player.armor.a; }
 /* ----- the dice (dopamine layer) ----- */
@@ -3165,12 +3165,13 @@ function afterEnemyTurn(){
   if (p.hp<=0){
     if (p.echo && !p.echoUsed){ p.echoUsed=true; p.hp=1; clog("The dream catches you: you have died once before and will not repeat the trick. (held at 1 HP)"); }
     else if (p.gatekeeper){ p.hp=1; clog("The Gate refuses. It is not done with you."); }
-    else { die(game.dungeon? "Torn apart in the "+game.dungeon.opening.name : "Slain in Jericho"); return; }
+    else { die(game.dungeon? "Torn apart in the "+String(game.dungeon.opening.name).replace(/^The /,"") : "Slain in Jericho"); return; }
   }
   c.turn="player";
 }
 function winCombat(){
   const c=game.combat, p=game.player;
+  if (c.settled) return; c.settled=true;
   p.kills++;
   const bk=p.bestiary[c.e.n]; if (bk) bk.killed=true;
   if (!c.e.human){
