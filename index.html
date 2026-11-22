@@ -305,7 +305,7 @@ function openChest(){
       if (invUsed()+(it.qty||1)>invCap()){ say(["Your pack argues against it, loudly. Set something down first."], ()=>openChest()); return; }
       p.inv.push(it); p.chest.splice(ix,1); sfx("click"); openChest(); } }));
   if (!opts.length) opts.push({ t:"Empty chest, empty pack. Character-building.", fn:()=>{} });
-  opts.push({ t:"Back", fn:openHome });
+  opts.push({ t:"Back", fn:()=>{ openHome(true); } });
   showMenu("THE CHEST ("+chestUsed()+"/"+storageCap()+")", opts);
 }
 
@@ -910,7 +910,7 @@ function loadGame(){
       if (typeof game.flags.crownStage!=="number") game.flags.crownStage=0;
       if (typeof game.flags.funerals!=="number") game.flags.funerals=0;
       if (typeof game.flags.candles!=="number") game.flags.candles=0;
-      game.state = game.dungeon? "dungeon":"base";
+      game.state = game.dungeon? "dungeon" : (game.player.house && game.state==="home" && game.home? "home" : "base");
     }
   } catch(e){}
 }
@@ -1502,7 +1502,7 @@ function openOffice(){
   const p=game.player;
   if (!p.house){
     showMenu("HOUSING OFFICE", [
-      { t:"Buy the Leaning Tenement (250g)", d:"A crooked two-room home in Ward Nine. Good bones. Somewhere.", fn:buyHouse },
+      { t:"Buy the Leaning Tenement (500g)", d:"A crooked two-room home in Ward Nine. Good bones. Somewhere.", fn:buyHouse },
       { t:"Leave", fn:()=>{} }
     ]);
   } else {
@@ -1528,8 +1528,8 @@ function openOffice(){
 }
 function buyHouse(){
   const p=game.player;
-  if (p.gold<250){ sharkTrigger(); say(["The clerk quotes the price again, slower, like you are hard of hearing."], ()=>openOffice()); return; }
-  p.gold-=250; p.house="Leaning Tenement";
+  if (p.gold<500){ sharkTrigger(); say(["The clerk quotes the price again, slower, like you are hard of hearing."], ()=>openOffice()); return; }
+  p.gold-=500; p.house="Leaning Tenement";
   cityGrid=buildCity();
   earnTitle("Householder of Ward Nine");
   say(["Keys. A deed with a wax stamp. A door that only leans when it rains.",
@@ -1538,33 +1538,214 @@ function buyHouse(){
   saveGame();
 }
 
-function openHome(){
+/* ----- the house: its own small map ----- */
+const HOME_ROWS=[
+  "##############",
+  "#.....w......#",
+  "#B...........#",
+  "#....P.......#",
+  "#C.......L...#",
+  "#........N...#",
+  "#....H.......#",
+  "######D#######"
+];
+function buildHome(){
+  return { w:HOME_ROWS[0].length, h:HOME_ROWS.length, rows:HOME_ROWS.slice(), px:6, py:6 };
+}
+function homeTile(x,y){ const hm=game.home; if (!hm||x<0||y<0||x>=hm.w||y>=hm.h) return "#"; return hm.rows[y][x]; }
+function homeSolid(x,y){ const c=homeTile(x,y); return c!=="." && c!=="D"; }
+function homeAdjacent(){
+  const hm=game.home; if (!hm) return null;
+  const px=hm.px, py=hm.py;
+  for (const ch of ["B","C","H","N","L","P"]){
+    if (homeTile(px,py-1)===ch) return ch;
+    if (homeTile(px,py+1)===ch) return ch;
+    if (homeTile(px-1,py)===ch) return ch;
+    if (homeTile(px+1,py)===ch) return ch;
+  }
+  return null;
+}
+function homeInteract(ch){
+  const p=game.player;
+  if (ch==="B"){
+    showMenu("THE BED", [
+      { t:"Sleep (7 days, stamina to full)", d:"The straw is yours. The dreams are on loan.", fn:homeRest },
+      { t:"Not yet", fn:()=>{} }
+    ]);
+  } else if (ch==="C"){
+    openChest();
+  } else if (ch==="P"){
+    if (p.stam>=maxStam()){ say(["You are not hungry. The pantry disagrees and wins later."]); return; }
+    p.stam=clamp(p.stam+25,0,maxStam()); say(["Bread of questionable ancestry. It does its job."]); saveGame();
+  } else if (ch==="L"){
+    if (p.gatekeeper){
+      showMenu("THE LAMP", [
+        { t:"Pass the lamp - begin a successor", d:"The city will need a warden at the Gate when you are done walking.", fn:passTheLamp },
+        { t:"Not yet", fn:()=>{} }
+      ]);
+    } else say(["Your delve-lamp hangs on its hook, still smelling of the deep.",
+                "One day it might hang on a different hook, in a different pair of hands."]);
+  } else if (ch==="H"){
+    if (p.upgrades.indexOf("hearth")<0){ say(["A black firebox full of last winter's ash. Somebody dreamed broth here once."]); return; }
+    advanceWeeks(1);
+    p.stam=clamp(p.stam+6,0,maxStam());
+    say([p.spouse? p.spouse.name.split(" ")[0]+" puts the kettle on without being asked. You stand a while by the fire."
+                : "You stand a while by the fire, listening to the rain get the roof wrong.",
+         "Stamina +6. An evening passes."]);
+    if (game.flags.posthumous) say(["The chair by the hearth still holds the shape of the one the house buried."]);
+    saveGame();
+  } else if (ch==="N"){
+    if (p.upgrades.indexOf("nursery")<0){ say(["A corner swept clean, waiting for a reason to fill it."]); return; }
+    if (p.child){
+      showMenu("THE NURSERY", [
+        { t:"Teach "+p.child.name+" ("+cap(childStage(p.child))+")", fn:teachChild },
+        { t:"Not now", fn:()=>{} }
+      ]);
+    } else if (p.spouse){
+      showMenu("THE NURSERY", [
+        { t:"Try for a child", d:"The cradle is built. It is only waiting.", fn:tryForChild },
+        { t:"Not this year", fn:()=>{} }
+      ]);
+    } else say(["A smooth cradle, empty. The city owes you nothing to fill it with."]);
+  }
+}
+function tryHomeMove(dx,dy){
+  const hm=game.home;
+  const nx=hm.px+dx, ny=hm.py+dy;
+  if (homeSolid(nx,ny)) return;
+  hm.px=nx; hm.py=ny;
+  if (homeTile(nx,ny)==="D") leaveHome();
+}
+function leaveHome(){
+  game.home=null; stopWalk();
+  game.state="base";
+  const hb=BUILDINGS.find(b=>b.id==="home");
+  if (hb && hb.door){ game.base.px=hb.door[0]; game.base.py=hb.door[1]; }
+  saveGame();
+}
+function homeWalkTo(tx,ty,cb){
+  const hm=game.home; if (!hm) return;
+  if (tx===hm.px && ty===hm.py){ if (cb) cb(); return; }
+  const path=bfsPath(hm.px,hm.py,tx,ty,(x,y)=>!homeSolid(x,y),hm.w,hm.h);
+  if (!path){ showHint("No path there."); return; }
+  walkPath=path; walkCb=cb||null; walkTick=4;
+}
+function homeApproach(tx,ty){
+  const hm=game.home; if (!hm) return;
+  const cands=[[tx,ty-1],[tx,ty+1],[tx-1,ty],[tx+1,ty]].filter(cc=>!homeSolid(cc[0],cc[1]));
+  let best=null, bd=1e9;
+  for (const c of cands){ const dd=Math.abs(c[0]-hm.px)+Math.abs(c[1]-hm.py); if (dd<bd){ bd=dd; best=c; } }
+  if (!best) return;
+  if (best[0]===hm.px && best[1]===hm.py){ homeInteract(homeTile(tx,ty)); return; }
+  homeWalkTo(best[0],best[1],()=>homeInteract(homeTile(tx,ty)));
+}
+function openHome(quiet){
   const p=game.player;
   if (!p.house){ say(["Wrecked rooms behind a rotted door. Yours someday, maybe. If you live and pay."]); return; }
+  game.home=buildHome();
+  game.state="home";
+  if (quiet) return;
   const lines=["Home. The floor slants, the roof holds, the dead stay outside.",
                p.spouse? p.spouse.name+" has the kettle on."
                : game.flags.posthumous? "The house remembers two keepers: the one it buried, and you."
                : "No one waits up for you. Yet."];
-  if (p.child) lines.push(p.child.name+" babbles at a dust mote.");
-  say(lines, ()=>{
-    const opts=[
-      { t:"Sleep (7 days, stamina to full)", fn:homeRest },
-      { t:"Eat from the pantry (stamina +25)", fn:()=>{ const q=game.player;
-          if (q.stam>=maxStam()){ say(["You are not hungry. The pantry disagrees and wins later."], ()=>openHome()); return; }
-          q.stam=clamp(q.stam+25,0,maxStam()); say(["Bread of questionable ancestry. It does its job."], ()=>openHome()); } }
-    ];
-    if (p.spouse && p.upgrades.indexOf("nursery")>=0 && !p.child && p.tryChild!==1)
-      opts.push({ t:"Try for a child", fn:tryForChild });
-    if (p.child) opts.push({ t:"Teach "+p.child.name+" ("+cap(childStage(p.child))+")", fn:teachChild });
-    if (p.gatekeeper) opts.push({ t:"Pass the lamp - begin a successor", fn:()=>{
-        showMenu("PASS THE LAMP", [
-          { t:"A successor wakes from the dream", fn:passTheLamp },
-          { t:"Not this year", fn:openHome }
-        ]); } });
-    opts.push({ t:"The chest under the floor ("+chestUsed()+"/"+storageCap()+")", fn:openChest });
-    opts.push({ t:"Leave", fn:()=>{} });
-    showMenu("HOME", opts, ()=>{});
-  });
+  if (p.child) lines.push(p.child.name+" babbles at a dust mote, near the crib.");
+  say(lines);
+}
+function updateHome(){
+  if (!game.home) game.home=buildHome();
+  if (uiBlocked()){ updateUI(); return; }
+  const hm=game.home;
+  const mv=dirTap();
+  if (mv){ stopWalk(); tryHomeMove(mv[0],mv[1]); return; }
+  if (walkPath && walkPath.length){
+    if (yesTap()||noTap()){ stopWalk(); return; }
+    if (++walkTick>=4){
+      walkTick=0;
+      const st=walkPath.shift();
+      if (homeSolid(st[0],st[1])){ stopWalk(); }
+      else {
+        hm.px=st[0]; hm.py=st[1];
+        if (homeTile(st[0],st[1])==="D"){ leaveHome(); return; }
+        if (!walkPath.length && walkCb){ const cb=walkCb; walkCb=null; cb(); }
+      }
+    }
+    return;
+  }
+  walkPath=null; walkCb=null;
+  if (tap("x")||tap("escape")){ leaveHome(); return; }
+  if (yesTap()){
+    stopWalk();
+    const ch=homeAdjacent();
+    if (ch){ homeInteract(ch); return; }
+    say(["A crooked room, two strides across. It is yours. The rest of Jericho is outside.",
+         "The bed. The chest. The rain on one small window. Wealth, of a kind the city cannot tax."]);
+  }
+}
+function drawHome(){
+  const p=game.player;
+  if (!game.home) game.home=buildHome();
+  const hm=game.home;
+  ctx.fillStyle="#120d12"; ctx.fillRect(0,0,W,H);
+  ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
+  const ox=Math.floor((W-hm.w*T)/2), oy=Math.floor((H-hm.h*T)/2)-6;
+  for (let y=0;y<hm.h;y++) for (let x=0;x<hm.w;x++){
+    const c=hm.rows[y][x], sx=ox+x*T, sy=oy+y*T;
+    if (c==="#"){ ctx.fillStyle="#241c26"; ctx.fillRect(sx,sy,T,T); ctx.fillStyle="#2e2531"; ctx.fillRect(sx,sy,T,2); continue; }
+    ctx.fillStyle=((x+y)%2)? "#332722":"#392b25";
+    ctx.fillRect(sx,sy,T,T);
+    ctx.fillStyle="#2a1f1a"; ctx.fillRect(sx,sy+7,T,1);
+    if (c==="D"){ ctx.fillStyle="#4a3624"; ctx.fillRect(sx+1,sy,T-2,T); ctx.fillStyle="#c8963f"; ctx.fillRect(sx+T-3,sy+3,1,2); }
+    else if (c==="w"){ ctx.fillStyle="#1c2836"; ctx.fillRect(sx+1,sy+1,T-2,T-2); ctx.fillStyle="rgba(150,170,195,0.35)"; ctx.fillRect(sx+2,sy+(((worldTick/9)|0)%5)+1,1,2); ctx.fillRect(sx+4,sy+((((worldTick/9)|0)+2)%5)+1,1,2); }
+    else if (c==="B"){ ctx.fillStyle="#4a3624"; ctx.fillRect(sx,sy,T,T); ctx.fillStyle="#d9c9a8"; ctx.fillRect(sx+1,sy+1,T-2,2); ctx.fillStyle="#7a6a4a"; ctx.fillRect(sx+1,sy+3,T-2,2); ctx.fillStyle="#8c3f42"; ctx.fillRect(sx+1,sy+5,T-2,2); }
+    else if (c==="C"){ ctx.fillStyle="#503a26"; ctx.fillRect(sx+1,sy+2,T-2,5); ctx.strokeStyle="#7d6f4c"; ctx.lineWidth=1; ctx.strokeRect(sx+1.5,sy+2.5,T-3,4); ctx.fillStyle="#c8963f"; ctx.fillRect(sx+3,sy+3,2,2); }
+    else if (c==="P"){ ctx.fillStyle="#3c2c1e"; ctx.fillRect(sx,sy+1,T,T-1); ctx.fillStyle="#5b5560"; ctx.fillRect(sx+1,sy+2,2,2); ctx.fillRect(sx+5,sy+2,2,2); ctx.fillStyle="#6d7a4a"; ctx.fillRect(sx+3,sy+5,2,2); }
+    else if (c==="L"){ ctx.fillStyle="#3c2c1e"; ctx.fillRect(sx+2,sy+4,4,3); ctx.fillStyle="#e0b95a"; ctx.fillRect(sx+3,sy+1,2,2); glow(sx+4,sy+2,13,[255,200,110],0.12); }
+    else if (c==="H"){
+      if (p.upgrades.indexOf("hearth")>=0){
+        ctx.fillStyle="#4a2c20"; ctx.fillRect(sx,sy+1,T,T-1);
+        const ff=((worldTick/7)|0)%3;
+        ctx.fillStyle="#e06a2a"; ctx.fillRect(sx+2,sy+3+ff,4,3);
+        ctx.fillStyle="#e8b13a"; ctx.fillRect(sx+3,sy+4+ff,2,2);
+        glow(sx+4,sy+4,20,[255,140,60],0.14);
+      } else { ctx.fillStyle="#241c26"; ctx.fillRect(sx,sy+1,T,T-1); ctx.fillStyle="#3a323c"; ctx.fillRect(sx+1,sy+3,T-2,3); }
+    }
+    else if (c==="N"){
+      if (p.upgrades.indexOf("nursery")>=0){ ctx.fillStyle="#5b4a5a"; ctx.fillRect(sx+1,sy+2,T-2,5); ctx.fillStyle="#8c7a6a"; ctx.fillRect(sx+2,sy+3,T-4,2); }
+      else { ctx.fillStyle="#2c2430"; ctx.fillRect(sx+2,sy+3,3,1); }
+    }
+  }
+  if (p.spouse) drawNPC(ox+4*T, oy+6*T, "#7a4a5a");
+  if (p.child){ const cx0=ox+10*T, cy0=oy+5*T;
+    blobShadow(cx0+3,cy0+6,3,0.25);
+    ctx.fillStyle="#8a5a62"; ctx.fillRect(cx0+2,cy0+3,3,3);
+    ctx.fillStyle="#d9c9a8"; ctx.fillRect(cx0+3,cy0+2,2,2);
+  }
+  drawHero(ox+hm.px*T, oy+hm.py*T, false);
+  if (!game.ui.mode){
+    cornerChips();
+    hit(0,0,W,H,(gx,gy)=>{
+      if (game.state!=="home" || game.ui.mode) return;
+      const wx=Math.floor((gx-ox)/T), wy=Math.floor((gy-oy)/T);
+      if (wx<0||wy<0||wx>=hm.w||wy>=hm.h) return;
+      const c=hm.rows[wy][wx];
+      if (c==="D"){ stopWalk(); homeWalkTo(wx,wy, leaveHome); return; }
+      if (homeSolid(wx,wy)){ stopWalk(); homeApproach(wx,wy); return; }
+      homeWalkTo(wx,wy,null);
+    });
+    for (let y=0;y<hm.h;y++) for (let x=0;x<hm.w;x++){
+      const c=hm.rows[y][x];
+      if (c==="B"||c==="C"||c==="P"||c==="H"||c==="N"||c==="L"||c==="D"){
+        const wx=x, wy=y, cc=c;
+        hit(ox+x*T,oy+y*T,T,T,()=>{
+          if (game.state!=="home" || game.ui.mode) return;
+          stopWalk();
+          if (cc==="D"){ homeWalkTo(wx,wy, leaveHome); return; }
+          homeApproach(wx,wy);
+        });
+      }
+    }
+  }
 }
 function tryForChild(){
   const p=game.player;
@@ -3057,7 +3238,7 @@ function updateAmbience(){
         lp.frequency.value += (tgt-lp.frequency.value)*0.05;
       }
     }
-  } else if (game.state==="base"){
+  } else if (game.state==="base" || game.state==="home"){
     stopDrone(); startRain();
   } else {
     stopDrone(); stopRain();
@@ -4957,6 +5138,7 @@ function frame(){
   else if (!game) updateTitle();
   else {
     if (game.state==="base") updateBase();
+    else if (game.state==="home") updateHome();
     else if (game.state==="dungeon") updateDungeon();
     else if (game.state==="combat") updateCombat();
     else if (game.state==="dead"||game.state==="legacy"||game.state==="soldout") updateDead();
@@ -4973,6 +5155,7 @@ function frame(){
   if (!game) renderTitle();
   else {
     if (game.state==="base") drawBase();
+    else if (game.state==="home") drawHome();
     else if (game.state==="dungeon") drawDungeon();
     else if (game.state==="combat") renderCombat();
     else if (game.state==="dead"||game.state==="legacy"||game.state==="soldout") renderDead();
@@ -5002,6 +5185,7 @@ window.__openings={
   get game(){ return game; },
   newGame, launchDelve, startCombat, combatPlayerAction, endCombat, genFloor, buildCity,
   addItem, meetAdventurer, triggerEvent, advanceWeeks, openGate, openTavern, openOffice,
+  buildHome, homeInteract, updateHome, leaveHome, homeAdjacent, homeApproach,
   openHome, openMarket, updateUI, closeUI, frame, press:(k)=>{ pressed[k.toLowerCase()]=true; },
   curFloor, hurt, die, continueAsChild, saveGame, loadGame,
   earnTitle, checkTitles, foeKnown, hasManeuver, quickActs, actLabel, bonesGame, addr,

@@ -147,11 +147,15 @@ an auto-walk in progress.
      who is wed to whom, who died — and picking anyone tells you their
      story and, if they are unattached, lets you **Begin courting** them
      on the spot.
-   - **Housing Office** — buy the Leaning Tenement (250g), then upgrade it:
-     leakproofing, warm hearth, nursery, deep cellar, reinforced door. Home
-     has **the chest**: storage that holds more things than any pack (24
-     slots with the cellar upgrade) — the place where a career, not a
-     shopping trip, gets parked between delves.
+   - **Housing Office** — buy the Leaning Tenement (500g), then upgrade it:
+     leakproofing, warm hearth, nursery, deep cellar, reinforced door.
+     **Your house is its own small map now**: step through the door and you
+     are standing in a crooked room with a **bed** and a
+     **small chest** under the floorboards, a pantry shelf, a lamp-stand,
+     and corners that stay swept until you buy the reasons to fill them
+     (hearth, nursery). Walk to the bed and press to sleep the week away;
+     the chest opens storage (24 slots with the cellar upgrade) — the place
+     where a career, not a shopping trip, gets parked between delves.
    - **Grave-Market: packs.** Carry **10** items; buy a **Satchel (35g,
      +3)** or **Expedition pack (90g, +6)** up to 19. Items stack, slots
      don't; the deep-cellar widens the chest instead.
