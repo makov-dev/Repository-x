@@ -442,3 +442,42 @@ and chair arithmetic, shark interception for the broke, Sal's greeting), full
 suite on the patched engine - deeptest 12/0, bosstest 52/0, roundtest 24/0,
 exhausttest 31/0, housetest 72/0, sharktest 22/0, fuzz 30 sessions 0 errors -
 plus 150 verification lives and 50 Pathfinder lives, 0 rig crashes.
+
+## 17. Levers and second tries — traps stop evaporating (this round)
+
+A player report, of the good kind: *"so traps such as levers you can actually
+go back and bypass the trap."* Audit of `obstacleEvent` confirmed the engine
+disagreed with itself: **every** choice — including "Back off", and including
+a **failed** roll — set `ev.done=true`, and events only fire once. So a trap
+could be disarmed by retreating and stepping on it again (the silent vanish),
+and a botched crossing bought the crossing anyway, paid in blood that didn't
+matter next time. Single-use traps, one roll per trap, no return trips.
+
+**Fix — traps are persistent until genuinely crossed:**
+
+- **Retreat no longer disarms.** "Back off" / "Leave it" leave the obstacle
+  armed; step off, step back on, and the same trap wakes again.
+- **Failure no longer disarms.** A botched Agility/Will/Wits roll leaves you
+  bleeding *and* leaves the trap live: go back, get gear or courage, face it
+  again. The trap is a toll you pay until the passage is actually opened.
+- **New: the lever hunt.** Spikes and plates are mechanisms, and mechanisms
+  keep maintenance: a new **"Hunt for the release lever (Wits)"** option.
+  Success (Wits 9) disarms that crossing **permanently** — the sabotage lever
+  thrown by "some earlier debtor of the dark"; the teeth sink and stay sunk,
+  the plate becomes furniture, and re-crossing it later is silent. Failure
+  costs a dart (plate) or just wasted light (spikes), and the trap stays live.
+- **Unchanged permanent opens**: clean stat roll past rubble/spikes/gas/plate,
+  spent Rope & Hook, spent Antitoxin.
+- **Renderer**: a defused mechanism stops drawing its glyph (sunk teeth, plain
+  stone); the chasm keeps its black tile — a hole is terrain, not a gadget.
+- No soft-lock is possible: chokepoint traps can always be crossed by eating
+  the failure toll (you are on the tile after the roll resolves), so retreat
+  is tactics, never a wall.
+
+Verification (fresh rigs; /tmp was wiped since last round, so traptest and
+fuzz were rebuilt): **traptest 26/26** — back-off re-arms spikes/plate/gas/
+rubble, failed rolls leave them armed and drawing blood again on re-entry,
+lever hunt defuses spikes and plates permanently with silent re-crossings,
+antitoxin spends gas, strength clears rubble, renderer clean; **fuzz 20
+sessions / 40,000 frames / 0 errors** (random keys across two delves with
+GEAR at hand). Syntax check passed, inject verified by re-extraction.

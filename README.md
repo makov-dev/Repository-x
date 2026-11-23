@@ -245,6 +245,15 @@ an auto-walk in progress.
      the check is a toll you pay to move, not a decoration. And a chasm is
      also a door: **climb down into it** (Rope & Hook) or drop (Agility) and
      you reach the floor below — depth is the gain, the fall is the price.
+   - **Traps stay armed until you truly deal with them.** Back off and the
+     seam is behind you, not spent; come back and it wakes again — a failed
+     attempt buys blood, not passage. The spike beds and the plates are
+     *mechanisms*, and mechanisms keep their maintenance: **hunt for the
+     release lever (Wits)**, throw it, and that crossing is yours forever —
+     the teeth sink into the floor for good, and the defused tile draws
+     plain stone instead of its glyph. Rope & Hook and Antitoxin spend just
+     as permanently, and a clean stat roll opens the way outright. The chasm
+     alone never closes: it is a hole in the world, not a gadget.
    - **Thresholds.** Where a room opens into a tunnel, the doorway is
      drawn as a pale worn-steel line, distinct from the gold room outline,
      so the way on is always legible.
