@@ -345,3 +345,100 @@ Drill Strength/Agility to hold the tier-3 pool, buy 8–10 rations + a Bloodrest
 take the Cathedral, path to `>` deliberately (map first), camp between floors,
 and only loot the floor you intend to leave. The deep pays for the house, the
 nursery, the funerals — and below the fourth depth, the horrors are waiting.
+
+## 16. Three thousand lives, eight ways to live (this round)
+
+Run: the `personas` rig extended to **8 archetypes**, **exactly 3,000 completed
+lives** (one process per life, flock'd queue, 5-7 workers; 48 OOM-prone lives
+re-run serially at 2.5 GB) - **0 rig crashes**. Baseline build `38a5ab7`
+(depth-pays economy, apex horrors gated below the fourth depth).
+
+### The archetypes
+
+| persona | n | who they are |
+|---|---|---|
+| Door-Chaser | 700 | fights most things at 80% skill, no house, drills STR |
+| Roof-Mender | 600 | cautious (40%), saves toward a house, upgrades it |
+| Clan-Builder | 600 | 60% skill, house at 560, builds rooms, nurseries a family line |
+| Six-Chaser (gambler) | 400 | 25% skill - pure dice addiction, courts the Ossuary tier |
+| Ledger-Keeper | 300 | ultra-cautious thresholds (out at -6 stam), devout, works hard |
+| Scar-Penitent | 250 | willpower first, tier-1 openings only, ever penitent |
+| Deep-Sage | 75 | the "smart player": strongest stat plan, descends with gear |
+| Depth-Pilgrim | 75 | 9 rations, 3 Bloodrests, depth 12 or nothing |
+
+### Results (all 3,000)
+
+| persona (n) | dead | capped40 | deepest med/max | wed | child | housed | death age med |
+|---|---|---|---|---|---|---|---|
+| CHASER (700) | 579 | 121 | 2/4 | 0 | 0 | 7 | 17 |
+| MENDER (600) | 523 | 77 | 2/4 | 0 (39 bites) | 0 | 1 | 18 |
+| CLAN (600) | 508 | 92 | 3/4 | 0 (50 bites) | 0 | 29 | 18 |
+| GAMBLER (400) | 257 | 143 | 2/4 | 0 | 0 | 0 | 17 |
+| LEDGER (300) | 114 | 186 | 2/4 | 0 (26 bites) | 0 | 10 | 18 (dives med **1176**) |
+| PENITENT (250) | 235 | 15 | 2/4 | 0 | 0 | 0 | 21 (kills med 338, gold peak med 768) |
+| SAGE (75) | 46 | 23 | 3/5 | 22 | 6 | 43 | 18 |
+| PILGRIM (75) | 74 | 1 | 2/4 | 0 | 0 | 0 | 18 |
+
+Truths median 1-2 everywhere (max 3); apex horrors met by almost no one
+(chaser 2, sage 1, clan 4, rest 0); **zero gate-ready lives in 3,000**;
+loans taken 0/3,000 (personas pay before they buy - the shark feeds on the
+reckless, and the rigs are not reckless); funerals ~0 everywhere.
+
+### What 3,000 lives said, and what was done
+
+1. **The year-one wall.** ~80% of all lives die at age 17-18 (the first year
+   of play), dominated by exhaustion - sleep was a 520g purchase, and a
+   beginner is not rich. **Fix: the Salt Bunks.** A new city building on the
+   carver-to-pawn stretch, keeper Deck-hand Sal ("No names asked at the Salt
+   Bunks. That is the amenity."): **chair by the stove, 5g, +40 stamina**;
+   **salt-crusted bunk, 12g, stamina full and +6 HP**. Broke and buying? The
+   Kindly Fellows find you there too.
+
+   **Before/after on the doss build** (150 fresh poor-archetype lives, same
+   seeds' rig; "first-year" = died at 17-18):
+
+   | persona | baseline first-year (of dead) | doss build | death age med |
+   |---|---|---|---|
+   | Scar-Penitent | 20% | **0%** | 21 -> **25** |
+   | Roof-Mender | 92% | **67%** | 18 -> 18 |
+   | Door-Chaser | 97% | 92% | 17 -> 18 |
+
+   The Penitent (who paces himself) and the Mender (who saves) now survive
+   their first winter; the Chaser still dies young because he *chooses* to -
+   he dives until his body quits at the -25 floor. That is the archetype, not
+   a bug: caution is now survivable, recklessness still isn't.
+
+2. **Truth starvation explained - the deep arc is real.** A new **Pathfinder**
+   archetype (descend-greedy: shortest road to `>`, descend whenever hp/stam
+   allow, 9 rations, 3 Bloodrests) ran 50 lives on the depth-pays build:
+
+   - deepest **median 7, max 13** (past the ladder audit's ceiling);
+   - truths **median 3, max 5** (vs 1-2 for every shallow archetype);
+   - apex horrors met in **26/50 lives**, one life killed all three;
+   - 9 lives survived to the 40-year cap, most at depth 8-12.
+
+   So the Gate's conditions sit exactly where the game says they do: the
+   church misread its fragments, and the truths are *down there*. Door-chasers
+   never see one. **Humanly reachable, deliberately expensive** - no engine
+   change made; the remaining 0/3,250 gatekeepers are rig courage, not a wall.
+
+3. **Left alone on purpose (flagged for the player):**
+   - **Weddings 0 / children 6 in 3,000** - the courtship race bites hard
+     (partners wed others mid-delve ~50 bites) and the nursery gate stands.
+     The clan/sage lines are the only ones that ever had a family. Raising
+     base courtship odds would make the Gate's child condition trivial;
+     awaiting direction.
+   - **Funerals ~0** - personas only pay when *unburied* accrues; the 5-grave
+     gate condition wants a deliberate mourner archetype. A human role-plays
+     this; a rig does not. Awaiting direction.
+   - **Loans 0/3,000** - working as designed: the shark feeds on the broke
+     and sudden, and these personas buy everything cash.
+   - **Pilgrim dives-stall** - the pilgrim explores exhaustively before
+     descending; only the Pathfinder's beeline shows depth 12+. Exploration
+     costs steps, steps cost stamina; true on purpose.
+
+Verification this round: dosstest 17/17 (placement/building exclusivity, bunk
+and chair arithmetic, shark interception for the broke, Sal's greeting), full
+suite on the patched engine - deeptest 12/0, bosstest 52/0, roundtest 24/0,
+exhausttest 31/0, housetest 72/0, sharktest 22/0, fuzz 30 sessions 0 errors -
+plus 150 verification lives and 50 Pathfinder lives, 0 rig crashes.

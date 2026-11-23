@@ -400,7 +400,9 @@ const KEEPERS={
        "He stirs without looking. His arm does the work of two staves.",
        "You smell of the works now. So does he. It is a kind of family."] },
   pawn:   { name:"Broker Feen", role:"the pawnbroker", desc:"Priced everything in Jericho twice and himself never.", src:["market","tavern"],
-    g:["\"Everything sold here is a confession.\"","He looks at you the way he looks at a fake ring: as a number with hopes.","\"Your coin spends steadier nowadays,\" he says. Almost a blessing."] }
+    g:["\"Everything sold here is a confession.\"","He looks at you the way he looks at a fake ring: as a number with hopes.","\"Your coin spends steadier nowadays,\" he says. Almost a blessing."] },
+  doss:   { name:"Deck-hand Sal", role:"the bunk-mistress", desc:"Anchored ashore by a bad leg. Charges what a bed is worth, not more.",
+    g:["\"Bunks up the stair, stove by the wall. Twelve, or five if you sit.\"","\"No names asked at the Salt Bunks,\" she says. \"That is the amenity.\"","She thumbs a coin you have not paid her yet, and waits."] }
 };
 function bumpVisit(id){
   if (!game.flags.visits) game.flags.visits={};
@@ -965,6 +967,7 @@ const BUILDINGS = [
   { id:"ten_d",   x:49, y:24, w:6,  h:5, label:"THE STACKS D",   roof:"#4a4046", res:true },
   { id:"wash",    x:2,  y:31, w:6,  h:4, label:"WASHHOUSE",      roof:"#3c5560", work:true },
   { id:"carver",  x:10, y:31, w:6,  h:4, label:"BONE CARVER",    roof:"#61536b", work:true },
+  { id:"doss",    x:33, y:31, w:6,  h:4, label:"THE SALT BUNKS", roof:"#4a5a63" },
   { id:"tallow",  x:25, y:31, w:6,  h:4, label:"TALLOWWORKS",    roof:"#6b5a35", work:true },
   { id:"pawn",    x:49, y:31, w:6,  h:4, label:"PAWNBROKER",     roof:"#5d4351", work:true }
 ];
@@ -1066,6 +1069,7 @@ function openFacility(b){
     case "yard": openYard(); break;
     case "gate": openGate(); break;
     case "home": openHome(); break;
+    case "doss": openDoss(); break;
     default:
       if (b.res){
         const fol=game.townfolk.filter(w=>w.homeId===b.id);
@@ -1254,6 +1258,29 @@ function openClinic(){
     { t:"Bloodrest draught (30g) - full HP", fn:()=>{
         if (p.gold<30){ sharkTrigger(); say(["You are short."]); return; }
         p.gold-=30; p.hp=p.maxhp; say(["It tastes like copper pennies and sleep. You feel whole."]); } },
+    { t:"Leave", fn:()=>{} }
+  ]);
+}
+
+/* the Salt Bunks: sleep for people with no house */
+function openDoss(){
+  const p=game.player;
+  showMenu("THE SALT BUNKS", [
+    { t:"A salt-crusted bunk (12g) - stamina full, +6 HP", d:"Borax in the ticking. Kills the lice and most of the ache.",
+      fn:()=>{
+        if (p.gold<12){ sharkTrigger(); say(["\"Twelve,\" Sal says, not unkindly. \"Salt is not free, and neither am I.\""]); return; }
+        p.gold-=12; p.stam=maxStam(); p.hp=clamp(p.hp+6,0,p.maxhp);
+        advanceWeeks(1);
+        say(["You sleep in a row of strangers, all dreaming of coin, or running from its opposite.",
+             "The salt bites the ache out of your bones. You wake owing nobody. (+6 HP)"]);
+        saveGame(); } },
+    { t:"A chair by the stove (5g) - stamina +40", fn:()=>{
+        if (p.gold<5){ sharkTrigger(); say(["\"Five for the stove side,\" Sal says. \"Nothing in Jericho is free, not even warmth.\""]); return; }
+        p.gold-=5; p.stam=clamp(p.stam+40,0,maxStam());
+        advanceWeeks(1);
+        say(["You doze upright among tallow smoke and other people's snoring, boots on, purse in your fist.",
+             "It is nothing like sleep. It is enough. (+40 stamina)"]);
+        saveGame(); } },
     { t:"Leave", fn:()=>{} }
   ]);
 }
@@ -5526,7 +5553,7 @@ window.__openings={
   drainStam, exhaustHit, exhaustAilment, check, tryMove, openClinic, staminaFloor:()=>STAM_FLOOR,
   sharkTrigger, sharkMeet, fellowsCollect, fellowsMenu, fellowsBeat, leaveDungeon,
   get loan(){ return game && game.flags? (game.flags.loan||null) : null; },
-  ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC,
+  ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC, openDoss,
   get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; },
   FLOOR_BOSSES, BOSS_BY_ID, bossEvent, miniFoe, bossErrandState, flagsPacts, flagsErrands, grantBossLore, repOf, bossReqOk,
   get bossRep(){ return game && game.flags? (game.flags.bossRep||{}) : {}; },

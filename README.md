@@ -190,13 +190,19 @@ an auto-walk in progress.
      and **pay for funerals**. When city-folk die the news says who
      wasn't buried; thirty gold at the Church closes their graves and
      heals a wound of your own, or hardens you (+1 Will).
+   - **The Salt Bunks** — the houseless sleep here, and the quote is honest:
+     **a chair by the stove (5g, +40 stamina)**, or **a salt-crusted bunk
+     (12g, stamina back to full and +6 HP)**. Borax in the ticking; no names
+     asked at the door. Deck-hand Sal takes the coin and you owe nobody come
+     morning. Come up short and you will meet the patient man instead.
    - **Training Yard** — pay sweat and stamina to grind STR/AGI/WIT/WLL.
    - **Gate of Openings** — choose which crack in the world to crawl into.
 
    **Every place is somebody's job.** Eleven facilities have a keeper
    who is always there: Master Pell the guild clerk, Weigh-mistress
    Corrin, Setter Mala, Barkeep Odo, Clerk Ivvan, the Sexton, Yard-
-   master Grett, Laundress Suki, Carver Nol, Old Wick and Broker Feen.
+   master Grett, Laundress Suki, Carver Nol, Old Wick, Broker Feen and
+   Deck-hand Sal.
    They know you the way the street does — first visits you are furniture,
    then a nod, eventually your name, and the day comes when "***your
    title*** first," is the whole conversation. Regulars get trusted:
