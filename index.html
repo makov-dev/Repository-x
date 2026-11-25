@@ -476,10 +476,12 @@ function spawnTownfolk(){
 function townAge(wk){ return Math.floor(wk.age0+(game.week-wk.born)/52); }
 function updTownfolk(){
   if (!game.townfolk) game.townfolk=[];
+  ensureSentinel();
   let guardN=0;
   while (game.townfolk.length<9 && guardN++<12){ spawnTownfolk(); }
   for (let i=game.townfolk.length-1;i>=0;i--){
     const wk=game.townfolk[i];
+    if (wk.sentinel) continue;
     if (!game.flags.unburied) game.flags.unburied=[];
     if (wk.lastW!==game.week){
       const dw=Math.min(52,game.week-wk.lastW);
@@ -553,6 +555,7 @@ function updTownfolk(){
   }
 }
 function talkTownfolk(wk){
+  if (wk.sentinel){ sentinelTalk(wk); return; }
   const p=game.player;
   wk.fam=Math.min(14,(wk.fam||0)+1);
   sfx("click");
@@ -575,6 +578,7 @@ function drawTownfolk(camX,camY){
     if (sx<-6||sx>Wz+8||sy<-8||sy>Hz) continue;
     const moving=wk.path && wk.i<wk.path.length;
     const bob= wk.linger>0? (worldTick%70<6?0:1) : (moving? (worldTick%24<12?0:1) : 0);
+    if (wk.sentinel) glow(sx+4,sy+5,17,[159,179,184],0.17);
     if (wk.linger>0 && !moving) glow(sx+4,sy+5,15,[255,150,60],0.09);
     blobShadow(sx+4,sy+9,5,0.30);
     ctx.fillStyle="#2a2028"; ctx.fillRect(sx+3,sy+6+bob,2,3);
@@ -751,6 +755,11 @@ function newGame(){
     npcs: NPC_BASE.map(b=>({ name:b.name, desc:b.desc, age:b.age, ageWeeks:b.age*52, talks:(b.talks||GENERIC_TALKS).slice(),
       marriedTo:null, dead:false, widowed:false, kids:0, parentOfYou:false, aff:0, met:false }))
   };
+  try{
+    const cm=JSON.parse(localStorage.getItem("openings_cosmos")||"{}");
+    game.flags.cosmosClosed=!!cm.closed;
+    game.flags.sentinels=Array.isArray(cm.sentinels)? cm.sentinels.slice(0,3) : [];
+  }catch(e){ game.flags.cosmosClosed=false; game.flags.sentinels=[]; }
 }
 
 /* ----- the body's credit: stamina below zero is loaned meat ----- */
@@ -916,6 +925,8 @@ function loadGame(){
       if (typeof Pl.gambleWins!=="number") Pl.gambleWins=0;
       if (typeof Pl.lastAction!=="string") Pl.lastAction=null;
       if (typeof Pl.gatekeeper!=="boolean") Pl.gatekeeper=false;
+      if (!Array.isArray(game.flags.sentinels)){ try{ const cm=JSON.parse(localStorage.getItem("openings_cosmos")||"{}"); game.flags.sentinels=Array.isArray(cm.sentinels)? cm.sentinels.slice(0,3):[]; }catch(e){ game.flags.sentinels=[]; } }
+      if (typeof game.flags.cosmosClosed!=="boolean"){ try{ game.flags.cosmosClosed=!!(JSON.parse(localStorage.getItem("openings_cosmos")||"{}").closed); }catch(e){ game.flags.cosmosClosed=false; } }
       if (typeof Pl.deep!=="number") Pl.deep=0;
       if (typeof Pl.packs!=="number") Pl.packs=0;
       if (!Array.isArray(Pl.chest)) Pl.chest=[];
@@ -2136,8 +2147,16 @@ function drainNews(){
 
 /* ----- the gate ----- */
 function openGate(){
-  say(["South of the tanneries, the city is cracked like old bread. The cracks breathe.",
-       "Adventurers call the cracks Openings. The city calls them nothing at all."], ()=>{
+  const p=game.player;
+  let intro;
+  if (p.gatekeeper) intro=[
+    "The Gate of Openings. You keep its elder sister, deeper than any crack this city goes.",
+    "The cracks know you. They breathe the way dogs breathe around a master they are not sure of."];
+  else intro=[
+    "South of the tanneries, the city is cracked like old bread. The cracks breathe.",
+    "Adventurers call the cracks Openings. The city calls them nothing at all."];
+  if (game.flags.cosmosClosed) intro.push("The cracks breathe slower these days. Somewhere behind the world lies a silence the old songs refuse to explain.");
+  say(intro, ()=>{
     const known=OPENINGS.concat((game.flags.secrets||[]).map(SEC_BY_NAME).filter(Boolean));
     const opts=known.map(o=>({
       t:o.name+"  (danger "+"|".repeat(o.tier)+")",
@@ -2145,6 +2164,12 @@ function openGate(){
       fn:()=>launchDelve(o)
     }));
     if ((game.flags.secrets||[]).length) opts.push({ t:"(the chalked doors you found below are yours now)", fn:()=>{} });
+    if (p.gatekeeper){
+      opts.push({ t:"Keep the watch (a season at the threshold; one measure +1)",
+        d:"The duty you took pays its keeper in change.", fn:keepTheWatch });
+      opts.push({ t:"Descend - let the Gate look at what you have become",
+        d:"The reckoning. What it sees, it answers in kind.", fn:gateReckoning });
+    }
     opts.push({ t:"Not today", fn:()=>{} });
     showMenu("GATE OF OPENINGS - choose a crack in the world", opts);
   });
@@ -4013,7 +4038,8 @@ function priorKeeperFoe(){
   const k=game.flags.priorKeeper;
   const n=(k.name || "The First Diver")+", the Gatekeeper";
   BESTIARY_DESC[n]="You know this one. It was a diver with a name and a knife once; then the Gate finished its paperwork. It holds the stairs the way a held breath holds a scream - and the Gate is holding it together.";
-  const power=(k.str||5)+(k.agi||5)+(k.wit||5)+(k.wll||5);
+  const cl=x=>Math.max(1,Math.min(12,x||5));
+  const power=cl(k.str)+cl(k.agi)+cl(k.wit)+cl(k.wll);
   const hp2=ngHp(60+4*power);
   return { n:n, mhp:hp2, hp:hp2, atk:6+Math.floor(power/12)+ngAtkBump(), tr:null,
     artSeed:irnd(2147483647), human:true, boss:true, regens:true, afterGate:true };
@@ -4033,6 +4059,171 @@ function priorKeeperGate(){
           stepBack(); } }
     ]);
   });
+}
+/* ----- the keeper's endgame: the watch, the reckoning, the endings ----- */
+function gateCosmos(){ try{ return JSON.parse(localStorage.getItem("openings_cosmos")||"{}"); }catch(e){ return {}; } }
+function gateCosmosSet(k,v){ try{ const c=gateCosmos(); c[k]=v; localStorage.setItem("openings_cosmos",JSON.stringify(c)); }catch(e){} }
+function gateRememberSentinel(name){
+  try{ const c=gateCosmos(); const s=c.sentinels||[];
+    if (s.length>=3) s.shift();
+    s.push({ n:name }); c.sentinels=s;
+    localStorage.setItem("openings_cosmos",JSON.stringify(c));
+  }catch(e){}
+}
+function keepTheWatch(){
+  const p=game.player;
+  if (game.state!=="base" || !p.gatekeeper) return;
+  if (p.stam<45){ say(["The threshold takes presence, not just hours. Rest first."]); return; }
+  showMenu("WHICH MEASURE DOES THE WATCH FEED?", [
+    { t:"Strength +1", fn:()=>watchDone("str","Strength") },
+    { t:"Agility +1",  fn:()=>watchDone("agi","Agility") },
+    { t:"Wits +1",     fn:()=>watchDone("wit","Wits") },
+    { t:"Will +1",     fn:()=>watchDone("wll","Will") },
+    { t:"Step back from it", fn:()=>{} }
+  ]);
+}
+function watchDone(stat,label){
+  const p=game.player;
+  p.stam=clamp(p.stam-45,0,maxStam());
+  advanceWeeks(13);
+  p[stat]+=1;
+  sfx("gain"); sparkBurst(W/2,80,"#9fb3b8",12,1);
+  say(["A season of the watch: Gate-side of the ninth depth, where the hours do not behave.",
+       "The duty changes you the way any honest work changes a worker. "+label+" rises to "+p[stat]+"."]);
+  saveGame();
+  if (p[stat]===100) setBanner(["A MEASURE COMPLETED", label+" stands fully grown. The Gate has noticed."]);
+}
+function gateReckoning(){
+  const p=game.player;
+  if (game.dungeon || !p.gatekeeper) return;
+  game.combat=null;
+  const S=[["str","Strength"],["agi","Agility"],["wit","Wits"],["wll","Will"]];
+  const full=S.every(x=>p[x[0]]>=100);
+  const any=S.some(x=>p[x[0]]>=100);
+  const ep=[
+    "You go down past the ninth depth one more time. The stairs open before your feet touch them.",
+    "The Gate does not hold you the way it held the others. It looks at you the way a mirror does.",
+    "And the call comes."
+  ];
+  if (p.wit>=100) ep.push("Your Wits finish what the fragments started: the incomprehensible patterns straighten and read like a mother tongue. The alien logic lays itself open to you - and understanding is a doorway the Gate does not hesitate to walk through.");
+  if (p.wll>=100) ep.push("Your Will plants itself the way old trees do - the call arrives, and passes through you like weather through stone.");
+  if (p.str>=100) ep.push("Your body keeps its shape - but the eyes have gone the color of old coins in black water, and the nails have latticed into chitin. A recognizable mutant; Jericho would know you across a square.");
+  if (p.agi>=100) ep.push("Your outline has changed into something else. You leave no footprints. In standing water your reflection lags half a step, and firelight throws your shadow before you move.");
+  if (full){
+    /* ===== THE ONLY TRUE ENDING: THE GATE IS CLOSED ===== */
+    ep.push("All four measures stand grown past mortal counting: Strength, Agility, Wits, Will.",
+            "It asks for all of you at once. It has asked that of everyone it ever kept.",
+            "You are not overwhelmed. You do not go mad. Your body does not fail.",
+            "You resist the call - and close the Gate.");
+    ep.push("The city goes silent like a held breath. The horrid things bred from the carcasses of dead gods thin, sicken, and die out within the year. The wards go quiet. The deep pays out nothing, because the deep is over.");
+    ep.push("You do not return to civilization. There is nothing out there that could hold the knowledge without breaking, and you know this the way you now know everything.");
+    ep.push("You remain in the walled garden of a silent city. An immortal hermit. You have closed the gate to heaven, and paid for it with what humans interpret as soul - or being, perhaps existence. There is no human word for it. It can never be understood by mere mortals, and that, now, is the whole of the point.");
+    ep.push("THE GAME ENDS. The only time it truly does.");
+    ep.push("[ENTER] Begin again. The city will not remember. You would not have wanted it to.");
+    gateCosmosSet("closed",true); gateCosmosSet("closedBy",p.name);
+    game.flags.closedGate=true;
+    earnTitle("the One Who Closed It");
+    game.flags.epilogue=ep;
+    game.dungeon=null; game.combat=null; game.state="dead"; deadPage=0;
+    saveGame();
+    return;
+  }
+  if (!any){
+    /* ===== no measure grown: you cannot comprehend - you become a creature ===== */
+    const names=[].concat(APEX_HORRORS.map(a=>a.n), HORRORS[1].map(a=>a.n), HORRORS[2].map(a=>a.n), HORRORS[3].map(a=>a.n));
+    const cnRaw=pick(names);
+    const cn=cnRaw;
+    ep.push("Nothing. That is what the Gate gives you back, and it is the crueler answer: nothing.",
+            "You are overwhelmed. You cannot comprehend what you are seeing - it was never shaped to be seen, and it does its work in the time it takes your light to fail.",
+            "Your body cannot withstand the forces at hand. You drive no bargain, learn no pattern, hold no line against the call.",
+            "It drives you mad, and your body follows, and changes - the way a carcass changes, into one of the creatures of the forgotten city.");
+    ep.push("The thing the city's lucky survivors will learn to call "+(cn.indexOf("The ")===0? "":"the ")+cn+" was, until tonight, a person with a name, a knife, and a child.");
+    game.flags.mutatedKeeper=(cn.indexOf("The ")===0? cn : "the "+cn);
+    earnTitle("what the Gate made");
+    game.flags.epilogue=ep;
+    gateHandover();
+    return;
+  }
+  if (p.wit>=100 && p.wll>=100){
+    /* ===== WITS + WILL: the Sentinel - mutated, but a person ===== */
+    ep.push("The change takes you anyway - it rewrites whatever meat it touches, and you stood closest of anyone, ever.",
+            "But you stay a person inside it. Wits understood the pattern; Will answered the call on your own terms; and between them the Gate gets a keeper it cannot finish.",
+            "You are the thing the old carvings warn about and cannot name: a mutated, sentient Keeper, standing on the far side.",
+            "\"I stayed a person,\" you will tell them, someday, when a new diver finds you here. \"That was the Wits and the Will together, and it is not the usual payment. And I will not want what comes after for you, so when you are strong enough to matter - come and argue with me first.\"");
+    ep.push("Somewhere, a new player will one day talk to what you become. You will tell that one the truth, not the doctrine.");
+    gateRememberSentinel(p.name);
+    game.flags.sentinelBorn=1;
+    earnTitle("the Sentinel of the Gate");
+    game.flags.epilogue=ep;
+    gateHandover();
+    return;
+  }
+  if (p.wit>=100){
+    /* ===== WITS alone: understood - and submitted to the keepers ===== */
+    ep.push("You understood. The incomprehensible patterns straightened; the alien logic made itself plain as arithmetic. You comprehended what no mortal slang has a word for.",
+            "That was the price of everything. Understanding is a doorway, and the Gate walked through you as through an open door.",
+            "You mutate as all keepers mutate, and you submit - take your place, quietly, among the keepers of the gate. Not a person who holds the door: a feature of the doorway.",
+            "It is not the worst outcome. It is not the best, either. The keepers who stay sane enough to warn people are rarer than keepers.");
+    game.flags.mutatedKeeper="one of the keepers of the gate";
+    const cl=x=>Math.max(1,Math.min(12,x||5));
+    game.flags.priorKeeper={ name:p.name, str:cl(p.str), agi:cl(p.agi), wit:cl(p.wit), wll:cl(p.wll),
+      titles:p.titles.slice(), weapon:{ n:p.weapon.n, d:Math.min(9,p.weapon.d) } };
+    earnTitle("of the keepers of the gate");
+    game.flags.epilogue=ep;
+    gateHandover();
+    return;
+  }
+  /* ===== STR and/or AGI grown: success that keeps your self, at a visible cost ===== */
+  ep.push("The call came for all of you. It settled for the parts of you that were strong enough to matter, and the rest of you stood there and refused to be spent.",
+            "You succeed. You are still you.");
+  ep.push("The mutation took your appearance and left the person underneath: the Gate cannot finish what is already finished. Jericho gets a keeper who casts an honest shadow and answers to their own name, wearing whatever the deep made of their surface.");
+  earnTitle(p.str>=100? "the Marked" : "the Unfooted");
+  p.stam=maxStam(); p.hp=p.maxhp;
+  say(ep, ()=>{ checkTitles(); setBanner(["THE RECKONING","It asked. You answered. You are still you.","Keep the watch; grow the other measures.","(the true ending asks all four measures past 100)"]); saveGame(); });
+}
+function gateHandover(){
+  const p=game.player;
+  game.dungeon=null; game.combat=null; deadPage=0;
+  if (p.child){
+    if (p.child.weeks<728){ advanceWeeks(728-p.child.weeks); game.townfolk=[]; drainNews(); }
+    game.flags.epilogue.push("[ENTER] The lamp passes. "+p.child.name+" takes up the knife.");
+    game.state="legacy";
+    saveGame();
+  } else {
+    game.flags.epilogue.push("[ENTER] The gate keeps what it keeps.");
+    game.state="dead";
+    saveGame();
+  }
+}
+function ensureSentinel(){
+  if (!game.flags || !game.flags.sentinels || !game.flags.sentinels.length) return;
+  if (!game.townfolk) game.townfolk=[];
+  if (game.townfolk.some(w=>w.sentinel)) return;
+  game.townfolk.push({ name:game.flags.sentinels[0].n, occ:"Keeper of the Gate", sentinel:true,
+    line:"More than they were, and less.", age0:19, born:game.week,
+    x:49, y:17, path:null, i:0, t:99, lastW:game.week, col:"#9fb3b8",
+    homeId:"gate", workId:"gate", atId:"gate", toId:null, inside:0, lingering:false, linger:0 });
+}
+function sentinelTalk(wk){
+  sfx("click");
+  const lines=[
+    wk.name+" - the Keeper of the Gate. There is no age to give you; the measure stopped applying.",
+    "They were a diver once. The change took their body and gave back their self, and nobody down here can explain the arithmetic of that.",
+    "\"I stayed a person,\" they say. \"That was the Wits and the Will together, and it is not the usual payment.\"",
+    "\"Listen. It takes everyone in the end. But I remember being the one it took, and I will not want that for you. When you are strong enough to matter, come and argue with me first.\""
+  ];
+  if (!game.flags.sentinelWord){
+    showMenu("THE KEEPER IN THE STREET", [
+      { t:"Take their word (one truth, given freely)", fn:()=>{
+          game.flags.sentinelWord=1;
+          const ids=LORE_FRAG.map(f=>f.id).filter(id=>(game.flags.lore||[]).indexOf(id)<0);
+          if (ids.length) findLore(ids[0], wk.name+", who remembers being a person");
+          say(["The word is a sentence long, and it costs them something to say it.",
+               "A truth you had no right to is in your head now, heavy as a coin warmed by a hand."],()=>{ saveGame(); });
+        } },
+      { t:"Just nod and walk on", fn:()=>{} }
+    ]);
+  } else say(lines.concat(["\"Come back when you are strong enough to matter,\" they say. \"I will still be standing where the Gate can see me.\""]));
 }
 function gateConditions(){
   const p=game.player, fl=game.flags.lore||[];
@@ -5210,7 +5401,7 @@ function renderDead(){
   ctx.fillStyle="#070409"; ctx.fillRect(0,0,W,H);
   const rows=deadRows(), per=11, pages=Math.max(1,Math.ceil(rows.length/per));
   if (deadPage>=pages) deadPage=pages-1;
-  txt(game.state==="soldout"? "THE SALE IS SIGNED" : "THE BOOK OF THE GATE",W/2-52,18,PAL.gold,true);
+  txt(game.state==="soldout"? "THE SALE IS SIGNED" : (game.flags&&game.flags.closedGate? "THE GATE IS CLOSED" : "THE BOOK OF THE GATE"),W/2-52,18,PAL.gold,true);
   let y=32;
   for (const s of rows.slice(deadPage*per,(deadPage+1)*per)){ txt(s,12,y,"#b9b0a0"); y+=10; }
   if (deadPage<pages-1) txt("tap / ENTER >",262,168,"#8c8494");
@@ -5422,10 +5613,10 @@ function continueAsChild(){
   const spark=c.spark;
   game.player={
     name:c.name,
-    str: Math.max(2, Math.floor(old.str*0.5)+Math.ceil(spark/3)),
-    agi: Math.max(2, Math.floor(old.agi*0.5)+Math.ceil(spark/3)),
-    wit: Math.max(2, Math.floor(old.wit*0.5)+Math.ceil(spark/4)),
-    wll: Math.max(2, Math.floor(old.wll*0.5)+Math.ceil(spark/2)),
+    str: Math.min(12, Math.max(2, Math.floor(old.str*0.5)+Math.ceil(spark/3))),
+    agi: Math.min(12, Math.max(2, Math.floor(old.agi*0.5)+Math.ceil(spark/3))),
+    wit: Math.min(12, Math.max(2, Math.floor(old.wit*0.5)+Math.ceil(spark/4))),
+    wll: Math.min(12, Math.max(2, Math.floor(old.wll*0.5)+Math.ceil(spark/2))),
     hp:22, maxhp:22, stam:100, maxstam:100,
     gold:15,
     weapon: old.weapon.d>2? {n:old.weapon.n, d:old.weapon.d} : {n:"Rusted Knife", d:2},
@@ -5449,6 +5640,8 @@ function continueAsChild(){
       : "Strong as half a dead parent and some of their habits. The house stands because somebody kept paying for it.",
     "The Openings will remember your old name soon enough. The Gate has not moved."
   ];
+  if (game.flags.mutatedKeeper) heirLines.push("Down in the deep, "+game.flags.mutatedKeeper+" wears your parent's old face. The city has already named it, and named it wrong.");
+  if (game.flags.sentinelBorn) heirLines.push("By the Gate of Openings stands a street-keeper nobody sent for: your parent's outline, or nearly. Look them up. They have something to say to the ones who come after.");
   if (game.flags.posthumous && old.spouse) heirLines.push(!old.spouse.dead?
     "Your mother is there when you wake. She has not spoken your father's name since, and she counts your rations like a woman keeping score."
     : "Your mother is buried under the Holy Gate's slates. The sexton keeps your name in her book, spelled right.");
@@ -5566,7 +5759,7 @@ window.__openings={
   drainStam, exhaustHit, exhaustAilment, check, tryMove, openClinic, staminaFloor:()=>STAM_FLOOR,
   sharkTrigger, sharkMeet, fellowsCollect, fellowsMenu, fellowsBeat, leaveDungeon,
   get loan(){ return game && game.flags? (game.flags.loan||null) : null; },
-  ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC, openDoss,
+  ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC, openDoss, gateReckoning, keepTheWatch, sentinelTalk, gateCosmos,
   get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; },
   FLOOR_BOSSES, BOSS_BY_ID, bossEvent, miniFoe, bossErrandState, flagsPacts, flagsErrands, grantBossLore, repOf, bossReqOk,
   get bossRep(){ return game && game.flags? (game.flags.bossRep||{}) : {}; },

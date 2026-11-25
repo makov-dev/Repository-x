@@ -481,3 +481,50 @@ lever hunt defuses spikes and plates permanently with silent re-crossings,
 antitoxin spends gas, strength clears rubble, renderer clean; **fuzz 20
 sessions / 40,000 frames / 0 errors** (random keys across two delves with
 GEAR at hand). Syntax check passed, inject verified by re-extraction.
+
+## 18. The reckoning — endings for keepers (this round)
+
+Player request: *endings for players that become gatekeepers at the end,
+depending on whether any of their stats has reached 100* — the full mtier:
+nothing / overwhelmed / mercy / mutation / combinations, with exactly ONE true
+ending.
+
+### The growth engine that makes 100 reachable
+
+An audit showed training has no hidden cap (`train`/`homeTrain` grow +1 per
+success, unbounded; church-grief and whimper mercy WLL still respect the
+mortal cap of 10). Probe result: **Strength 9 -> 100 in 171 yard drills**
+(~6.6 game-years), Will 9 -> 100 inside 3,000 drills. So the keeper's long
+peace *can* grow all four measures — and now there is a dedicated, faster,
+zero-gold path: **"Keep the watch"** (new, at the Gate of Openings, keepers
+only): 13 weeks and 45 stamina buys one measure +1, guaranteed. The moment a
+measure crosses 100, a banner tells you the Gate has noticed.
+
+### The reckoning: "Descend — let the Gate look at what you have become"
+
+New keeper option at the Gate of Openings. The ending is composed from the
+keeper's state:
+
+| state at the reckoning | outcome |
+|---|---|
+| **all four at 100+** | **THE GATE IS CLOSED.** You are not overwhelmed, you do not go mad, you resist the call and close the Gate. The city goes silent; the horrid creatures thin and die out within the year; you remain as an immortal hermit, having paid what humans interpret as soul/being/existence — "there is no human word for it." **The only time the game truly ends** (run ends to title). The cosmology persists in localStorage (`openings_cosmos.closed`) and every later life begins in a quieter city — the Gate's intro says so. |
+| **Wits 100 + Will 100** | **The Sentinel.** Mutated, but a person. Earned title; the name persists (`openings_cosmos.sentinels`, last 3). In every later life a figure stands at (49,17) by the Gate of Openings — stone-silver glow, does not age, wander, or die — and **a new player can talk to them**: the warning ("I will not want that for you") and, once per life, **a truth given freely**. |
+| **Wits 100 alone** | Understood the alien logic; **mutates and submits** — joins the keepers of the gate, a feature of the doorway. Heir continues; the submitted keeper joins the prior-keeper line (their bossized form clamps each stat at 12 so the dream loop stays a fight, not arithmetic). |
+| **Strength 100 alone** | Body keeps its shape; eyes/nails mutate — a **recognizable mutant** ("the Marked"). Keeps playing, keeps the city, keeps the watch. |
+| **Agility 100 alone** | Outline changes into something else — no footprints, lagged reflection, arrived shadow ("the Unfooted"). Keeps playing. |
+| **no measure at 100** | **Nothing.** Overwhelmed, cannot comprehend, body fails the forces at hand — mutation into **one of the creatures of the forgotten city** (named from the real horror pools; no article stutter). The heir wakes; the child's inheritance line says what the city has not. |
+
+- Heirs of grown keepers start **human-sized** (stat halves now clamp at 12).
+- Endings that pass the lamp use the same ledger the death-screen uses
+  (deadRows pages; the closed run's book is titled "THE GATE IS CLOSED").
+
+### Verification (regress rig, rebuilt after the second /tmp wipe)
+
+**regress 23/23**: trap persistence re-verified (back-off keeps armed, re-entry
+re-fires, lever defuses spikes and plates permanently with silent
+re-crossings); the full ending matrix (all six outcomes, states legacy/base/
+dead as designed); the Sentinel's cross-save existence, fixed post at (49,17),
+dialogue, once-given word, one granted truth; heir clamp (100-stat parent ->
+child at stats <= 12); cosmology persistence into fresh worlds; fuzz 10
+sessions x 1,500 frames, 0 errors. reach100 probe: growth unbounded as
+intended. Syntax check passed; inject verified by re-extraction.

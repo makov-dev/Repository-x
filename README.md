@@ -545,6 +545,49 @@ an auto-walk in progress.
     carrying the relief of an abandoned god for the rest of your short
     life.
 
+    **The reckoning — the endings of the keeper.** A keeper keeps living,
+    and the Gate of Openings gains two door-marks: **Keep the watch** (a
+    season at the threshold; the duty pays its keeper in change — one
+    measure +1) and **Descend — let the Gate look at what you have
+    become**. What it sees, it answers in kind:
+
+    - **All four measures grown past mortal counting** (Strength, Agility,
+      Wits and Will each at 100): you are not overwhelmed, you do not go
+      mad, your body does not fail — **you resist the call and close the
+      Gate**. The city goes silent like held breath; the horrid things
+      thin, sicken, and die out within the year. You remain as an
+      immortal hermit, understanding you sacrificed the deepest human
+      measure of all — what we interpret as soul, or being, perhaps
+      existence; there is no human word for it. **This is the only time
+      the game truly ends.** The cosmology remembers the closure: every
+      life afterwards is lived in a city behind which lies a silence the
+      old songs refuse to explain.
+    - **Wits at 100 + Will at 100**: understood the incomprehensible
+      patterns *and* answered the call on your own terms — you mutate,
+      but stay a person: a **sentient Keeper** on the far side. Saves,
+      heirs and future lives find you standing by the Gate of Openings,
+      and they can **talk to you**: you will not want new divers to
+      suffer the fate worse than death, and your word is worth one
+      truth, given freely, once.
+    - **Wits alone at 100**: you comprehended the alien logic — and
+      understanding is a doorway the Gate walks through. You mutate and
+      **submit**, taking your place among the keepers of the gate: not a
+      person who holds the door, a feature of the doorway.
+    - **Strength alone at 100**: the body keeps its shape; the eyes go
+      the color of old coins in black water, the nails lattice into
+      chitin — a **recognizable mutant**, knowable across a square. You
+      keep your self, and keep the watch.
+    - **Agility alone at 100**: your outline changes into something else
+      — no footprints, a reflection that lags half a step, a shadow that
+      arrives before you move. You keep your self, and keep the watch.
+    - **Combinations** tell the truth about the whole body; and a
+      keeper grown in **nothing**: overwhelmed, unable to comprehend,
+      body failing the forces at hand — mutated, mad, into **one of the
+      creatures of the forgotten city**. The thing the survivors will
+      learn to fear was, until that night, a person with a name, a
+      knife, and a child. The heir still wakes, and the lamp still
+      passes; Jericho names the new horrors wrong, and always will.
+
 11. **Death & the blood line.** Death is permanent — but a child of 14 or
    more *continues*: the save stands, you take over the heir with half your
    old body's leanings plus their taught "spark" for stats, the house and
