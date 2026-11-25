@@ -123,7 +123,7 @@ and hints wrap rather than truncate — nothing you are offered goes unread.
 - **Click / tap dialog text** → advance it.
 - **Click / tap a menu option** → pick it (**tap / X back** corner = cancel).
 - **Click / tap a combat action** (Strike / Guard / Flee…) → do it.
-- In combat the rolling dice themselves are tappable.
+- In combat the rolling dice are caught with **Z, X, SPACE, or a tap anywhere on the screen** — each tap/space stops the next die; the Bones Game stops on a tap of the table (or space).
 - **BAG** chip (top-right) opens your pack anywhere: wield/weapons, wear/armor,
   eat food, drop items, or just read what everything is. Bought weapons and
   armor go into your pack and auto-equip; the old ones drop in beside them.

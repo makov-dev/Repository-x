@@ -3151,7 +3151,7 @@ function stopDie(d,ix){
 function rollDiceFrame(){
   const c=game.combat, d= gDice || (c&&c.dice);
   if (!d) return false;
-  if (tap("z")){ if (!d.st1) stopDie(d,0); else stopDie(d,1); }
+  if (tap("z")||tap(" ")||tap("enter")){ if (!d.st1) stopDie(d,0); else stopDie(d,1); }
   if (tap("x")){ if (!d.st2) stopDie(d,1); else stopDie(d,0); }
   if (worldTick%4===0) sfx("tick");
   if (d.st1 && !d._c1){ d._c1=true; sfx(d.v1===6? "six":"click"); }
@@ -5372,13 +5372,14 @@ function renderUI(){
 function drawGambleBoard(){
   const d=gDice, j=worldTick%2;
   box(68,58,184,104,"rgba(10,7,12,0.96)",PAL.gold);
+  hit(68,58,184,104,()=>{ if (!d.st1) d.st1=true; else if (!d.st2) d.st2=true; }); /* The Bones Game answers the whole table */
   txt("THE BONES GAME",126,62,PAL.gold);
   txt("stake "+fmt(d.stake)+" - win "+fmt(d.stake*3),74,76,"#a09a8c");
   drawDie(94+(d.st1?0:j),94,d.v1,d.st1);
   drawDie(152+(d.st2?0:(1-j)),94,d.v2,d.st2);
   if (!d.st1) hit(94,94,26,28,()=>{ if (!d.st1) d.st1=true; });
   if (!d.st2) hit(152,94,26,28,()=>{ if (!d.st2) d.st2=true; });
-  txt("catch both sixes - Z / X or tap",74,150,"#8c8494");
+  txt("catch both sixes - space or tap",74,150,"#8c8494");
 }
 /* ----- Kingdom mood: a day that passes over the city, lantern pools against the cold, the edges of the screen going dark ----- */
 let vigGrad=null, noiseTile=null, noiseOff=0;
@@ -5556,13 +5557,14 @@ function renderCombat(){
   for (const l of logRows){ txt(l,5,y,"#cfc6b4"); y+=9; }
   if (c.dice){
     const d=c.dice, j=worldTick%2;
+    hit(0,0,W,H,()=>{ if (!d.st1) stopDie(d,0); else stopDie(d,1); }); /* a tap anywhere catches a die */
     box(102,114,116,66,"rgba(8,6,10,0.96)",PAL.gold);
     txt("CATCH THE SIXES",108,118,"#e0b95a");
     drawDie(115+(d.st1?0:j),136,d.v1,d.st1);
     drawDie(169+(d.st2?0:(1-j)),136,d.v2,d.st2);
     if (!d.st1) hit(115,136,26,28,()=>stopDie(d,0));
     if (!d.st2) hit(169,136,26,28,()=>stopDie(d,1));
-    txt(game.player.hp<=game.player.maxhp*0.25? "LAST STAND - dice crawl slow" : "roll both dice - Z / X / tap",104,168,"#8c8494");
+    txt(game.player.hp<=game.player.maxhp*0.25? "LAST STAND - SLOW DICE" : "SPACE OR TAP TO STOP",104,168,"#8c8494");
   } else if (c.turn==="player"){
     box(0,116,150,64,"rgba(8,6,10,0.92)");
     const acts=quickActs();

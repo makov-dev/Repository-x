@@ -736,3 +736,30 @@ teeth, sconces, plaque and banner all read, lit windows glow, no dark
 patches sit over any light. Fuzz 2×1200 frames with full rendering: 0
 crashes. Logic rig on the changed engine: 9/9. `eventaudit`: 75 menus,
 0 duplicate-stat events.
+
+## 24 — The dice answer every hand: space, and a tap anywhere
+
+The user picked up a real gap: the dopamine dice were stopped by Z / X only
+on keyboard and only by tapping the exact 26-pixel die faces on touch —
+"we didn't implement also touch action. we have spacebar that can be used
+but the issue is you do not stop dice rolling with a space either." Confirmed
+by rig against the shipped build: tapping empty screen while the dice rolled
+changed nothing; space did nothing. The hint said "Z / X / tap" all the same.
+
+Fixed in all three dice contexts, verified by a dedicated dice rig:
+
+- **Space (and Enter) now catch a die** wherever Z does — combat attack and
+  defense dice, the Last Stand's slow crawl, and the tavern Bones Game.
+- **A tap anywhere on the screen catches the next die in combat** (the
+  small die faces keep their own direct regions; the corner chips keep
+  priority over the fallback so nothing else in the HUD can be mis-caught).
+- **The Bones Game answers a tap of the whole table**, not just the die
+  faces.
+- Hint lines rewritten to match reality: "SPACE OR TAP TO STOP" in combat,
+  "catch both sixes - space or tap" at the table.
+
+**Verification:** dice rig — real combat through `launchDelve`, attack arms
+the dice; tap-empty catches die 1; direct die tap still stops; SPACE stops
+die 2; combat then resolves without hanging. Logic rig 9/9; eventaudit
+75 menus, 0 duplicate-stat events. Injected through the structurally
+asserted wrapper (DOCTYPE + canvas + `</html>`), round-trip diff clean.
