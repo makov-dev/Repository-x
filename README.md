@@ -147,14 +147,25 @@ progress.
 The screen is painted for mood like that game, not sprite-swapped: a **day
 that really passes** over Jericho (ninety seconds of play per day)
 cross-fades the city from a pale washed noon through burning amber dusk into
-cold blue-black night and out again; lamp posts and cooking fires **punch
-pools of warm light back through the dark**; your hero carries a small
+cold blue-black night and out again. Night is **deep** — the tint goes well
+past halfway — and the town answers it: **house windows light up one by one
+as the dark falls** (yellow panes with a soft glow, more of them lit the
+darker it gets, most going cold again by dawn). **There is no shadow over
+a light** — the drifting cloud-shadow pass is gone for good; nothing in
+this city dims a lamp it does not own. Lamp posts and cooking fires spread
+**wider pools of warm light** at night; your hero carries a small
 flickering lantern — the only circle of world you own when the tint drops;
-cloud shadows drift across the streets by day; interiors and the delvings
-live under a permanent cold-evening lift, so the deeper you go the more your
-lantern means; the whole frame is finished with a soft vignette and a faint
-film grain. HUD, menus and dice stay un-tinted and crisp above the weather
-of light.
+interiors and the delvings live under a permanent cold-evening lift, so the
+deeper you go the more your lantern means; the whole frame is finished with
+a soft vignette and a faint film grain. The **GATE OF OPENINGS is a
+gatehouse now, not a portal**: twin battlemented towers with ashlar
+bond-lines and arrow slits, a carved round arch with its stone ring, closed
+oaken doors iron-banded and riveted, portcullis teeth hanging in the dark
+of the passage, a torch sconce burning at each jamb, a stone plaque with
+the cut-gold sigil of the opening (no glow — it is carved, not
+supernatural), and a red banner on the north tower. Roads and gravel are
+**cobbled** — hashed pixel noise stones them in. HUD, menus and dice stay
+un-tinted and crisp above the weather of light.
 
 ## The loop
 

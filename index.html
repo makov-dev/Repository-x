@@ -4765,6 +4765,83 @@ function drawFires(camX,camY){
     if ((worldTick+fs[0]*13)%29<2){ ctx.fillStyle="rgba(200,120,60,0.5)"; ctx.fillRect(fx+4+(f2%3===0?1:0),fy-1,1,2); }
   }
 }
+/* how dark is it meant to feel right now (0 noon .. 1 deep night) */
+function dayDark(){
+  if (!game || game.state==="combat"||game.state==="dead"||game.state==="legacy"||game.state==="soldout") return 0;
+  if (game.state==="dungeon") return 0.55;
+  if (game.state==="home"||game.state==="cellar") return 0.70;
+  if (game.state==="base") return clamp((dayTint()[3]-0.14)/(0.66-0.14),0,1);
+  return 0.5;
+}
+/* the Gate of Openings as masonry, not a teleporter: twin towers, a round arch,
+   oaken doors under a raised portcullis, a torch at each jamb, the opening's
+   sigil cut into the stone - one lamp of notoriety, no pulse */
+function drawGatehouse(sx,sy,w,h){
+  const twn=Math.max(12,Math.floor(w*0.27));
+  /* center-span wall first (the arch will be carved out of it) */
+  ctx.fillStyle="#635b69"; ctx.fillRect(sx+twn,sy,w-2*twn,Math.floor(h*0.55));
+  for (let yy=sy+4;yy<sy+h*0.55;yy+=5){ ctx.fillStyle="#574f5c"; ctx.fillRect(sx+twn+1,yy,w-2*twn-2,1); }
+  /* twin towers */
+  for (const x0 of [sx, sx+w-twn]){
+    ctx.fillStyle="#5c5462"; ctx.fillRect(x0,sy,twn,h);
+    for (let yy=sy+5;yy<sy+h;yy+=5){ ctx.fillStyle="#4a4351"; ctx.fillRect(x0+2,yy,twn-4,1); }
+    ctx.fillStyle="#756c7c"; ctx.fillRect(x0,sy,1,h); ctx.fillRect(x0+twn-1,sy,1,h);
+    for (let mx=x0-1;mx<x0+twn;mx+=6){
+      ctx.fillStyle="#837a8a"; ctx.fillRect(mx,sy-6,4,6);
+      ctx.fillStyle="rgba(255,255,255,0.10)"; ctx.fillRect(mx,sy-6,4,1);
+      ctx.fillStyle="rgba(0,0,0,0.25)"; ctx.fillRect(mx+3,sy-6,1,6);
+    }
+    ctx.fillStyle="#17121c"; ctx.fillRect(x0+Math.floor(twn/2)-1,sy+13,2,7);
+    ctx.fillRect(x0+Math.floor(twn/2)-1,sy+30,2,6);
+  }
+  /* the arch: walls, passage, ring */
+  const aw=w-2*twn+4, ax=sx+twn-2, ay=sy+2, ah=sy+h-ay-1;
+  ctx.fillStyle="#0a060f";
+  ctx.beginPath();
+  ctx.moveTo(ax,ay+ah); ctx.lineTo(ax,ay+aw/2);
+  ctx.arc(ax+aw/2,ay+aw/2,aw/2,Math.PI,0);
+  ctx.lineTo(ax+aw,ay+ah); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle="#8b8291"; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(ax-1,ay+ah); ctx.lineTo(ax-1,ay+aw/2);
+  ctx.arc(ax+aw/2,ay+aw/2,aw/2+1,Math.PI,0);
+  ctx.lineTo(ax+aw+1,ay+ah); ctx.stroke();
+  ctx.lineWidth=1;
+  /* oaken doors, closed, iron-banded */
+  const dy=ay+Math.floor(aw/2)+4, dh=ay+ah-dy;
+  for (let px=ax+2;px<ax+aw-2;px+=3){ ctx.fillStyle=(px/3|0)%2?"#3a2919":"#452f1e"; ctx.fillRect(px,dy,2,dh); }
+  ctx.fillStyle="#2a1c10"; ctx.fillRect(ax+2,dy,aw-4,1);
+  for (const by of [dy+Math.floor(dh*0.30), dy+Math.floor(dh*0.72)]){
+    ctx.fillStyle="#26242a"; ctx.fillRect(ax+1,by,aw-2,2);
+    for (let rx=ax+4;rx<ax+aw-4;rx+=5){ ctx.fillStyle="#48444c"; ctx.fillRect(rx,by,1,2); ctx.fillStyle="#5c5762"; ctx.fillRect(rx,by,1,1); }
+  }
+  /* portcullis, raised but not gone: teeth in the arch's dark */
+  for (let px=ax+Math.floor(aw/2)-4;px<=ax+Math.floor(aw/2)+4;px+=8){ ctx.fillStyle="#1d181f"; ctx.fillRect(px,ay-2,2,Math.floor(aw/2)-2); }
+  ctx.fillStyle="#1d181f"; ctx.fillRect(ax+1,ay+2,aw-2,1);
+  /* torches at each jamb - the only light this thing owns */
+  const ty2=sy+h-Math.floor(h*0.28);
+  for (const tx of [sx+twn-5, sx+w-twn+3]){
+    ctx.fillStyle="#241812"; ctx.fillRect(tx+1,ty2,2,4);
+    const ff=(worldTick+tx*5)%9;
+    ctx.fillStyle= ff<4?"#f2a23c":"#e07b2c"; ctx.fillRect(tx,ty2-3,3,3);
+    ctx.fillStyle=(worldTick%11<5)?"#f7d95e":"#f2a23c"; ctx.fillRect(tx+1,ty2-4,1,2);
+    glow(tx+1.5,ty2-2,17,[255,160,60],0.15);
+  }
+  /* the sigil of the opening: a cut circle of gold in a stone plaque - no glow */
+  const cxg=sx+w/2;
+  ctx.fillStyle="#544c5c"; ctx.fillRect(cxg-6,ay-6,12,9);
+  ctx.fillStyle="rgba(255,255,255,0.12)"; ctx.fillRect(cxg-6,ay-6,12,1);
+  ctx.strokeStyle="#c9a24a"; ctx.strokeRect(cxg-3.5,ay-3.5,7,6);
+  ctx.fillStyle="#c9a24a"; ctx.fillRect(cxg-1,ay-2,2,4);
+  /* hanging banner on the right tower */
+  {
+    const bx=sx+w-twn+2, swy=(Math.floor(worldTick/37)%2);
+    ctx.fillStyle="#6d2530"; ctx.fillRect(bx,sy+3+swy,8,15);
+    ctx.fillStyle="rgba(0,0,0,0.30)"; ctx.fillRect(bx+7,sy+3+swy,1,15);
+    ctx.fillStyle="#c9a24a"; ctx.fillRect(bx+4,sy+6+swy,1,9); ctx.fillRect(bx+3,sy+9+swy,3,2);
+    ctx.fillStyle="#4b4351"; ctx.fillRect(bx-1,sy+2+swy,10,2);
+  }
+}
 function drawBuilding(bl, sx, sy){
   const w=bl.w*T, h=bl.h*T;
   blobShadow(sx+w/2, sy+h+1.5, w*0.92, 0.30);
@@ -4772,23 +4849,7 @@ function drawBuilding(bl, sx, sy){
   ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
   const tw=ctx.measureText(bl.label).width;
   txt(bl.label, sx+w/2-tw/2, sy-10, "#efe7d4");
-  if (bl.gate){
-    ctx.fillStyle="rgba(6,4,9,0.75)"; ctx.fillRect(sx+2,sy,w-4,h);
-    ctx.fillStyle="#3a2f42";
-    ctx.fillRect(sx,sy,7,h); ctx.fillRect(sx+w-7,sy,7,h);
-    ctx.fillStyle="#574866";
-    ctx.fillRect(sx,sy,7,2); ctx.fillRect(sx+w-7,sy,7,2);
-    ctx.fillRect(sx-2,sy-2,w+4,5);
-    ctx.fillStyle="#241d26"; ctx.fillRect(sx-2,sy+3,w+4,2);
-    const ph=(Math.floor(worldTick/9)%23);
-    ctx.fillStyle= ph<7? PAL.gold : "#8a6f2e";
-    ctx.fillRect(sx+8+ph, sy+10+((ph*5)%22), 2, 2);
-    const ap=0.5+0.5*Math.sin(worldTick/17);
-    ctx.fillStyle="rgba(224,185,90,"+(0.22+0.22*ap).toFixed(3)+")";
-    ctx.fillRect(sx+7,sy+8,w-14,h-8);
-    glow(sx+w/2, sy+h/2+2, 30+w*0.4, [224,185,90], 0.10+0.06*ap);
-    return;
-  }
+  if (bl.gate){ drawGatehouse(sx,sy,w,h); return; }
   ctx.fillStyle="#2e2530"; ctx.fillRect(sx,sy,w,h);
   ctx.fillStyle="#261e29";
   for (let x=sx+3;x<sx+w-3;x+=6) ctx.fillRect(x,sy+9,1,h-11);
@@ -4806,11 +4867,12 @@ function drawBuilding(bl, sx, sy){
   for (let r=0;r<rows;r++) for (let c=0;c<cols;c++){
     const wx0=sx+7+c*14, wy0=sy+15+r*15;
     if (wx0+5>sx+w-5 || wy0+7>sy+h-9) continue;
-    const lit=rnd()<0.55;
+    const lit=rnd()<(0.30+0.52*dayDark());
     ctx.fillStyle="rgba(0,0,0,0.55)"; ctx.fillRect(wx0-1,wy0-1,6,8);
     ctx.fillStyle= lit? "#d8a93f" : "#120d15";
     ctx.fillRect(wx0,wy0,4,6);
-    if (lit){ ctx.fillStyle="#f7e08a"; ctx.fillRect(wx0+1,wy0+1,1,1); }
+    if (lit){ ctx.fillStyle= dayDark()>0.35? "#f7d25e" : "#d8a93f"; ctx.fillRect(wx0+1,wy0+1,1,1);
+      if (dayDark()>0.35) glow(wx0+2,wy0+2,9,[255,180,80],0.11); }
     ctx.fillStyle="rgba(0,0,0,0.45)"; ctx.fillRect(wx0-1,wy0+3,6,1);
   }
   glow(sx+w/2, sy+15, w*0.85, [255,172,64], 0.085);
@@ -4897,6 +4959,12 @@ function drawBase(){
       ctx.fillStyle=col;
       ctx.fillRect(x*T,y*T,T,T);
       if (c==="."){ ctx.fillStyle="#292030"; ctx.fillRect(x*T,y*T,1,1); }
+      if (c==="r"||c==="o"){
+        const hs2=((wx*2654435761)^(wy*40503))>>>0;
+        ctx.fillStyle= c==="r"? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.18)";
+        ctx.fillRect(x*T+(hs2%7),y*T+((hs2>>3)%7),1,1);
+        ctx.fillRect(x*T+((hs2>>5)%7),y*T+((hs2>>8)%7),1,1);
+      }
       if (c==="D"){ ctx.fillStyle="#2c1e14"; ctx.fillRect(x*T+1,y*T+1,4,6); }
       if (c==="G"){ ctx.fillStyle="#c8963f"; ctx.fillRect(x*T+3,y*T+3,1,1); }
       const lit= cityLight? cityLight[wy][wx] : 0;
@@ -5317,8 +5385,8 @@ let vigGrad=null, noiseTile=null, noiseOff=0;
 const DAY_CYCLE=5400; /* ninety seconds of play are one day */
 const DAYKEYS=[
   [0.00,[236,226,208,0.14]], [0.38,[238,220,192,0.18]],
-  [0.52,[230,168,92,0.30]],  [0.62,[84,104,158,0.58]],
-  [0.80,[84,104,158,0.58]],  [0.92,[150,148,190,0.30]],
+  [0.52,[228,152,74,0.34]],  [0.62,[70,92,150,0.66]],
+  [0.80,[70,92,150,0.66]],  [0.92,[150,148,196,0.32]],
   [1.00,[236,226,208,0.14]]
 ];
 function dayTint(){
@@ -5368,18 +5436,7 @@ function drawAmbience(){
   else if (st==="base"){
     const o=dayTint();
     mulTint(o);
-    dark=clamp((o[3]-0.14)/(0.58-0.14),0,1);
-    const daylight=1-dark;
-    if (daylight>0.25){ /* cloud shadows crossing the city */
-      ctx.save(); ctx.globalCompositeOperation="multiply"; ctx.fillStyle="rgba(40,38,58,1)";
-      for (let c=0;c<3;c++){
-        const px=((worldTick*(0.22+c*0.07)+c*460)%(W+340))-170, py=30+c*55+Math.sin(worldTick/163+c*2.3)*22;
-        const cl=ctx.createRadialGradient(px,py,6,px,py,90-c*14);
-        cl.addColorStop(0,"rgba(78,76,100,"+(0.22*daylight).toFixed(3)+")"); cl.addColorStop(1,"rgba(78,76,100,0)");
-        ctx.fillStyle=cl; ctx.beginPath(); ctx.ellipse(px,py,90-c*14,46,0,0,6.283); ctx.fill();
-      }
-      ctx.restore(); ctx.globalCompositeOperation="source-over";
-    }
+    dark=clamp((o[3]-0.14)/(0.66-0.14),0,1);
   }
   const hp=steerHeroPx();
   /* lamps and fires cut back through the tint */
@@ -5388,7 +5445,7 @@ function drawAmbience(){
     for (const lp of LAMPS){
       const lx=(lp[0]-cxx)*T*camZ+6, ly=(lp[1]-cyy)*T*camZ+2;
       if (lx<-26||ly<-26||lx>W+26||ly>H+26) continue;
-      glow(lx,ly+1,26*Math.sqrt(dark)+8,[255,176,74],0.22*dark+0.06);
+      glow(lx,ly+1,34*Math.sqrt(dark)+10,[255,176,74],0.26*dark+0.06);
     }
     if (FIRE_SPOTS) for (const fs of FIRE_SPOTS){
       const fx=(fs[0]-cxx)*T*camZ+4, fy=(fs[1]-cyy)*T*camZ+6;

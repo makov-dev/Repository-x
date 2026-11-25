@@ -699,3 +699,40 @@ scanned for `check("stat",…)` calls; any menu that tests the same stat twice
 is a build failure. Result this build: **75 menus scanned, 0 duplicate-stat
 events.** Logic rig re-run on the changed events: 9/9 (including failure-toll
 walks and fuzz 3×1500 frames 0 crashes).
+
+## 23 — The Kingdom round, second pass: a gate with stones in it, a night with no lying shadows
+
+The first Kingdom pass graded the light but left the buildings as they
+were, and the user was right to call it out: "you did nothing with the
+graphics ... there cannot be any lamp in shadow that's just nonsense ...
+can we make the gate to the city look like a gate and not a portal in
+startrek?" Three fixes, all delivered:
+
+- **The GATE OF OPENINGS is drawn as a real fortified gatehouse**
+  (`drawGatehouse`, a full replacement of the gate branch of
+  `drawBuilding`): twin battlemented towers with merlons and arrow slits,
+  ashlar bond-lines every few courses, a carved round arch with a stone
+  ring, closed oaken doors in two greens of plank with two iron bands and
+  rivets, portcullis teeth hanging raised in the arch's dark, a torch
+  sconce at each jamb (the only light the gate owns, flickering),
+  a **static gold sigil plaque — deliberately no glow, it is carved stone,
+  not a portal** — and a red banner hanging on the north tower.
+- **The cloud-shadow pass is deleted outright.** A lamp may never sit in
+  a travelling dark rectangle; the user's physics objection was adopted as
+  a permanent design law.
+- **Night means night, and the town answers it**: deeper dusk/night/dawn
+  keyframes (dusk amber 0.34, night 0.66, dawn violet 0.32, dark divisor
+  widened); a new `dayDark()` (0 at noon to 1 in deep night) is the single
+  source of darkness for the windows, the lamps and the interiors; house
+  windows are lit with probability `0.30 + 0.52*dayDark()` at map
+  generation, and lit windows burn warm yellow with a soft glow at night;
+  lamp pools widen with the dark (`34*sqrt(dark)+10` radius); roads and
+  gravel get hashed pixel-noise cobbling.
+
+**Verification:** real-pixel rig (node-canvas) shot title, town at day /
+dusk / night / dawn, home at night, and the gatehouse at midday and night
+close up; zoomed crops confirmed towers, battlements, arch, doors, portcullis
+teeth, sconces, plaque and banner all read, lit windows glow, no dark
+patches sit over any light. Fuzz 2×1200 frames with full rendering: 0
+crashes. Logic rig on the changed engine: 9/9. `eventaudit`: 75 menus,
+0 duplicate-stat events.
