@@ -790,3 +790,67 @@ Two-part fix:
 wall); node-canvas night closeups of the guild shadow and the stacks row
 confirm lamps clear of shade with bright pools; logic rig 9/9; dice rig
 6/6; eventaudit 75 menus, 0 duplicate-stat events.
+
+## 26 — The city breathes (lamps, idlers, freight, food, laundry)
+
+Five complaints, five answers, plus one honest repair of the §25 claim.
+
+**The lamp-shadow check was wrong, and six lamps stood in shade anyway.**
+The §25 audit parameterized every building's shadow ellipse with its center
+one and a half *tile* units below the wall base — but the painter's `+1.5`
+is *canvas* units (a fifth of a tile). All eighteen ellipses therefore sat
+about 1.3 tiles too low in the verifier, and six lamps ([18,5], [23,17],
+[8,22], [36,10], [9,29], [56,29]) cleared a phantom ellipse while standing
+squarely in the painted one. The checker was rebuilt from the actual paint
+calls — ellipse center (x+w/2, y+h+1.5/8), radii 0.92·w and 1.472·w/8 in
+tile space — and the six lamps were re-located by a search that requires:
+not on any road/plaza tile, not inside a wall, not on a cooking fire's or
+stall's tile, the post's full painted column (four sampled points, foot to
+head) outside every true shadow ellipse, and not crowded against another
+lamp. New law-strength result: **19 lamps, 0 violations under exact painted
+geometry** — lamps stand beside the roadways, never on them.
+
+**The fires have their idlers.** `fireIdlers()` seeds two shiftless
+regulars (Odo Brandt, Widow Seem, Crake of the Kettle, Menna Ost) at
+open tiles beside the city's cooking fires, one-time-flagged so saves stay
+consistent. They live outside the normal inside/exit/age cycle: every
+240–560 ticks they shuffle to an adjacent open tile or drift to another
+fire, they carry a warm glow and a lazy idle-bob, and walking over to one
+and tapping gives fireside talk ("Stand near. Costs nothing. Warm is the
+only thing this town gives away.").
+
+**Barrels and crates** exist: `computeProps()` seeds 8.5% barrels, 8.5%
+crates and 4.5% double-stacks on open tiles adjacent to building walls
+(seed 5521, mulberry32), explicitly excluding roads, doors, trash tiles,
+stall tiles, lamp posts and cooking fires, plus six deliberate freight
+corners (the Grave-Market load and the Pawnbroker drift among them). `drawStreetProps()`
+renders banded barrels, slatted crates with X-braces, and crate-on-crate
+stacks, painted after fires and before the lamp posts, under the hero.
+
+**Food comes from somewhere** — two solid meal carts now sit in the city:
+MEAL CART off the plaza (7,21) and KETTLE STALL (29,8), both made solid
+(`"B"`, you walk around a kettle). The carts draw body, wheels, striped
+awning (slow gust flutter), cooking pot with two-phase steam, loaves and
+hanging sausage links. `vendorMenu()` sells a **hot meal 3g → +25 stamina**
+(capped), a **pocket-slip** (AGI 10 — success steals +10 stamina of a
+snack; failure costs the min(gold,5) fine, honestly), a food-lore line,
+and free warm hands. Both carts register taps like buildings do: tap near
+opens the vendor; tap far walks you over and opens it on arrival.
+
+**Laundry no longer thrashes**: flap cadence from worldTick/9 to
+worldTick/110 — a sway, not a flag in a gale.
+
+**Standing-verifier repair:** the event law auditor's span heuristic
+("scan to the first `]);`") had been silently merging unrelated menus; the
+new vendor menu exposed it as 13 false duplicate-stat violations. The
+auditor was rewritten with exact balanced-parenthesis span matching; it
+reports truthfully: patched engine 76 menus / 0 duplicate-stat events,
+shipped build 75 / 0 (the old build had merely been lucky).
+
+**Verification:** dressrig 10/10 (idlers exist and stay in bounds; meal
+cart tap opens the stall from two tiles; meal costs exactly 3g with stamina
+capped; far tap on the kettle stall walks then opens the menu; reopen
+works; the pocket-slip branch resolves; fuzz 2500 frames, 0 crashes);
+logic rig 9/9; dice rig 6/6; lamp geometry 19/0; props/lamp/fire tile
+sweep clean; node-canvas real-pixel render fuzz 0 crashes; day and night
+evidence frames of the dressed city.

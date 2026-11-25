@@ -169,6 +169,21 @@ supernatural), and a red banner on the north tower. Roads and gravel are
 **cobbled** — hashed pixel noise stones them in. HUD, menus and dice stay
 un-tinted and crisp above the weather of light.
 
+**The streets are inhabited.** Lamp posts stand **beside the roadways** —
+never on the cobbles, never in a building's cast shadow (checked against the
+exact painted geometry, not an eyeball) — and never on a cooking fire's or a
+stall's tile. Braziers gather **idle folk**: shiftless regulars warm their
+hands at the fires, shuffling a step now and then, and they'll talk if you
+walk over. **Barrels, crates and stacked crates** lean against the walls
+where freight waits — by the Grave-Market, the Pawnbroker, the freight
+corners. And the question *where do they get food* is answered on the
+cobbles' edge: two **meal carts** (one off the plaza — MEAL CART, one near
+the Grain Yard — KETTLE STALL) sell a hot meal for 3g under striped awnings,
+kettles steaming, sausages hanging. Walk up and tap one to buy — a hot meal
+eats back +25 stamina; a light-fingered sort (AGI 10) may try the vendor's
+pocket-slip instead and rarely gets away with it. Laundry lines over the
+tenements sway **lazy**, not electric.
+
 ## The loop
 
 1. **The city (your base).** Jericho's drizzly streets hold the facilities:
