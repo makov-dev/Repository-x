@@ -101,7 +101,9 @@ covering your view; the canvas is the only control surface.
   him — keep the finger right of him and he keeps going east; drag it above
   him and he turns north; bring it onto him and he stands. A faint gold ring
   marks your finger while you steer. Tap-to-walk still exists: tap a tile and
-  he paths there, tap a building to be walked to its door and inside.
+  he paths there, tap a building to be walked to its door and inside, tap
+  the up/down stairs and he walks there and **climbs/descends** for you, tap
+  a neighbour and he walks over and **they talk** — no Z needed for any of it.
 - Walking rich (70g+ on you, or 80g+ in loot) can attract **muggers of
   your own trade**: pay a tithe, show steel, run, or fight — street
   fights end back in the street.

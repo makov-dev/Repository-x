@@ -577,3 +577,46 @@ frames with random key down/up, presses, steering set/clear, teleports)
 runs with 0 errors. Previous suites re-run on the patched engine:
 regress 23/23, endtest 37/37, reach100 probe unchanged (STR 9->100 in 169
 drills).
+
+## 20 — Touch-activation round: doors and interactables answer the tap, not just the Z
+
+"You need to also have doors and interactable things to activate on touch."
+Audit of every tappable thing after the steering round found most taps already
+worked on arrival (base buildings walk to the door and enter; home furniture
+walk and interact; cellar barrels and stairs; the stranger walks to you or
+meets you close-up; dungeon loot/puzzle/corpse/shrine/bait/whimper/secret fire
+on the step). Four real gaps remained, and one latent engine bug fell out of
+fixing them:
+
+- **Dungeon stairs answered only the Z key.** Tapping `<`/`>` walked you
+  there and then made you find the key. A `useStair()` was extracted from
+  `updateDungeon` (same walk for both inputs) and the tap handler now attaches
+  it as the walk's callback: tap the stairs and the hero walks there and
+  climbs/descends — from depth 3 a tapped `<` rises a level, at the first
+  floor a tapped `<` climbs out, a tapped `>` still weighs the Gate first.
+- **Latent bug: the dungeon walk-loop picked up a walk's completion callback
+  and never called it.** `const cb=walkCb; walkCb=null;` and then silence —
+  harmless before, because nothing tapped in a dungeon set a callback. Now
+  the callback fires when the path empties (bypassed while a dialog is open).
+- **Townfolk talked from across town.** Tapping a Jericho face anywhere in a
+  crowd opened their chat from wherever you stood — teleport-gossip. Tap now
+  behaves like the stranger does: within two tiles you talk in place, beyond
+  that the hero paths to them and the conversation waits until he arrives.
+- **Quick taps fought the new steering.** Pressing far away started a walk
+  *and* read as a steering hold a few frames later, aborting the journey
+  partway. A ~200 ms grace tick is stamped on every touch (pointerdown);
+  `steerHold` refuses to steer until it expires, so a tap is decided as a tap
+  and a hold as a steering hold — hold east and he still keeps going east.
+- **Bonus find: bleeding building tap-regions.** Every building hit-rect was
+  clamped with `Math.max(0, screenX)` while keeping its full width, so the
+  visible street beside any building poking off the left/top screen edge
+  belonged to the building — taps meant for the open lane "entered" the
+  neighbour. Rects are now registered at their true (possibly negative) screen
+  position; the pointer test is containment, so nothing else changes.
+
+Verification (rigs rebuilt after the wipe): 16/16 — fresh-game arrows/WASD
+steps, hold repeats (2+ tiles/18 f), steering moves ≥2 tiles in 9 frames,
+quick-tap journeys run to completion (arrival within 3 of the requested
+tile), tapped `>` descends from depth 1→2, Z-on-`>` still descends, tapped
+`<` ascends, tapped townfolk walks over and talks (dialog mode opens),
+3×1500-frame fuzz 0 crashes.

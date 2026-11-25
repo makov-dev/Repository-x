@@ -1,16 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>OPENINGS - Delvings of Old Jericho</title>
-<style>
-  html,body{margin:0;padding:0;background:#171322;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:monospace;touch-action:manipulation;}
-  canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:960px;max-width:100vw;height:auto;aspect-ratio:16/9;box-shadow:0 0 60px #000;background:#0d0b10;touch-action:none;-webkit-tap-highlight-color:transparent;}
-</style>
-</head>
-<body>
-<canvas id="cv" width="960" height="540"></canvas>
 <script>
 "use strict";
 /* OPENINGS - a gritty pixel delving life-sim (draft) */
@@ -134,12 +121,12 @@ CVS.addEventListener("pointerdown", e=>{
     if (gx>=h.x && gx<h.x+h.w && gy>=h.y && gy<h.y+h.h){ e.preventDefault(); h.fn(gx,gy); break; }
   }
   if (!steer && !mapOpen && game && !game.ui.mode && ["base","dungeon","cellar","home"].indexOf(game.state)>=0)
-    steer={ id:e.pointerId, x:gx, y:gy, fired:0 };
+    steer={ id:e.pointerId, x:gx, y:gy, fired:0, t0:worldTick };
 });
 /* ----- touch steering: hold a finger on the screen and the hero walks toward it ----- */
 const STEER_DEAD = 10; /* canvas units around the hero where a held finger means "stand" */
 let steer = null;
-function steerSet(x,y){ steer = { id:1, x:x, y:y, fired:0 }; }
+function steerSet(x,y){ steer = { id:1, x:x, y:y, fired:0, t0:-999 }; }
 function steerClear(){ steer = null; }
 function steerHeroPx(){
   if (!game) return null;
@@ -167,6 +154,7 @@ function steerHold(){
   if (!steer || !game || mapOpen || game.ui.mode) return null;
   if (["base","dungeon","cellar","home"].indexOf(game.state)<0) return null;
   const hp=steerHeroPx(); if (!hp) return null;
+  if (worldTick-steer.t0<12) return null; /* quick tap = tap-to-walk; hold = steer */
   const dx=steer.x-hp[0], dy=steer.y-hp[1];
   if (Math.hypot(dx,dy)<STEER_DEAD) return null;
   steer.fired=(steer.fired||0)+1;
@@ -653,7 +641,14 @@ function drawTownfolk(camX,camY){
     ctx.fillStyle="#2a2028"; ctx.fillRect(sx+3,sy+6+bob,2,3);
     ctx.fillStyle=wk.col; ctx.fillRect(sx+2,sy+2+bob,4,4);
     ctx.fillStyle="#d9c9a8"; ctx.fillRect(sx+3,sy+bob,2,2);
-    if (!game.ui.mode && !game.combat) hit((sx-4)*camZ,(sy-8)*camZ,(T+8)*camZ,(T+12)*camZ,()=>talkTownfolk(wk));
+    if (!game.ui.mode && !game.combat) hit((sx-4)*camZ,(sy-8)*camZ,(T+8)*camZ,(T+12)*camZ,()=>{
+      if (game.state!=="base" || game.ui.mode) return;
+      const dd=Math.abs(game.base.px-wk.x)+Math.abs(game.base.py-wk.y);
+      if (dd<=2){ stopWalk(); talkTownfolk(wk); return; }
+      const tw=wk, tx=wk.x, ty=wk.y;
+      stopWalk();
+      walkTo(tx,ty,()=>{ if (!game.ui.mode && game.state==="base") talkTownfolk(tw); }, (x,y)=>!citySolid(x,y),CW,CH);
+    });
   }
 }
 
@@ -4939,7 +4934,7 @@ function drawBase(){
       if (bl.home && !game.player.house) continue;
       const sx=(bl.x-camX)*T, sy=(bl.y-camY)*T;
       if (sx>Wz||sy>Hz||sx+b.w*T<0||sy+b.h*T<0) continue;
-      hit(Math.max(0,sx)*camZ, Math.max(0,sy)*camZ, bl.w*T*camZ, bl.h*T*camZ, ()=>{
+      hit(sx*camZ, sy*camZ, bl.w*T*camZ, bl.h*T*camZ, ()=>{ /* no clamp: a clamped rect would bleed the tap over the street beside an off-screen building */
         if (game.state!=="base" || game.ui.mode) return;
         if (nearBuilding(bl, game.base.px, game.base.py)){ stopWalk(); enterBuilding(bl); return; }
         const cands=[];
@@ -5187,7 +5182,8 @@ function drawDungeon(){
     const wx=clamp(Math.floor(gx/(T*camZ))+camX,0,f2.w-1), wy=clamp(Math.floor(gy/(T*camZ))+camY,0,f2.h-1);
     if (!f2.seen.has(wx+","+wy)) return;
     if (f2.grid[wy][wx]==="#") return;
-    walkTo(wx,wy,null, dungPass, f2.w, f2.h);
+    const sc=f2.grid[wy][wx], dSave=game.dungeon;
+    walkTo(wx,wy, (sc==="<"||sc===">")? ()=>{ if (game.state==="dungeon" && !game.ui.mode && game.dungeon===dSave) useStair(); } : null, dungPass, f2.w, f2.h);
   });
   if (onUp) chip(d.depth===1? "CLIMB OUT" : "ASCEND", W-116, H-14, 54, ()=>pressZ("z"));
   else if (onDown) chip(gateReady()? "THE GATE":"DESCEND", W-116, H-14, 54, ()=>pressZ("z"));
@@ -5569,6 +5565,42 @@ function updateBase(){
          "Nothing needs you here. The city keeps its appointments elsewhere."]);
   }
 }
+/* stand-on-tile actions: the stairs up and down (shared by the Z press and by tapping them) */
+function useStair(){
+  if (game.state!=="dungeon" || !game.dungeon) return false;
+  const d=game.dungeon, f=curFloor();
+  if (!f) return false;
+  const ch=f.grid[d.py] ? f.grid[d.py][d.px] : null;
+  if (ch==="<"){
+    if (d.floorIx===0){
+      if (temptClimb()) return true;
+      leaveDungeon(); return true;
+    }
+    d.floorIx--;
+    const fr=curFloor();
+    d.px=fr.rooms[0].cx; d.py=fr.rooms[0].cy;
+    markSeen();
+    say(["You climb back up. The air is one level less ancient."]);
+    saveGame();
+    return true;
+  }
+  if (ch===">"){
+    if (gateReady()){
+      if (game.flags.priorKeeper && !game.flags.keeperFought){ priorKeeperGate(); return true; }
+      openTheGate(); return true;
+    }
+    d.depth++;
+    game.player.deep=Math.max(game.player.deep,d.depth);
+    maybeDepthLore(d.depth);
+    droneHush();
+    genFloor(d);
+    advanceWeeks(1);
+    saveGame();
+    say(["Down. The stone gets older. The things in it get less pretend."]);
+    return true;
+  }
+  return false;
+}
 function updateDungeon(){
   if (mapOpen){ if (tap("m")||noTap()||yesTap()) mapOpen=false; return; }
   if (uiBlocked()){ updateUI(); return; }
@@ -5585,7 +5617,7 @@ function updateDungeon(){
       else {
         tryMove(st[0]-d.px, st[1]-d.py);
         if (!walkPath){ stopWalk(); }
-        else if (!walkPath.length){ walkPath=null; const cb=walkCb; walkCb=null; }
+        else if (!walkPath.length){ walkPath=null; const cb=walkCb; walkCb=null; if (cb && !game.ui.mode) cb(); }
       }
     }
     return;
@@ -5593,34 +5625,7 @@ function updateDungeon(){
   walkPath=null; walkCb=null;
   if (tap("m")){ mapOpen=true; return; }
   if (!yesTap()) return;
-  const ch=f.grid[d.py][d.px];
-  if (ch==="<"){
-    if (d.floorIx===0){
-      if (temptClimb()) return;
-      leaveDungeon(); return;
-    }
-    d.floorIx--;
-    const fr=curFloor();
-    d.px=fr.rooms[0].cx; d.py=fr.rooms[0].cy;
-    markSeen();
-    say(["You climb back up. The air is one level less ancient."]);
-    return;
-  }
-  if (ch===">"){
-    if (gateReady()){
-      if (game.flags.priorKeeper && !game.flags.keeperFought){ priorKeeperGate(); return; }
-      openTheGate(); return;
-    }
-    d.depth++;
-    game.player.deep=Math.max(game.player.deep,d.depth);
-    maybeDepthLore(d.depth);
-    droneHush();
-    genFloor(d);
-    advanceWeeks(1);
-    saveGame();
-    say(["Down. The stone gets older. The things in it get less pretend."]);
-    return;
-  }
+  if (useStair()) return;
   showMenu("DELVE", [
         ...(countItem("Ration")? [{ t:"Camp (eat a ration, restore)", fn:()=>{
             useFromInv("Ration",1);
@@ -5831,7 +5836,7 @@ window.__openings={
   drainStam, exhaustHit, exhaustAilment, check, tryMove, openClinic, staminaFloor:()=>STAM_FLOOR,
   sharkTrigger, sharkMeet, fellowsCollect, fellowsMenu, fellowsBeat, leaveDungeon,
   get loan(){ return game && game.flags? (game.flags.loan||null) : null; },
-  ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC, openDoss, gateReckoning, keepTheWatch, sentinelTalk, gateCosmos, steerHold, steerSet, steerClear, tickHeld,
+  ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC, openDoss, gateReckoning, keepTheWatch, sentinelTalk, gateCosmos, steerHold, steerSet, steerClear, tickHeld, useStair,
   get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; },
   FLOOR_BOSSES, BOSS_BY_ID, bossEvent, miniFoe, bossErrandState, flagsPacts, flagsErrands, grantBossLore, repOf, bossReqOk,
   get bossRep(){ return game && game.flags? (game.flags.bossRep||{}) : {}; },
