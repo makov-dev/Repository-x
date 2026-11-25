@@ -620,3 +620,50 @@ quick-tap journeys run to completion (arrival within 3 of the requested
 tile), tapped `>` descends from depth 1→2, Z-on-`>` still descends, tapped
 `<` ascends, tapped townfolk walks over and talks (dialog mode opens),
 3×1500-frame fuzz 0 crashes.
+
+## 21 — Kingdom round: a day over the city, lantern light in the deep
+
+"Let's go more like Kingdom." The reference is the side-scrolling Kingdom
+(Noio-Licorice lineage) — near-monochrome pixel art that lives by its
+**ambience**: a real time-of-day tint, pools of warm light fighting a cold
+blue-black night, and the edges of the frame falling dark. The game's drawing
+is itself; the delivery is a post-process grading layer between the world
+draw and the HUD, `drawAmbience()` each frame:
+
+- **The day passes over Jericho.** Ninety seconds of play per day, a keyframed
+  tint curve cross-fading multiply-tint layers: pale washed noon (alpha .14)
+  → warm amber dusk (alpha .30) → cold blue-black night
+  (rgb 84,104,158 @ .58) → grey-pink dawn, and out. Night is treated as the
+  honest resting state of this city; noon is merely a reprieve.
+- **Lamps and cooking fires cut back through the tint.** After the multiply,
+  the lamp posts (LAMPS) and fire spots re-emit warm lighter-blended glows
+  whose radius and strength scale with darkness — at full night the streets
+  become the Kingdom constellation of warm pools in the cold.
+- **A hero lantern.** A small flickering warm glow (radius breathing with a
+  slow sine) around the hero's screen position whenever light drops — in the
+  city at night, always in the home and cellar, and in the delvings (a fixed
+  cold-evening lift plus the lantern is the whole grade down there; the
+  depth-based dimming already in the floor renderer does the falloff).
+- **Cloud shadows by day.** Three soft multiply ellipses drift across the
+  city while there is daylight, fading to nothing at night.
+- **The frame edges.** A cached radial-gradient vignette (transparent centre
+  → 40% dark corners) plus a faint film-grain tile wobbling every few frames
+  — Kingdom's finish, kept gentle enough that the HUD chips, menu text and
+  dice stay crisp above it (the grading sits under renderUI/combat menus by
+  design; combat, death and legacy screens get vignette+grain only).
+
+Verification: a **real-pixel rig** (node-canvas as the actual backing store,
+not draw-call stubs) — title, town at day/dusk/night/dawn, home interior at
+night, dungeon with lantern all rendered and screen-inspected: night reads
+cold blue with lamp pools punching through, dusk reads ochre, day readable
+and balanced, interiors dim with warm glows; 2×1200-frame fuzz **with real
+rendering** 0 crashes (it exercises the multiply composite path under cairo);
+the full logic rig runs 12/12 green runs on top of the grading.
+
+Correction note: the Kingdom build itself was first pushed as `c8a7910`
+wearing a duplicate of the *repair* commit's message — the shipping command
+had been rejected wholesale (a sandbox rule denies fetching the Pages URL
+with curl, and the rejection cancelled the whole script, including the title
+file write), so the follow-up commit ran with a stale title file. This
+commit restores the true story above; remote state is verified with
+`gh api` blob-sha comparison, never a curl of the Pages site.
