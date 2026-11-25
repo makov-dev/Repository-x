@@ -4688,10 +4688,13 @@ function glow(cx,cy,r,rgb,base){
   ctx.restore();
   ctx.globalCompositeOperation="source-over";
 }
+/* every lamp stands clear of every building's cast shadow - a lamp post
+   cannot stand in a shadow (standing design law; verified by the lamp
+   geometry check against all 18 shadow ellipses, home included) */
 const LAMPS=[
   [17,5],[17,11],[17,17],[17,27],[24,11],[24,17],
-  [47,5],[47,11],[47,17],[47,25],[8,20],[31,20],[41,20],
-  [10,10],[36,10],[52,10],[10,29],[36,31],[52,29]
+  [47,5],[47,11],[47,17],[47,25],[8,22],[31,20],[41,22],
+  [10,11],[36,10],[52,11],[9,29],[31,30],[56,29]
 ];
 /* ----- the city keeps house: lamplight pools, street trash, cooking fires ----- */
 let TRASH=null, trashMap=null, cityLight=null, FIRE_SPOTS=null;
@@ -4983,11 +4986,6 @@ function drawBase(){
       else if (trk===4){ ctx.fillStyle="#384530"; ctx.fillRect(x*T+3,y*T+3,2,1); ctx.fillRect(x*T+2,y*T+5,1,1); ctx.fillRect(x*T+5,y*T+2,1,1); }
     }
   }
-  for (const lp of LAMPS){
-    const lx=(lp[0]-camX)*T, ly=(lp[1]-camY)*T;
-    if (lx<-40||ly<-40||lx>Wz+40||ly>Hz+40) continue;
-    glow(lx+4, ly+5, 30, [255,176,72], 0.15);
-  }
   for (const bl of BUILDINGS){
     if (bl.home && !game.player.house) continue;
     const sx=(bl.x-camX)*T, sy=(bl.y-camY)*T;
@@ -5002,6 +5000,9 @@ function drawBase(){
   for (const lp of LAMPS){
     const lx=(lp[0]-camX)*T, ly=(lp[1]-camY)*T;
     if (lx<-10||ly<-16||lx>Wz+10||ly>Hz+16) continue;
+    /* light painted after the shadows: a lamp's pool can never be dimmed
+       by the building shade it stands beside */
+    glow(lx+4, ly+5, 30, [255,176,72], 0.15);
     drawLampPost(lx,ly);
   }
   drawHero((b.px-camX)*T, (b.py-camY)*T, false);

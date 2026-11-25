@@ -763,3 +763,30 @@ the dice; tap-empty catches die 1; direct die tap still stops; SPACE stops
 die 2; combat then resolves without hanging. Logic rig 9/9; eventaudit
 75 menus, 0 duplicate-stat events. Injected through the structurally
 asserted wrapper (DOCTYPE + canvas + `</html>`), round-trip diff clean.
+
+## 25 — No lamp stands in a building's shadow
+
+The cloud-shadow law held, and the same complaint surfaced one layer down:
+"once again a lamp post cannot stand in a shadow of a building it just
+looks wrong." The building drop-shadows (the soft ellipse each structure
+casts at its base) were painted AFTER the lamp light pools, and geometry
+confirmed six lamp posts partly or wholly inside a building's shadow
+ellipse — the guild, the tavern, the training yard, the church and two of
+the tenements — plus one lamp standing outright on the Salt Bunks' roof
+(a placement that predates the building's position).
+
+Two-part fix:
+
+- **Geometry**: six lamps relocated ([8,20]→[8,22], [41,20]→[41,22],
+  [10,10]→[10,11], [52,10]→[52,11], [10,29]→[9,29], [52,29]→[56,29],
+  and the roof-standing [36,31]→[31,30]). Every lamp now clears all 18
+  shadow ellipses and all walls (home included), verified by a geometric
+  check sampling each lamp's head, mid and foot against every ellipse.
+- **Paint order**: the wide lamp ground-pools moved from before the
+  building pass to after it, so lamp light is painted over shade — even
+  at a near miss, no shadow can darken a lamp's pool.
+
+**Verification:** lamp geometry check 19 lamps / 0 violations (shadow and
+wall); node-canvas night closeups of the guild shadow and the stacks row
+confirm lamps clear of shade with bright pools; logic rig 9/9; dice rig
+6/6; eventaudit 75 menus, 0 duplicate-stat events.

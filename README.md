@@ -151,8 +151,10 @@ cold blue-black night and out again. Night is **deep** — the tint goes well
 past halfway — and the town answers it: **house windows light up one by one
 as the dark falls** (yellow panes with a soft glow, more of them lit the
 darker it gets, most going cold again by dawn). **There is no shadow over
-a light** — the drifting cloud-shadow pass is gone for good; nothing in
-this city dims a lamp it does not own. Lamp posts and cooking fires spread
+a light** — the drifting cloud-shadow pass is gone for good, the lamp
+posts are set where no building's cast shadow can reach them (and lamp
+light is painted over shade regardless), so nothing in this city dims
+a lamp it does not own. Lamp posts and cooking fires spread
 **wider pools of warm light** at night; your hero carries a small
 flickering lantern — the only circle of world you own when the tint drops;
 interiors and the delvings live under a permanent cold-evening lift, so the
