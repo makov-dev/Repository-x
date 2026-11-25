@@ -2636,11 +2636,11 @@ function obstacleEvent(ev){
             if (check("wit",9)){ ev.done=true; say(["A weighed slab under a hair-trigger. You find the two honest stones and cross without leaving a rumor."]); }
             else hurt(3,"The plate sighs under your heel. Above the arch, something old lets go of a spring. The floor is no quieter for it.");
             saveGame(); } },
-        { t:"Hunt for the mechanism's lever (Wits)", fn:()=>{
-            if (check("wit",9)){ ev.done=true;
+        { t:"Hunt the lever and pry it over (Strength)", fn:()=>{
+            if (check("str",9)){ ev.done=true;
               say(["Under a shelf of settled dust: the maintenance lever, and the wrench marks of the hand that left it underground.",
-                   "You throw it. Somewhere, a spring gives up its ambition. The plate is furniture now."]); }
-            else { hurt(1,"The mechanism notices the interest. A dart, old but willing, finds your forearm."); }
+                   "You lean your weight into it. Somewhere, a spring gives up its ambition. The plate is furniture now."]); }
+            else { hurt(1,"The lever locks; the mechanism notices the interest. A dart, old but willing, finds your forearm."); }
             saveGame(); } },
         ...(countItem("Rope & Hook")? [{ t:"Use Rope & Hook", fn:()=>{ ev.done=true;
             useFromInv("Rope & Hook",1);
@@ -2663,8 +2663,8 @@ function obstacleEvent(ev){
         ...(countItem("Rope & Hook")? [{ t:"Climb down into it (Rope & Hook)", fn:()=>{ ev.done=true;
             useFromInv("Rope & Hook",1);
             chasmGo(["You feed the line out and go down the way the water would.","The hole was never decoration. One floor of the dark hands you to the next."]); } }]:[]),
-        { t:"Drop down into it (Agility)", fn:()=>{ ev.done=true;
-            if (check("agi",10)) chasmGo(["You lower yourself, drop, and land in a crouch you will brag about later."]);
+        { t:"Lower yourself down and take the drop (Strength)", fn:()=>{ ev.done=true;
+            if (check("str",10)) chasmGo(["You lower yourself, drop, and land in a crouch you will brag about later."]);
             else { hurt(5,"The drop is honest about its height. You pay in blood and arrive below.");
                    chasmGo(["Bruised, one floor down, and still walking."]); } } },
         { t:"Back off", fn:()=>{ stepBack(); } }

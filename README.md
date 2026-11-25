@@ -278,12 +278,17 @@ of light.
    - **Traps stay armed until you truly deal with them.** Back off and the
      seam is behind you, not spent; come back and it wakes again — a failed
      attempt buys blood, not passage. The spike beds and the plates are
-     *mechanisms*, and mechanisms keep their maintenance: **hunt for the
-     release lever (Wits)**, throw it, and that crossing is yours forever —
-     the teeth sink into the floor for good, and the defused tile draws
-     plain stone instead of its glyph. Rope & Hook and Antitoxin spend just
-     as permanently, and a clean stat roll opens the way outright. The chasm
-     alone never closes: it is a hole in the world, not a gadget.
+     *mechanisms*, and mechanisms keep their maintenance: **a release lever
+     waits in every one of them** — on the spikes you *find* it (Wits), on
+     the plates you *pry it over* (Strength) — and that crossing is yours
+     forever, the teeth sink into the floor for good, and the defused tile
+     draws plain stone instead of its glyph. Rope & Hook and Antitoxin spend
+     just as permanently, and a clean stat roll opens the way outright. The
+     chasm alone never closes: it is a hole in the world, not a gadget,
+     though its own drop answers to Strength now, not Agility twice.
+     - **No event ever asks the same stat twice**: every menu's options aim
+       at different measures of you, so a lopsided keeper has a real choice
+       wherever a balanced one does.
    - **Thresholds.** Where a room opens into a tunnel, the doorway is
      drawn as a pale worn-steel line, distinct from the gold room outline,
      so the way on is always legible.

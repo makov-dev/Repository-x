@@ -667,3 +667,35 @@ with curl, and the rejection cancelled the whole script, including the title
 file write), so the follow-up commit ran with a stale title file. This
 commit restores the true story above; remote state is verified with
 `gh api` blob-sha comparison, never a curl of the Pages site.
+
+## 22 — No event ever tests the same stat twice
+
+User law, added as a standing rule: "there should never be tests for the same
+stat in one event." A full audit of every event menu (75 `showMenu` blocks
+scanned across town, delve, home, church, dock, doss and the loan's
+arithmetic) found exactly two violators, both born of round 17's
+persistence feature, both fixed by re-routing the second option to a
+different measure of the keeper:
+
+- **SUSPICIOUS FLOOR** offered "Read the floor (Wits)" and "Hunt for the
+  mechanism's lever (Wits)" — two Wits tests in one sitting. The lever is
+  now an act of hands: **"Hunt the lever and pry it over (Strength)"** —
+  the wrench marks were left by an arm, not a mind ("you lean your weight
+  into it"). Same DC, same permanent defusal, same dart on failure.
+- **CHASM** offered "Jump (Agility 11)" and "Drop down into it (Agility
+  10)". The controlled descent is now **"Lower yourself down and take the
+  drop (Strength)"** — owning the landing is an act of the body's core.
+  Same DC, same costs, same one-floor descent path for straight-pathing
+  audits.
+
+The clean events stand as built: SPIKES pairs "Cross carefully (Agility)"
+with "Hunt for a release lever (Wits)" — genuinely different measures; the
+mugger offers Steel-or-Will against Run (Agility); duels and tolls carry a
+single Wits option each; the drill system's repeated rolls are training, not
+an event, and are deliberately excluded from the law.
+
+**Standing verification added — `eventaudit.py`:** every `showMenu` block is
+scanned for `check("stat",…)` calls; any menu that tests the same stat twice
+is a build failure. Result this build: **75 menus scanned, 0 duplicate-stat
+events.** Logic rig re-run on the changed events: 9/9 (including failure-toll
+walks and fuzz 3×1500 frames 0 crashes).
