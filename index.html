@@ -1,4 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OPENINGS - Delvings of Old Jericho</title>
+<style>
+  html,body{margin:0;padding:0;background:#171322;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:monospace;touch-action:manipulation;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:960px;max-width:100vw;height:auto;aspect-ratio:16/9;box-shadow:0 0 60px #000;background:#0d0b10;touch-action:none;-webkit-tap-highlight-color:transparent;}
+</style>
+</head>
+<body>
+<canvas id="cv" width="960" height="540"></canvas>
 <script>
+
 "use strict";
 /* OPENINGS - a gritty pixel delving life-sim (draft) */
 
@@ -5843,6 +5857,7 @@ window.__openings={
   get pacts(){ return game && game.flags? (game.flags.pacts||{}) : {}; },
   get errands(){ return game && game.flags? (game.flags.errands||{}) : {}; }
 };
+
 </script>
 </body>
 </html>
