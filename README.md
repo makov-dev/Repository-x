@@ -182,7 +182,11 @@ the Grain Yard — KETTLE STALL) sell a hot meal for 3g under striped awnings,
 kettles steaming, sausages hanging. Walk up and tap one to buy — a hot meal
 eats back +25 stamina; a light-fingered sort (AGI 10) may try the vendor's
 pocket-slip instead and rarely gets away with it. Laundry lines over the
-tenements sway **lazy**, not electric.
+tenements sway **lazy**, not electric. Every building is **solid ground
+to its last tile** — the gatehouse's oaken doors are shut, the training
+yard is walled ground — you use a building from beside it, never from
+inside its footprint (touch: tap the building, you walk up and it opens;
+Z/Enter/Space at its side opens it on keyboard).
 
 ## The loop
 

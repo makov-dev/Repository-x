@@ -854,3 +854,33 @@ works; the pocket-slip branch resolves; fuzz 2500 frames, 0 crashes);
 logic rig 9/9; dice rig 6/6; lamp geometry 19/0; props/lamp/fire tile
 sweep clean; node-canvas real-pixel render fuzz 0 crashes; day and night
 evidence frames of the dressed city.
+
+## 27 — No building is walkable ground
+
+"I can walk through some buildings and the 'on touch' means if I stand on
+specific spots like doors it automatically triggers." A reachability sweep
+(flood fill from the hero over every tile the city pass allows) proved it:
+the Training Yard's whole interior — 60 tiles — was walkable ("y" ground
+under a fully drawn, roofed building), and the Gate of Openings' two
+passage columns were walkable straight through the drawn-shut oaken doors
+(leftover "G" gate-corridor tiles from the pre-gatehouse build).
+
+Fix: every building is now solid to its last tile — yard included, gate
+passage included; the code that carved walkable gate columns is gone. The
+home's doorstep tile stays walkable because leaving home anchors there,
+but leaveHome() now steps the hero out onto the street below the threshold
+instead of parking them inside the doorway. And since old saves can hold a
+hero standing inside what is now solid, loadGame() migrates the position:
+a hero on a solid tile spirals out to the nearest open cobble on load.
+
+On the trigger rule: an arrival auto-activates only the thing the tap
+aimed at (tap the building, walk up, it opens); standing near it and
+moving never triggers; Z/Enter/Space beside a building remains the
+keyboard's deliberate enter.
+
+**Verification:** reachability sweep 0 reachable tiles inside any building
+rect (was 88); house/gate rig — enter home from the street, leave onto the
+open street tile (24,29), old-save migration steps the hero out of a solid
+yard tile, yard and gatehouse solid on every interior tile, gate facility
+opens from the south side; dressrig 10/10; logic rig 9/9; dice rig 6/6;
+eventaudit 76/0; visual fuzz 0 crashes.

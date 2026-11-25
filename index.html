@@ -1043,6 +1043,14 @@ function loadGame(){
       if (typeof Pl.gatekeeper!=="boolean") Pl.gatekeeper=false;
       if (!Array.isArray(game.flags.sentinels)){ try{ const cm=JSON.parse(localStorage.getItem("openings_cosmos")||"{}"); game.flags.sentinels=Array.isArray(cm.sentinels)? cm.sentinels.slice(0,3):[]; }catch(e){ game.flags.sentinels=[]; } }
       if (typeof game.flags.cosmosClosed!=="boolean"){ try{ game.flags.cosmosClosed=!!(JSON.parse(localStorage.getItem("openings_cosmos")||"{}").closed); }catch(e){ game.flags.cosmosClosed=false; } }
+      if (game.state==="base" && citySolid(game.base.px,game.base.py)){ /* old saves may stand inside what is now solid (yard, gate doors) - step out to the nearest open cobble */
+        let fixed=null;
+        outer: for (let rr=1;rr<=6 && !fixed;rr++) for (let dy=-rr;dy<=rr;dy++) for (let dx=-rr;dx<=rr;dx++){
+          const nx=game.base.px+dx, ny=game.base.py+dy;
+          if (nx>=0&&ny>=0&&nx<CW&&ny<CH&&!citySolid(nx,ny)){ fixed=[nx,ny]; break outer; }
+        }
+        if (fixed){ game.base.px=fixed[0]; game.base.py=fixed[1]; }
+      }
       if (typeof Pl.deep!=="number") Pl.deep=0;
       if (typeof Pl.packs!=="number") Pl.packs=0;
       if (!Array.isArray(Pl.chest)) Pl.chest=[];
@@ -1110,9 +1118,10 @@ function buildCity(){
   for (const b of BUILDINGS){
     if (b.home && !(game && game.player && game.player.house)) continue;
     for (let y=b.y;y<b.y+b.h;y++) for (let x=b.x;x<b.x+b.w;x++){
-      if (b.gate) g[y][x] = (x===b.x+2 || x===b.x+3) ? "G" : "B";
-      else if (b.yard) g[y][x]="y";
-      else g[y][x]="B";
+      /* every building is solid, gatehouse and training yard included - the
+         gate's oaken doors are drawn shut and the yard is walled ground;
+         you stand beside a building to use it, never inside its footprint */
+      g[y][x]="B";
     }
     if (b.home) g[b.door[1]][b.door[0]]="D";
   }
@@ -1898,7 +1907,10 @@ function leaveHome(){
   game.home=null; stopWalk();
   game.state="base";
   const hb=BUILDINGS.find(b=>b.id==="home");
-  if (hb && hb.door){ game.base.px=hb.door[0]; game.base.py=hb.door[1]; }
+  if (hb && hb.door){ /* step out onto the street below the doorstep, not into the doorway */
+    game.base.px=hb.door[0]; game.base.py=hb.door[1]+1;
+    if (citySolid(game.base.px,game.base.py)){ game.base.px=hb.door[0]; game.base.py=hb.door[1]; }
+  }
   saveGame();
 }
 function homeWalkTo(tx,ty,cb){
