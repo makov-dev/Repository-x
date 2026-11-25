@@ -142,6 +142,20 @@ keeps walking), A=Z, B=X, START=Enter, SELECT=Esc, Y=map. Tapping Z/X,
 pressing any movement key, or steering the finger cancels an auto-walk in
 progress.
 
+## The look — Kingdom (of the old side-scrollers), played top-down
+
+The screen is painted for mood like that game, not sprite-swapped: a **day
+that really passes** over Jericho (ninety seconds of play per day)
+cross-fades the city from a pale washed noon through burning amber dusk into
+cold blue-black night and out again; lamp posts and cooking fires **punch
+pools of warm light back through the dark**; your hero carries a small
+flickering lantern — the only circle of world you own when the tint drops;
+cloud shadows drift across the streets by day; interiors and the delvings
+live under a permanent cold-evening lift, so the deeper you go the more your
+lantern means; the whole frame is finished with a soft vignette and a faint
+film grain. HUD, menus and dice stay un-tinted and crisp above the weather
+of light.
+
 ## The loop
 
 1. **The city (your base).** Jericho's drizzly streets hold the facilities:
