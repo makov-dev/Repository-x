@@ -6,7 +6,7 @@
 <title>OPENINGS - Delvings of Old Jericho</title>
 <style>
   html,body{margin:0;padding:0;background:#171322;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:monospace;touch-action:manipulation;}
-  canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:960px;max-width:100vw;height:auto;aspect-ratio:16/9;box-shadow:0 0 60px #000;background:#0d0b10;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:960px;max-width:100vw;height:auto;aspect-ratio:16/9;box-shadow:0 0 60px #000;background:#0d0b10;touch-action:none;-webkit-tap-highlight-color:transparent;}
 </style>
 </head>
 <body>
@@ -42,17 +42,31 @@ window.addEventListener("keydown", e => {
   if (["arrowup","arrowdown","arrowleft","arrowright"," "].indexOf(k)>=0) e.preventDefault();
   if (!keys[k]) pressed[k] = true;
   keys[k] = true;
+  if (!e.repeat) keyRep[k]=0;
   if (k==="f5"){ e.preventDefault(); if (game) saveGame(); }
   if (k==="f9"){ e.preventDefault(); loadGame(); }
   updSndUnlock();
 });
-window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+window.addEventListener("keyup", e => { const k2=e.key.toLowerCase(); keys[k2]=false; keyRep[k2]=0; });
+/* hold-to-move: arrows / WASD repeat while held (menus scroll too) */
+const keyRep={};
+function tickHeld(){
+  for (let mi=0;mi<MOVE_KEYS.length;mi++){
+    const k=MOVE_KEYS[mi];
+    if (!keys[k]){ keyRep[k]=0; continue; }
+    if (!keyRep[k]) keyRep[k]=1;
+    else { keyRep[k]++; if ((keyRep[k]-1)%7===0) pressed[k]=true; }
+  }
+}
+const MOVE_KEYS=["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"];
 function tap(k){ if (pressed[k]) { pressed[k]=false; return true; } return false; }
 function dirTap(){
   if (tap("arrowup")||tap("w")) return [0,-1];
   if (tap("arrowdown")||tap("s")) return [0,1];
   if (tap("arrowleft")||tap("a")) return [-1,0];
   if (tap("arrowright")||tap("d")) return [1,0];
+  const sd=steerHold();
+  if (sd) return sd;
   return null;
 }
 function endFrame(){ for (const k in pressed) pressed[k]=false; }
@@ -119,7 +133,62 @@ CVS.addEventListener("pointerdown", e=>{
     const h=uiHits[i];
     if (gx>=h.x && gx<h.x+h.w && gy>=h.y && gy<h.y+h.h){ e.preventDefault(); h.fn(gx,gy); break; }
   }
+  if (!steer && !mapOpen && game && !game.ui.mode && ["base","dungeon","cellar","home"].indexOf(game.state)>=0)
+    steer={ id:e.pointerId, x:gx, y:gy, fired:0 };
 });
+/* ----- touch steering: hold a finger on the screen and the hero walks toward it ----- */
+const STEER_DEAD = 10; /* canvas units around the hero where a held finger means "stand" */
+let steer = null;
+function steerSet(x,y){ steer = { id:1, x:x, y:y, fired:0 }; }
+function steerClear(){ steer = null; }
+function steerHeroPx(){
+  if (!game) return null;
+  if (game.state==="base"){
+    const b=game.base;
+    const cx=clamp(b.px-Math.floor(VWz/2),0,CW-VWz), cy=clamp(b.py-Math.floor(VHz/2),0,CH-VHz);
+    return [(b.px-cx)*T*camZ+6, (b.py-cy)*T*camZ+6];
+  }
+  if (game.state==="dungeon" && game.dungeon){
+    const d=game.dungeon, f=curFloor();
+    const cx=clamp(d.px-Math.floor(VWz/2),0,f.w-VWz), cy=clamp(d.py-Math.floor(VHz/2),0,f.h-VHz);
+    return [(d.px-cx)*T*camZ+6, (d.py-cy)*T*camZ+6];
+  }
+  if (game.state==="cellar" && game.cellar){
+    const cm=game.cellar;
+    return [Math.floor((W-cm.w*T)/2)+cm.px*T+4, Math.floor((H-cm.h*T)/2)+cm.py*T+4];
+  }
+  if (game.state==="home" && game.home){
+    const hm=game.home;
+    return [Math.floor((W-hm.w*T)/2)+hm.px*T+4, Math.floor((H-hm.h*T)/2)-6+hm.py*T+4];
+  }
+  return null;
+}
+function steerHold(){
+  if (!steer || !game || mapOpen || game.ui.mode) return null;
+  if (["base","dungeon","cellar","home"].indexOf(game.state)<0) return null;
+  const hp=steerHeroPx(); if (!hp) return null;
+  const dx=steer.x-hp[0], dy=steer.y-hp[1];
+  if (Math.hypot(dx,dy)<STEER_DEAD) return null;
+  steer.fired=(steer.fired||0)+1;
+  if (steer.fired>1 && (steer.fired-1)%6!==0) return null;
+  return Math.abs(dx)>Math.abs(dy)? [dx>0?1:-1,0] : [0,dy>0?1:-1];
+}
+function cvPt(e){ const r=CVS.getBoundingClientRect(); return [(e.clientX-r.left)*W/r.width, (e.clientY-r.top)*H/r.height]; }
+window.addEventListener("pointermove", e=>{
+  if (steer && e.pointerId===steer.id){ const p=cvPt(e); steer.x=p[0]; steer.y=p[1]; }
+});
+function steerEnd(e){ if (steer && e.pointerId===steer.id) steer=null; }
+window.addEventListener("pointerup", steerEnd);
+window.addEventListener("pointercancel", steerEnd);
+function drawSteerMark(){
+  if (!steer || !game || mapOpen || game.ui.mode) return;
+  if (["base","dungeon","cellar","home"].indexOf(game.state)<0) return;
+  const hp=steerHeroPx(); if (!hp) return;
+  ctx.strokeStyle="rgba(224,185,90,0.55)";
+  ctx.beginPath(); ctx.arc(steer.x,steer.y,4,0,6.283); ctx.stroke();
+  ctx.strokeStyle="rgba(224,185,90,0.25)";
+  ctx.beginPath(); ctx.moveTo(hp[0],hp[1]); ctx.lineTo(steer.x,steer.y); ctx.stroke();
+}
 let hintMsg=null, hintT=0;
 function showHint(m){ hintMsg=m; hintT=130; }
 function cornerChips(){
@@ -5388,7 +5457,8 @@ function renderTitle(){
   txt("a gritty pixel life-in-the-depths sim (draft)",W/2,50,"#726a7c");
   ctx.textAlign="left";
   if (Math.floor(titleTick/30)%2===0) txt("[ENTER] or tap to begin",96,148,PAL.bone);
-  txt("the city is patient - arrows move, Z confirms",40,162,"#615868");
+  txt("the city is patient - arrows or WASD move, Z confirms",18,152,"#615868");
+  txt("on touch: hold a finger - you walk toward it",18,166,"#615868");
   hit(0,0,W,H,()=>pressZ("Enter"));
 }
 let deadPage=0;
@@ -5678,6 +5748,7 @@ function frame(){
   uiHits=[];
   worldTick++;
   pollGamepad();
+  tickHeld();
   updateAmbience();
   updateBattleMusic();
   updateTreasureEcho();
@@ -5716,6 +5787,7 @@ function frame(){
   if (shk) ctx.restore();
   if (gDice) drawGambleBoard();
   drawJuice();
+  drawSteerMark();
   if (hintT>0 && hintMsg){
     hintT--;
     ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
@@ -5759,7 +5831,7 @@ window.__openings={
   drainStam, exhaustHit, exhaustAilment, check, tryMove, openClinic, staminaFloor:()=>STAM_FLOOR,
   sharkTrigger, sharkMeet, fellowsCollect, fellowsMenu, fellowsBeat, leaveDungeon,
   get loan(){ return game && game.flags? (game.flags.loan||null) : null; },
-  ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC, openDoss, gateReckoning, keepTheWatch, sentinelTalk, gateCosmos,
+  ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC, openDoss, gateReckoning, keepTheWatch, sentinelTalk, gateCosmos, steerHold, steerSet, steerClear, tickHeld,
   get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; },
   FLOOR_BOSSES, BOSS_BY_ID, bossEvent, miniFoe, bossErrandState, flagsPacts, flagsErrands, grantBossLore, repOf, bossReqOk,
   get bossRep(){ return game && game.flags? (game.flags.bossRep||{}) : {}; },

@@ -87,10 +87,24 @@ Tenements hang their laundry in the drizzle; workshops show a painted trade
 sign. Walk up to any of them and go in: you'll be told what the place smells
 like and exactly who lives or labours there today.
 
-## Controls — mouse or touch, no overlays
+## Controls — arrows/WASD to walk, hold-your-finger steering, no overlays
 
-The whole game is played **directly on the screen** — nothing else matters up
-your view. No virtual pad; the canvas is the only control surface.
+The whole game is played **directly on the screen** — no virtual pad, nothing
+covering your view; the canvas is the only control surface.
+
+- **Keyboard (primary): hold to walk.** Arrows or WASD — hold a direction and
+  the hero keeps walking, steady pace, one tile at a time; tap for a single
+  step. Held arrows/WASD also scroll menus (and they repeat cleanly, no
+  drift). **Z/Enter** confirm, **X/Esc** back, **M** map, **F5** quicksave.
+- **Touch (primary): hold a finger, you walk toward it.** Press anywhere on
+  the map and the hero walks in the direction your finger sits relative to
+  him — keep the finger right of him and he keeps going east; drag it above
+  him and he turns north; bring it onto him and he stands. A faint gold ring
+  marks your finger while you steer. Tap-to-walk still exists: tap a tile and
+  he paths there, tap a building to be walked to its door and inside.
+- Walking rich (70g+ on you, or 80g+ in loot) can attract **muggers of
+  your own trade**: pay a tithe, show steel, run, or fight — street
+  fights end back in the street.
 
 Every label and description is fit to its box: long option text shrinks
 instead of being cut mid-word, menu descriptions wrap onto a second line,
@@ -121,10 +135,10 @@ and hints wrap rather than truncate — nothing you are offered goes unread.
 - Title and death screens: tap / click or **Enter**.
 - **Right-click** = cancel/back (mouse).
 
-Keyboard and gamepad still work for those who want them: arrows/WASD move,
-Z/Enter confirm, X/Esc back, M map, F5 quicksave; gamepad A=Z, B=X,
-START=Enter, SELECT=Esc, Y=map. Tapping Z/X or pressing a movement key cancels
-an auto-walk in progress.
+Gamepad still works for those who want it: d-pad/left stick walks (held =
+keeps walking), A=Z, B=X, START=Enter, SELECT=Esc, Y=map. Tapping Z/X,
+pressing any movement key, or steering the finger cancels an auto-walk in
+progress.
 
 ## The loop
 

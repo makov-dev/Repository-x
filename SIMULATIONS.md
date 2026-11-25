@@ -528,3 +528,52 @@ dialogue, once-given word, one granted truth; heir clamp (100-stat parent ->
 child at stats <= 12); cosmology persistence into fresh worlds; fuzz 10
 sessions x 1,500 frames, 0 errors. reach100 probe: growth unbounded as
 intended. Syntax check passed; inject verified by re-extraction.
+
+## 19 — Controls round: hold-to-walk and finger steering
+
+**Complaint:** controls disliked. Request: arrows/WASD as the main scheme on
+computer; on phone, move in the direction where the finger is held.
+
+**Audit of the old scheme.** Keyboard arrows/WASD were tap-per-step only
+(dirTap consumed a fresh pressed edge; OS key-repeat was swallowed), so
+walking a corridor meant drumming a key. Touch had no steering at all:
+tap-a-tile BFS auto-walk only. Gamepad already held-walked (%8 frame repeat)
+while keyboard didn't.
+
+**Changes (patch `controls`, 8 asserted anchors, all hit):**
+
+1. tickHeld() in the frame loop: for held arrows/WASD, first press fires
+   immediately (unchanged) and the key re-fires every 7 frames while held —
+   hold-to-walk everywhere movement is read (base, dungeon, home, cellar).
+   Menus consume the same cadence, so held arrows scroll option lists; the
+   wrap was verified live (5-option pack menu returns to sel 0 after exactly
+   5 held advances). OS autorepeats are ignored (e.repeat doesn't reset the
+   cadence); keyup zeroes the counter so each press starts clean.
+2. Touch steering: pointerdown anywhere on a walkable scene (base / dungeon /
+   home / cellar, no open UI, map closed) sets a steer anchor; a pointermove
+   listener tracks the finger in canvas units; steerHold() returns the
+   dominant-axis direction from the hero's screen position to the finger,
+   beyond a 10-unit dead zone, on a 6-frame cadence — and dirTap consults
+   it. Because the camera keeps the hero centered, "hold right of him"
+   means keep walking east; drag over him and he stops (finger-on-hero is
+   the dead zone). A gold ring + thread is drawn at the finger while
+   steering (and only then). pointerup/pointercancel end steering; steering
+   auto-cancels any tap-to-walk in progress.
+3. Canvas CSS touch-action: none so drags can't scroll the page on phones;
+   the title screen now says "arrows or WASD move, Z confirms / on touch:
+   hold a finger - you walk toward it".
+4. Tap-to-walk, right-click cancel, chips, dice taps, and gamepad are
+   untouched; a Z/X press or any movement key still cancels an auto-walk.
+
+**Verification (rig `conctl`): 20/20** — held arrows and each of WASD walk
+repeatedly (6 steps in 40 held frames; cadence exact), a single tap still
+moves exactly one step with no drift, held ArrowDown scrolls a menu (sel 3
+after 20 frames; wraps to 0 after 5 advances), steerHold cadence is exactly
+fire-then-five-quiet-then-fire ("1000001000001"), finger-on-hero is a dead
+zone (12 frames, zero steps), steering walks east/west/north from held-finger
+positions, steering works inside a dungeon (steps taken until an encounter
+interrupts), brief poke steps at most once, and fuzz (3 sessions x 1500
+frames with random key down/up, presses, steering set/clear, teleports)
+runs with 0 errors. Previous suites re-run on the patched engine:
+regress 23/23, endtest 37/37, reach100 probe unchanged (STR 9->100 in 169
+drills).
