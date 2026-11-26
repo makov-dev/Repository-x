@@ -940,3 +940,75 @@ error, not engine), home steps, dungeon steps. Full battery: logic rig
 9/9, dice 6/6, dressing 10/10 + fuzz 0, solid-ground flood 0 in-rect,
 house/gate all pass, lamps 19/0, eventaudit 76/0, visual fuzz 2×1200
 frames 0 crashes.
+
+## 29 — The buildings, drawn honest (the artifacts round)
+
+*"Gotta overhaul the buildings as well and there should be no weird
+artifacts on buildings other than what they represent."*
+
+The user's phrase set the law for the round: **everything drawn on a
+building must depict a real object.** An audit of the old `drawBuilding`
+found the artifacts: a **universal 4×6 dark smoke box painted at the
+top-LEFT corner of every building** (`sx+4, sy-5`), floating above the
+roofline so its puffs rose out of mid-air; **vertical plank seam stripes
+every 6px on all walls**, including the stone guild and the church; the
+**guild identified by two floating purple 3×13 bars** hung on nothing; the
+work-shops marked by a **black rectangle plaque stuck mid-wall** depicting
+nothing; the **clinic's cross floating loose**; and a **flat 10px roof
+band** with no eaves, no tile texture, no shadow.
+
+`drawBuilding` was rewritten wholesale (the whole function replaced by
+line-surgery with asserted anchors), keeping every hit/door coordinate
+untouched — the door leaf still starts at `dxc=sx+floor(w/2)-2`, so taps,
+`enterBuilding`, `nearBuilding` and the door arithmetic are bit-identical.
+The new anatomy, per building: a warm **roughcast wall** (per-building wash
+from a six-earth palette hashed on `(bl.x*7+bl.y*3)%6`) with faint seeded
+plaster mottling; a **dark stone footing** three rows deep with seam lines
+every 7px; **timber corner posts** (2px, full height) and a head beam;
+a **pitched tiled roof with a true eave overhang** (roof spans `sx-2` to
+`w+4`, 12 tall, alternating shade columns every 6px, course seams every 4
+rows, ridge highlight, eave shadow line); a **brick chimney** at
+`chx=sx+floor(w*0.68), chy=sy-8` — 5-wide brick body with a darker shaded
+face, stipple, and a 7×2 cap — with **smoke rising from the chimney's top**
+(4 puffs, `ph=(⌊worldTick/14⌋+i*5)%18`, visible when `ph<13`, alpha
+`0.30−0.020ph`; an earlier 3-puff/0.26 version was invisible in practice and
+was strengthened after the VLM twice missed it); scalloped striped
+**awnings** for market and tavern; windows keeping the lit-follows-dark law
+(`rnd()<(0.30+0.52*dayDark())`) and gaining a **cross mullion** and pale
+**sill**; a **banded oak door** (lintel beam, recessed reveal, plank-seamed
+leaf, iron bands, gold handle; the home's leaf in its darker tint); and
+**identity signage that depicts the trade**: the tavern a proper bracket
+arm with its hanging swinging gold lamp and night glow; the guild a purple
+heraldic banner (pointed hem, gold emblem) hung from the eave; clinic,
+office and work-shops a `signBoard()` — ink board, gold frame, dark hanging
+rod from the eave — carrying a bone-white cross, a paper notice, or the
+trade icons (washtub+drop, bone+knife, candle+flame, stacked coins). The
+church's rose window moved onto the wall with a stone-stroke frame (inner
+glow pulse kept); the tenement laundry line was left as the user liked it;
+the gatehouse branch early-returns to `drawGatehouse` untouched.
+
+**Verification.** A single-building probe rig (`bldone.js`) drew each of the
+13 building ids in isolation at tiles (10,8) and pixel-probed roof mid,
+eave overhang, wall plaster, corner post, chimney body/cap and door leaf —
+all key elements present at expected positions in the right colour
+families. Every probe "FAIL" line was bred out one by one as **probe
+placement error** (probes landing on unlit windows, on alternating roof
+shade columns at `x+3 mod 6`, on the label text at `sx-3`, or on the
+home's recoloured door) — not engine defects, and the distinction is
+recorded because it is the same failure family as prior rounds' false
+negatives. A 13-stop scene rig (`bldshot.js`, clock forced to `worldTick=200`
+after `newGame` — the first runs rendered night-tinted because the clock
+was never set) shot every building day and three night. VLM zoom reviews
+of guild, tavern and wash-house crops confirmed the full anatomy with no
+artifacts; the VLM's "floating black boxes above the tavern" claim was
+disproven by the probes (the chimney demonstrably sits on the roof) and
+its "no smoke" claim was acted on (the smoke visibility fix above). A
+4-quadrant in-scene composite (tavern/guild × day/night) confirmed gestalt:
+roofs read, night lamps and window glows sensible, no overlaps with the CE1
+people, lamps, carts or labels. Full battery on the rewritten engine:
+logic rig 9/9 (one flaked run traced to the rig's own `Math.random()`
+combat resolver, six consecutive greens after), dice 6/6, dressing 10/10 +
+fuzz 0, solid-ground flood 0 in-rect, house/gate all pass, lamps 19/0,
+eventaudit 76/0 (no event tests the same stat twice — law intact), visual
+fuzz 0 crashes, facing/walk rig 12/12 (its six initial fails were the
+rebuilt `__dbg2` losing the `face` getter — rig-side, restored).

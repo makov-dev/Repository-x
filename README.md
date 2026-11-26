@@ -205,6 +205,28 @@ yard is walled ground — you use a building from beside it, never from
 inside its footprint (touch: tap the building, you walk up and it opens;
 Z/Enter/Space at its side opens it on keyboard).
 
+**The buildings are rebuilt Curious-Expedition-style too.** Every house in
+Jericho now stands on a **dark stone footing** (coursed, seam-lined) under
+**warm roughcast walls** — each building its own earthen wash, faintly
+mottled like aged plaster — with **timber corner posts and a head beam** in
+near-black oak. Above, a **pitched tiled roof overhangs the walls on every
+side**: alternating tile shades in the building's roof colour, course seams
+every few rows, a ridge highlight, and a shadow line tucked under the eave.
+Out of the roof rises a **brick chimney** — dark brick body with a shaded
+face, brick stipple, a broad cap — and hearth smoke climbs from its top in
+slow puffs. Doors are **banded oak**: lintel beam, recessed
+reveal, plank-seamed leaf, two iron bands and a gold handle, in the same
+tile position as always. Windows gained **cross mullions and pale sills**.
+Every trade hangs an **honest sign**: the tavern a bracket with a swinging
+lantern that glows at night, the guild a purple heraldic banner from the
+eave, the clinic a bone-white cross on a hanging board, the office a paper
+notice, the work-shops painted boards showing the trade itself — washtub,
+bone-and-knife, candle, stacked coins. The **law of the round: nothing is
+drawn on a building that does not depict a real object.** The old draw
+layer's artifacts — a floating smoke box over every roof corner, plank
+seams running through stone walls, purple bars hanging in mid-air, a black
+plaque nailed to nothing, a cross without a sign — are purged.
+
 ## The loop
 
 1. **The city (your base).** Jericho's drizzly streets hold the facilities:
