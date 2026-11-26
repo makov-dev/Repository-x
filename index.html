@@ -303,13 +303,15 @@ const ITEM_DESC={
   "Bone Ring":"Carved from something patient. For promises that must outlast you.",
   "Pale Rose":"A grave-flower that lives in the dark. Courting armor.",
   "Iron Shard":"A better edge than hope.",
-  "Bone Saw":"It hums against your hip. Unpleasant. Effective.",
-  "Widow's Mail":"The widow sold it gladly. It is warmer inside than physics explains.",
-  "Yes-Plate":"It has never said no. You can barely hear the city in it. That is the point.",
-  "Surgeon's Scalpel":"Effortless, sterile, wrong. Made for the same trade you practice below, on easier patients.",
-  "Crude Spear":"A knife, a pole, and necessity. The tip is new. The stains beneath it are not, yet.",
+  "Bone Saw":"It hums against your hip, and the wound keeps working after it leaves (bleeds).",
+  "Widow's Mail":"The widow sold it gladly. Warmer inside than physics explains - and it goes UNDER whatever else you already wear.",
+  "Yes-Plate":"It has never said no. Once a fight, it refuses to let you fall. You can barely hear the city in it.",
+  "Quilted Jerkin":"Quilted felt, splinted with boiled leather. Weighs about as much as a rumor; it adds two to the run for it.",
+  "Wall-Sergeant's Harness":"Wall-sergeant issue: steel over leather. Stops what it stops. You will not run far in it.",
+  "Surgeon's Scalpel":"Effortless, sterile, wrong. Its edge reads a crowned die better than you do (+4 on the blessed edge).",
+  "Crude Spear":"A knife, a pole, and necessity. Reach lands first: your opening point goes unanswered (first strike).",
   "Balanced Hand Axe":"Somebody balanced it with patience and counted swings. It opens doors, crates, arguments, and everything attached to them.",
-  "Wardriver Maul":"The wall-sergeants order these by the dozen. That alone should tell you what the streets are bracing for."
+  "Wardriver Maul":"The wall-sergeants order these by the dozen. The blow rings on after it lands; the thing it hits loses its beat (staggers)."
 };
 function itemDesc(it){
   return ITEM_DESC[it.n]
@@ -325,6 +327,8 @@ function openBag(){
   const opts=[];
   opts.push({ t:"WIELDING: "+p.weapon.n+" (dmg "+p.weapon.d+")", d:itemDesc(p.weapon), fn:()=>{} });
   opts.push({ t:"WEARING: "+p.armor.n+" (armor "+p.armor.a+")", d:itemDesc(p.armor), fn:()=>{} });
+  if (p.mail) opts.push({ t:"UNDER: "+p.mail.n+" (armor "+p.mail.a+")", d:itemDesc(p.mail), fn:()=>{} });
+  opts.push({ t:"Armor total: "+playerDef(), d:"Whatever the dark throws, this much of it is wrong.", fn:()=>{} });
   p.inv.forEach((it,ix)=>opts.push({
     t: it.n+(it.qty>1? " x"+it.qty:"")+(it.kind==="weapon"?"  [weapon]":it.kind==="armor"?"  [armor]":"")+" - "+fmt(it.v*(it.qty||1))+"g",
     d: itemDesc(it),
@@ -337,8 +341,12 @@ function openItem(ix){
   const p=game.player, it=p.inv[ix];
   if (!it){ openBag(); return; }
   const opts=[];
-  if (it.kind==="weapon"||it.kind==="armor")
-    opts.push({ t:(it.kind==="weapon"? "Wield it":"Wear it")+" (swaps out the current one)", fn:()=>{ equipItem(ix); openBag(); } });
+  if (it.kind==="weapon"||it.kind==="armor"){
+    const lbl= it.kind==="weapon"? "Wield it (swaps out the current one)"
+      : isMail(it)? "Wear it UNDER your armor (the mail layer)"
+      : "Wear it (swaps out the current one, mail stays)";
+    opts.push({ t:lbl, fn:()=>{ equipItem(ix); openBag(); } });
+  }
   if (it.kind==="food")
     opts.push({ t:"Eat it now (stamina +30)", fn:()=>{ useFromInv(it.n,1); game.player.stam=clamp(game.player.stam+30,0,maxStam());
         say(["Trail crumbs from your own hand. It helps, in the way bread does."], ()=>openBag()); saveGame(); } });
@@ -355,12 +363,17 @@ function equipItem(ix){
     p.inv.splice(ix,1);
     p.inv.push({ n:p.weapon.n, v:8+p.weapon.d*6, kind:"weapon", qty:1, d:p.weapon.d });
     p.weapon={ n:it.n, d:it.d||3 };
-    sfx("gain");
+    normGear(); sfx("gain");
+  } else if (it.kind==="armor" && isMail(it)){
+    p.inv.splice(ix,1);
+    if (p.mail) p.inv.push({ n:p.mail.n, v:8+p.mail.a*6, kind:"armor", qty:1, a:p.mail.a, under:1 });
+    p.mail={ n:it.n, a:it.a||1, under:1 };
+    normGear(); sfx("gain");
   } else if (it.kind==="armor"){
     p.inv.splice(ix,1);
     p.inv.push({ n:p.armor.n, v:8+p.armor.a*6, kind:"armor", qty:1, a:p.armor.a });
     p.armor={ n:it.n, a:it.a||1 };
-    sfx("gain");
+    normGear(); sfx("gain");
   }
   saveGame();
 }
@@ -854,6 +867,7 @@ function newGame(){
       gold:40,
       weapon:{n:"Rusted Knife", d:2},
       armor:{n:"Padded Rags", a:1},
+      mail:null,
       inv:[ {n:"Ration", v:8, qty:3, kind:"food"}, {n:"Bandage", v:10, qty:1, kind:"heal"} ],
       wounds:[], ills:[],
       house:null, upgrades:[], rooms:[],
@@ -1041,6 +1055,8 @@ function loadGame(){
       if (typeof Pl.gambleWins!=="number") Pl.gambleWins=0;
       if (typeof Pl.lastAction!=="string") Pl.lastAction=null;
       if (typeof Pl.gatekeeper!=="boolean") Pl.gatekeeper=false;
+      if (!Pl.mail) Pl.mail=null;
+      normGear();
       if (!Array.isArray(game.flags.sentinels)){ try{ const cm=JSON.parse(localStorage.getItem("openings_cosmos")||"{}"); game.flags.sentinels=Array.isArray(cm.sentinels)? cm.sentinels.slice(0,3):[]; }catch(e){ game.flags.sentinels=[]; } }
       if (typeof game.flags.cosmosClosed!=="boolean"){ try{ game.flags.cosmosClosed=!!(JSON.parse(localStorage.getItem("openings_cosmos")||"{}").closed); }catch(e){ game.flags.cosmosClosed=false; } }
       if (game.state==="base" && citySolid(game.base.px,game.base.py)){ /* old saves may stand inside what is now solid (yard, gate doors) - step out to the nearest open cobble */
@@ -1333,14 +1349,16 @@ function buyPack(cost, add){
 }
 function gearMenu(){
   showMenu("IRONMONGER - into your pack; equip from BAG", [
-    { t:"Surgeon's Scalpel, dmg 3 (22g)", d:"Curiously clean. Nothing this clean stays that way in Jericho.", fn:()=>buyWeapon("Surgeon's Scalpel",3,22) },
-    { t:"Iron Shard, dmg 4 (45g)", d:"A better edge than hope.", fn:()=>buyWeapon("Iron Shard",4,45) },
-    { t:"Crude Spear, dmg 5 (70g)", d:"A knife, a pole, and necessity. It keeps the reach the dark dislikes.", fn:()=>buyWeapon("Crude Spear",5,70) },
-    { t:"Bone Saw of the surgeons, dmg 6 (80g)", d:"It hums.", fn:()=>buyWeapon("Bone Saw",6,80) },
+    { t:"Surgeon's Scalpel, dmg 3 - precise (22g)", d:"Curiously clean. Its edge reads a crowned die better than you do (+4 on the blessed edge).", fn:()=>buyWeapon("Surgeon's Scalpel",3,22) },
+    { t:"Iron Shard, dmg 4 (45g)", d:"A better edge than hope. It has no opinions and gives none.", fn:()=>buyWeapon("Iron Shard",4,45) },
+    { t:"Crude Spear, dmg 5 - FIRST STRIKE (70g)", d:"A knife, a pole, and necessity. Your first point lands before anything can answer it.", fn:()=>buyWeapon("Crude Spear",5,70) },
+    { t:"Bone Saw of the surgeons, dmg 6 - BLEEDS (80g)", d:"It hums, and the wound keeps working long after the saw leaves.", fn:()=>buyWeapon("Bone Saw",6,80) },
     { t:"Balanced Hand Axe, dmg 7 (130g)", d:"It opens doors, crates, arguments, and everything attached to them.", fn:()=>buyWeapon("Balanced Hand Axe",7,130) },
-    { t:"Wardriver Maul, dmg 8 (190g)", d:"The wall-sergeants order these by the dozen. That alone tells you something.", fn:()=>buyWeapon("Wardriver Maul",8,190) },
-    { t:"Widow's Mail, armor 2 (60g)", d:"The widow sold it gladly.", fn:()=>buyArmor("Widow's Mail",2,60) },
-    { t:"Yes-Plate, armor 3 (140g)", d:"It has never said no.", fn:()=>buyArmor("Yes-Plate",3,140) },
+    { t:"Wardriver Maul, dmg 8 - STAGGERS (190g)", d:"The wall-sergeants order these by the dozen. The blow rings on after it lands; the thing it hits loses its beat.", fn:()=>buyWeapon("Wardriver Maul",8,190) },
+    { t:"Quilted Jerkin, armor 1 - light on the feet (25g)", d:"Felt and boiled-leather splints, about as heavy as a rumor. +2 on the run for it.", fn:()=>buyArmor("Quilted Jerkin",1,25) },
+    { t:"Widow's Mail, armor 2 - worn UNDER other armor (60g)", d:"The widow sold it gladly. Cinch it beneath the plate; both layers count.", fn:()=>buyArmor("Widow's Mail",2,60) },
+    { t:"Yes-Plate, armor 3 - refuses one death (140g)", d:"It has never said no. Once a fight, it will not let you fall.", fn:()=>buyArmor("Yes-Plate",3,140) },
+    { t:"Wall-Sergeant's Harness, armor 4 - heavy (-1 to flee) (230g)", d:"Steel over leather. Stops what it stops. You will not run far in it.", fn:()=>buyArmor("Wall-Sergeant's Harness",4,230) },
     { t:"Back", fn:openMarket }
   ], openMarket);
 }
@@ -1359,9 +1377,10 @@ function buyArmor(n,a,cost){
   if (p.gold<cost){ sharkTrigger(); say(["The smith looks at your coin, then past it."], ()=>gearMenu()); return; }
   if (invUsed()+1>invCap()){ say(["You could not carry a chimney. Pack first."], ()=>gearMenu()); return; }
   p.gold-=cost;
-  p.inv.push({ n:n, v:Math.round(cost*0.8), kind:"armor", qty:1, a:a });
+  p.inv.push({ n:n, v:Math.round(cost*0.8), kind:"armor", qty:1, a:a, under:(APROPS[n]&&APROPS[n].under)?1:0 });
   autoEquip(n);
-  say(["You buckle it on in the doorway. The old layer goes into the pack."], ()=>gearMenu());
+  say(APROPS[n]&&APROPS[n].under? ["You cinch the mail on beneath. The old layer goes into the pack."]
+    : ["You buckle it on in the doorway. The old layer goes into the pack."], ()=>gearMenu());
   saveGame();
 }
 function autoEquip(n){
@@ -3095,6 +3114,7 @@ function hurt(n, msg){
   if (msg) lines.push(msg);
   lines.push("(-"+n+" HP. "+p.hp+"/"+p.maxhp+")");
   if (p.hp<=0){
+    if (p.armor && p.armor.lastStand && !game.flags.plateUsed){ game.flags.plateUsed=true; p.hp=1; say(["Yes-Plate has never said no. It does not start today.","(held at 1 HP)"]); }
     if (p.echo && !p.echoUsed){ p.echoUsed=true; p.hp=1; say(["The dream catches you. You died once already, and refused the second time.","(the Gate-Touched holds you at 1 HP)"]); }
     else if (p.gatekeeper){ p.hp=1; say(["The Gate refuses. Whatever finished you, it was not enough.","(+held at 1 HP)"]); }
     else { die("Something in "+(game.dungeon? game.dungeon.opening.name : "Jericho")+" finished you."); return; }
@@ -3186,7 +3206,31 @@ function startCombat(enemy){
 }
 function clog(s){ const c=game.combat; if(!c) return; c.log.push(s); if (c.log.length>4) c.log.shift(); }
 function playerAtk(){ const p=game.player; return p.weapon.d + irnd(3) + Math.floor(p.str/2); }
-function playerDef(){ return game.player.armor.a; }
+/* gear specials: props are attached to the carried pieces by name, so old
+   saves and shop buys both resolve to full behaviour. */
+const WPROPS={
+  "Crude Spear":{ first:1 },          /* your first strike of a fight goes unanswered */
+  "Bone Saw":{ bleed:1 },             /* the wound keeps working: -1 at each of its turns */
+  "Wardriver Maul":{ stagger:1 },     /* 28% on a hit: the thing loses its beat */
+  "Surgeon's Scalpel":{ precise:1 }   /* a crowned die reads +4 instead of +2 on the edge */
+};
+const APROPS={
+  "Widow's Mail":{ under:1 },           /* a second slot: worn UNDER whatever else you wear */
+  "Quilted Jerkin":{ fleebonus:2 },     /* light: +2 on the run for it */
+  "Wall-Sergeant's Harness":{ fleepenalty:-1 }, /* heavy: -1 on the run for it */
+  "Yes-Plate":{ lastStand:1 }           /* once a fight, refuses to let you fall */
+};
+function normGear(){
+  const p=game.player;
+  if (p.weapon && WPROPS[p.weapon.n]) for (const k in WPROPS[p.weapon.n]) p.weapon[k]=WPROPS[p.weapon.n][k];
+  if (p.armor && APROPS[p.armor.n]) for (const k in APROPS[p.armor.n]) p.armor[k]=APROPS[p.armor.n][k];
+  if (p.mail && APROPS[p.mail.n]) for (const k in APROPS[p.mail.n]) p.mail[k]=APROPS[p.mail.n][k];
+  if (!p.mail) p.mail=null;
+}
+function isMail(it){ return !!it && ((it.under||0)===1 || !!(APROPS[it.n]&&APROPS[it.n].under)); }
+function playerDef(){ const p=game.player; return p.armor.a+(p.mail? p.mail.a:0); }
+function fleeMod(){ const p=game.player; const f=c=>c? (c.fleebonus||0)+(c.fleepenalty||0) : 0; return f(p.armor)+f(p.mail); }
+function wProp(k){ const p=game&&game.player, w=p&&p.weapon; return w&&w[k]; }
 /* ----- the dice (dopamine layer) ----- */
 let worldTick=0;
 function armDice(kind, seed){
@@ -3269,7 +3313,7 @@ function resolvePlayerAction(a,v1,v2){
     } else {
     let dmg=Math.max(1, playerAtk()-irnd(2));
     if (c.edge){ dmg+=c.edge; clog("The edge you caught rides the steel. (+"+c.edge+")"); c.edge=0; }
-    if (sixes===1){ dmg+=2; clog("A crowned die blesses the edge. (+2)"); }
+    if (sixes===1){ const b=wProp("precise")?4:2; dmg+=b; clog(wProp("precise")? "The surgeon's edge reads the crowned die with unsettling skill. (+"+b+")" : "A crowned die blesses the edge. (+"+b+")"); }
     if (sixes===2){
       dmg=playerAtk()*2;
       e.hp-=dmg;
@@ -3281,6 +3325,8 @@ function resolvePlayerAction(a,v1,v2){
     } else {
       e.hp-=dmg;
       clog("You carve "+e.n+" for "+dmg+".");
+      if (wProp("bleed") && !c.bleed){ c.bleed=true; clog("The saw leaves a wound that does not intend to close."); }
+      if (wProp("stagger") && Math.random()<0.28 && !c.maulStagger){ c.maulStagger=true; clog("The maul's weight rings through it. It staggers."); }
       addFloat("-"+dmg, PAL.bloodHi, W/2, 95); sfx("hit");
       if (e.hp<=0){ winCombat(); return; }
     }
@@ -3292,6 +3338,7 @@ function resolvePlayerAction(a,v1,v2){
       if (c.edge) clog("The edge you caught rides the steel. (+"+c.edge+")");
       c.edge=0;
       e.hp-=dmg;
+      if (wProp("stagger") && Math.random()<0.28 && !c.maulStagger){ c.maulStagger=true; clog("The maul's weight rings through it. It staggers."); }
       if (!c.critKill && hasManeuver("behead") && e.hp>0 && e.hp<=e.maxhp*0.25){ e.hp=0; c.critKill=true; clog("The Beheader's Hour. Below a quarter, heads are a formality."); }
       if (crown) c.critKill=true;
       addFloat((crown? "CRIT -":"-")+dmg, crown? PAL.coin:PAL.bloodHi, W/2, 95);
@@ -3316,10 +3363,22 @@ function resolvePlayerAction(a,v1,v2){
     }
     clog("It reads your weight shift. No escape this beat.");
   }
+  if (a==="strike" && wProp("first") && !c.fsUsed && game.state==="combat" && c.e.hp>0){
+    c.fsUsed=true;
+    clog("The point keeps it at the end of its reach. It cannot answer. (first strike)");
+    afterEnemyTurn();
+    return;
+  }
   combatEnemyTurn();
 }
 function combatEnemyTurn(){
   const c=game.combat, e=c.e, p=game.player;
+  if (c.maulStagger){ c.maulStagger=false; clog("The maul's blow is still ringing in it. It loses its beat."); afterEnemyTurn(); return; }
+  if (c.bleed && e.hp>0){
+    e.hp--; addFloat("-1", PAL.bloodHi, W/2+18, 96);
+    clog("The sawed wound keeps working. (-1)");
+    if (e.hp<=0){ winCombat(); return; }
+  }
   if (c.stagger){ c.stagger=false; clog("Parry Eternal holds. It claws at where the air remembers you. The round is yours twice."); afterEnemyTurn(); return; }
   if (e.tr==="grasp" && Math.random()<0.18){
     clog(e.n+" holds you. Long fingers, long patience.");
@@ -3374,7 +3433,8 @@ function afterEnemyTurn(){
   const c=game.combat, p=game.player;
   c.guard=false;
   if (p.hp<=0){
-    if (p.echo && !p.echoUsed){ p.echoUsed=true; p.hp=1; clog("The dream catches you: you have died once before and will not repeat the trick. (held at 1 HP)"); }
+    if (p.armor && p.armor.lastStand && !c.plate){ c.plate=true; p.hp=1; clog("Yes-Plate has never said no. It does not start today. (held at 1 HP)"); }
+    else if (p.echo && !p.echoUsed){ p.echoUsed=true; p.hp=1; clog("The dream catches you: you have died once before and will not repeat the trick. (held at 1 HP)"); }
     else if (p.gatekeeper){ p.hp=1; clog("The Gate refuses. It is not done with you."); }
     else { die(game.dungeon? "Torn apart in the "+String(game.dungeon.opening.name).replace(/^The /,"") : "Slain in Jericho"); return; }
   }
@@ -4697,12 +4757,13 @@ function sprO(art, map, x, y, scale, flip){
 function sprP(art, map, x, y, scale, flip){ sprO(art, map, x-2, y+8-art.length, scale||1, flip); }
 
 const HERO_DN_A=[
-"....ffff....",
-"...fFFff....",
-"...ffff.....",
-"..ffffffff..",
-"...HHHHHH...",
-"...HeHHeH...",
+"....mmmm....",
+"...mMMMMm...",
+"..mMMMMMMm..",
+"..mMMMMMMm..",
+"..meMeeMem..",
+"..mSSSSSSm..",
+"..mmSSSSmm..",
 "...HHHHHH...",
 "....hkkh....",
 "..cccccccc..",
@@ -4714,12 +4775,13 @@ const HERO_DN_A=[
 "...bb..bb..."];
 const HERO_DN_B=HERO_DN_A.slice(0,12).concat(["..pp...pp...","..pp...pp...",".bb.....bb.."]);
 const HERO_UP_A=[
-"....ffff....",
-"...fFFff....",
-"...ffff.....",
-"..ffffffff..",
-"...ffffff...",
-"...ffffff...",
+"....mmmm....",
+"...mMMMMm...",
+"..mMMMMMMm..",
+"..mMMMMMMm..",
+"..mSMSMMSm..",
+"..mSMSMMSm..",
+"..mmSSSSmm..",
 "...hffffh...",
 "....hhhh....",
 "..cccccccc..",
@@ -4731,12 +4793,13 @@ const HERO_UP_A=[
 "...bb..bb..."];
 const HERO_UP_B=HERO_UP_A.slice(0,12).concat(["..pp...pp...","..pp...pp...",".bb.....bb.."]);
 const HERO_SIDE_A=[
-"....ffff....",
-"...fFFff....",
-"...ffff.....",
-"..ffffffff..",
-"...ffffHH...",
-"...fffHeH...",
+"....mmmm....",
+"....mMMMm...",
+"..mMMMMMMm..",
+"..mMMMMMMm..",
+"..mMMkggkm..",
+"..mSSkggkm..",
+"...mSSSSm...",
 "...hffHHH...",
 "....hffh....",
 "..Pcccccc...",
@@ -4750,7 +4813,7 @@ const HERO_SIDE_B=HERO_SIDE_A.slice(0,12).concat(["..pp.pp.....",".pp...pp....",
 const HERO_SET={ dn:[HERO_DN_A,HERO_DN_B], up:[HERO_UP_A,HERO_UP_B], sd:[HERO_SIDE_A,HERO_SIDE_B] };
 const HERO_MAP={ H:"#b98a6f", h:"#96684f", e:"#1d141c", k:"#1d141c",
   f:"#3d3028", F:"#57483a", c:"#6b4530", C:"#4d3222", l:"#835c40", s:"#8a6f4e",
-  p:"#463a52", b:"#241c22", P:"#5a4030", Q:"#7a5a38", g:"#9a948a", w:"#6b4a2a", L:"#e0b95a" };
+  p:"#463a52", b:"#241c22", P:"#5a4030", Q:"#7a5a38", g:"#9a948a", w:"#6b4a2a", L:"#e0b95a", m:"#8c8a98", M:"#c1becc", S:"#5f5d6e" };
 let heroFace="dn";
 function drawHero(x,y){
   const moving=walkPath && walkPath.length>0;
@@ -6277,6 +6340,7 @@ function continueAsChild(){
     streak:0, gambleWins:0, lastAction:null,
     titles:[], killsByKind:{}, bestiary:old.bestiary, maneuvers:[]
   };
+  normGear();
   game.week=c.weeks;
   game.dungeon=null; game.combat=null; game.base={px:20,py:15};
   closeUI(); game.state="base"; mapOpen=false;

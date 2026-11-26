@@ -177,7 +177,9 @@ dark outline poured around the whole silhouette**, a **big head** under a
 hat or shawl or bald fringe, a **1px eye pair and mouth**, and garments in
 three tones (base, shade, light edge) on a warm earthy palette with
 saturated accents. People are **signature-readable at a glance**: the hero
-wears a wide-brim hat, an umber coat, a pack and a hanging lantern; the
+wears a **full steel helm** (rounded dome, dark visor slit, two pale
+eye-glints — no hat, the deep took that fashion), an umber coat, a pack and
+a hanging lantern; the
 worker has a flat cap and rolled sleeves; the women wear shawls over long
 dresses; the elder paces with a white fringe and a cane; door-keepers stand
 in aprons; the bandit adventurers come bandana'd with hatchets. The hero
@@ -226,6 +228,30 @@ drawn on a building that does not depict a real object.** The old draw
 layer's artifacts — a floating smoke box over every roof corner, plank
 seams running through stone walls, purple bars hanging in mid-air, a black
 plaque nailed to nothing, a cross without a sign — are purged.
+
+**The ironmonger sells opinions, not just edges.** Every weapon and armor
+in the rack now carries a named special, stated on the price board and in
+the item's own description:
+
+- **Crude Spear — FIRST STRIKE.** Your opening attack of a fight lands
+  before the thing can answer; the reach keeps it at a spear's length.
+- **Bone Saw — BLEEDS.** The wound keeps working: -1 HP from the enemy at
+  the start of each of its turns.
+- **Wardriver Maul — STAGGERS.** A blow (28% chance) rings on after it
+  lands; the thing it hit loses its beat — you act twice.
+- **Surgeon's Scalpel — PRECISE.** A crowned die reads +4 on the blessed
+  edge instead of +2.
+- **Widow's Mail — worn UNDER other armor.** A second slot: cinch it
+  beneath the plate and **both layers count** (mail 2 + plate 3 = armor 5).
+  The bag shows WEARING and UNDER and the armor total.
+- **Quilted Jerkin — light on the feet.** Armor 1 and +2 on the run for it.
+- **Wall-Sergeant's Harness — heavy.** Armor 4, but -1 on the run for it.
+- **Yes-Plate — refuses one death.** Armor 3; once a fight, a blow that
+  would drop you holds you at 1 HP instead. It has never said no.
+
+The Iron Shard and the Balanced Hand Axe stay honest, opinionless iron.
+Old saves keep their gear: properties attach by name on load, and a spear
+carried for weeks suddenly keeps the reach it always promised.
 
 ## The loop
 

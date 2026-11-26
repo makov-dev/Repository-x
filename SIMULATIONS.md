@@ -1012,3 +1012,60 @@ fuzz 0, solid-ground flood 0 in-rect, house/gate all pass, lamps 19/0,
 eventaudit 76/0 (no event tests the same stat twice — law intact), visual
 fuzz 0 crashes, facing/walk rig 12/12 (its six initial fails were the
 rebuilt `__dbg2` losing the `face` getter — rig-side, restored).
+
+## 30 — The helm and the honest iron (the gear-specials round)
+
+*"can character not have a hat but a full helm instead? Can we also add
+various other armors? Can we also make a variety of special things weapons
+and armors do? Eg. Chainmain can be put in addition to another armor.
+Spear has a first strike so first attack you do is without getting damage
+back and similar?"*
+
+Three asks, one round. **The hat is gone**: the hero's three CE1 string
+arts were re-headed with a **full steel helm** — rounded m-tone dome with
+a light ridge, a dark visor slit carrying two pale eye-glints (front view),
+fluting strokes on the back view, and a dark visor at the front of the side
+view; two steel tones (`#8c8a98`/`#c1becc`) and a shade (`#5f5d6e`) joined
+the map. Verdict was by a standalone 10× render (all three views read as
+full helms, VLM-confirmed, no stray pixels) plus an in-scene steel census
+(728 pixels in the head box under the day tint) and a scene gestalt check
+(clean integration, no head glitch).
+
+**The gear system grew opinions.** A props layer keyed by item name
+(`WPROPS`/`APROPS` + `normGear()`, applied on load, equip, and heir
+succession — so **old saves gain the specials by name**, no migration
+fault) now powers:
+
+- weapons: **Crude Spear first strike** (the opening attack resolves and
+  skips the enemy's answering turn, `c.fsUsed` once per fight), **Bone Saw
+  bleed** (armed on first hit; ticks -1 at the top of every enemy turn,
+  kill-capable), **Wardriver Maul stagger** (28% on a hit; the enemy's next
+  beat is skipped), **Surgeon's Scalpel precise** (a single crowned die
+  reads +4 on the edge instead of +2);
+- armor: **Widow's Mail rides a new UNDER slot** — wearer's armor value is
+  `main + mail`, the bag lists WEARING / UNDER / armor total, equipping a
+  mail item routes to the under-layer and swaps the old under-layer back to
+  the pack; **Quilted Jerkin** (+2 on the flee roll), **Wall-Sergeant's
+  Harness** (armor 4, -1 on the flee roll, both announced in the log),
+  **Yes-Plate's last stand** — once per fight, a killing blow holds you at
+  1 HP (combat path and the environmental `hurt()` path both covered;
+  the second death is not refused).
+
+The price board states every special in its entry; the iron shard and hand
+axe stay plain. Checked against the standing laws: the two-d6 dice decide
+nothing new here (specials ride the existing rolls), the one-test-per-event
+law is untouched (eventaudit 76/0).
+
+**Verification.** A 20-assertion gear rig on the hooked engine: mail routes
+to UNDER and layers (armor 4 harness + mail 2 = def 6), spear's first
+strike lands damage with HP unchanged and the flag logged, the second
+strike is answered, saw bleeds tick, stagger skips the beat, precise reads
+the crowned die (+4 with the surgeon's log line), flee modifiers +2/-1,
+Yes-Plate holds a lethal blow at 1 HP exactly once, old-save normGear
+attaches first-strike to a bare spear and keeps mail-as-main armors
+resolvable, plain iron stays plain. Full battery on the patched engine:
+logic rig 9/9, dice rig, dressing 10/10 + fuzz, solid-ground flood
+0 in-rect, house/gate all pass, lamps 19/0, eventaudit 76/0, visual fuzz
+0 crashes, facing rig 12/12. Kill-coin economy, streaks, and loot rolls
+are untouched (weapons still come only from the rack; the duelist's blade
+prop-less, as before).
