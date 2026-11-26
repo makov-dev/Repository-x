@@ -169,6 +169,23 @@ supernatural), and a red banner on the north tower. Roads and gravel are
 **cobbled** — hashed pixel noise stones them in. HUD, menus and dice stay
 un-tinted and crisp above the weather of light.
 
+**The people are drawn Curious-Expedition-style** (the first game, the one
+with the pixels): every human in Jericho — hero, townsfolk, door-keepers,
+spouse, stranger, the adventurers who cut at you in the dark — is a
+hand-laid string-art figure, roughly twelve by fifteen, with a **strong
+dark outline poured around the whole silhouette**, a **big head** under a
+hat or shawl or bald fringe, a **1px eye pair and mouth**, and garments in
+three tones (base, shade, light edge) on a warm earthy palette with
+saturated accents. People are **signature-readable at a glance**: the hero
+wears a wide-brim hat, an umber coat, a pack and a hanging lantern; the
+worker has a flat cap and rolled sleeves; the women wear shawls over long
+dresses; the elder paces with a white fringe and a cane; door-keepers stand
+in aprons; the bandit adventurers come bandana'd with hatchets. The hero
+turns as you move (four facings, two-frame walk), townfolk bob as they
+loiter, and the stranger is the same figure greying out with its head a
+touch off-true. The abominations stay procedurally wrong on purpose —
+nothing in the deep should have a silhouette this honest.
+
 **The streets are inhabited.** Lamp posts stand **beside the roadways** —
 never on the cobbles, never in a building's cast shadow (checked against the
 exact painted geometry, not an eyeball) — and never on a cooking fire's or a

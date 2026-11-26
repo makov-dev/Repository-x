@@ -884,3 +884,59 @@ open street tile (24,29), old-save migration steps the hero out of a solid
 yard tile, yard and gatehouse solid on every interior tile, gate facility
 opens from the south side; dressrig 10/10; logic rig 9/9; dice rig 6/6;
 eventaudit 76/0; visual fuzz 0 crashes.
+
+## 28 — The people, drawn Curious-Expedition-1 style (the graphics round)
+
+"Let's do a full overhaul of the graphics. Do a full examination of how art
+looks in Curious Expedition 1 (ignore 2) and use similar graphics especially
+for characters." Direct image pulls off the CE1 wiki were blocked, so the
+style was taken from documented characteristics of the originals: chunky
+pixel people with big heads, strong dark outline, few-tone garments, warm
+earthy palette with saturated accents, and silhouettes you can name by gear
+alone — then applied where it counts, characters first.
+
+Evidence. The old people were barely people: hero, door-keepers, spouse,
+stranger, human foes were all the same 8×8 blob ("fHkkHf..."), and townfolk
+were three paint rects (4×4 body, 2×2 head, 2×3 legs). One replacement
+covers everything because all humans funnel through five draw functions:
+drawHero (base, dungeon, home, cellar), drawNPC (tavern/market doors,
+spouse), drawTownfolk, drawStranger, drawHumanFoe (combat intro + panel).
+
+Instead of just researching it, here is a full audit of what actually
+shipped. New engine: sprO(art, map, x, y, scale, flip) — the old spr() grid
+filler plus a first pass that pours an outer outline (every empty cell with
+a filled 4-neighbour gets the ink) and supports per-column flip and integer
+scale; sprP() anchors a figure's feet on the tile's bottom row so hats can
+overhang without anyone floating. shadeHex() derives the two garment
+support tones from any coat colour. Facing: heroFace ("dn"/"up"/"lf"/"rt")
+is set in every stepping path (base, dungeon, home, cellar — direct steps
+and walk-path steps alike), and the hero picks the 2-frame walk pair from
+it; up-facing shows the pack, side-facing shows the profile, lantern hand,
+and the pack slung on the back. Arts, all hand-laid 12-wide grids: hero
+down/up/side × standing/walk with brim hat, umber coat, pack, lantern;
+worker (flat cap, rolled sleeves), shawl-woman (long dress, flared hem),
+elder (bald fringe, cane), apron keeper — townsfolk pick an archetype by a
+name hash and keep their street colour as the garment, sentinel greys to a
+white fringe; the stranger is the worker art in all-grey with the head
+shifted a pixel off-true; the combat adventurer comes bandana'd with a
+hatchet, scaled ×2 in combat so a killer now stands as tall as an
+abomination beside them. Townfolk and stranger sprites can now overhang
+their tile, so the cull margins widened to match (no pop-in at screen
+edges). Abominations stay procedural — they are meant to be wrong.
+
+Verification. Isolated sprite sheet: every art rendered and every claimed
+pixel probed exactly (hat/face/eyes/mouth/coat tones/lantern gold/pack
+co-ordinates/boots, outline left and beneath) — the two probe "misses" were
+probe offset errors, not art errors, and the arts are pixel-exact. In
+scene: town-frame + close-up and street band VLM-checked (chunky outlined
+figures, feet set on ground); home spouse + hero present (exact-probe
+returns zero under the end-of-frame tint, so presence was proven with a
+tolerant palette census of the couple's box: purple family present);
+combat intro and panel with a seeded human foe VLM-checked (outlined
+figure, on its shadow, covering no UI); dungeon hero + facing rig
+(12/12: four-way base facing, tap-to-walk whole journey with a visible
+in-camera target — the first rig attempt tapped off-camera and was rig
+error, not engine), home steps, dungeon steps. Full battery: logic rig
+9/9, dice 6/6, dressing 10/10 + fuzz 0, solid-ground flood 0 in-rect,
+house/gate all pass, lamps 19/0, eventaudit 76/0, visual fuzz 2×1200
+frames 0 crashes.

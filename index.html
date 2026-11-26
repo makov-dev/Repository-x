@@ -682,17 +682,15 @@ function drawTownfolk(camX,camY){
   for (const wk of game.townfolk){
     if (wk.inside>0) continue;
     const sx=(wk.x-camX)*T, sy=(wk.y-camY)*T;
-    if (sx<-6||sx>Wz+8||sy<-8||sy>Hz) continue;
+    if (sx<-16||sx>Wz+16||sy<-20||sy>Hz+18) continue;
     const moving=wk.path && wk.i<wk.path.length;
     const lk= wk.fireIdle || wk.linger>0;
     const bob= lk? (worldTick%90<8?0:1) : (moving? (worldTick%24<12?0:1) : 0);
     if (wk.sentinel) glow(sx+4,sy+5,17,[159,179,184],0.17);
     if (wk.fireIdle) glow(sx+4,sy+5,15,[255,150,60],0.12);
     else if (wk.linger>0 && !moving) glow(sx+4,sy+5,15,[255,150,60],0.09);
-    blobShadow(sx+4,sy+9,5,0.30);
-    ctx.fillStyle="#2a2028"; ctx.fillRect(sx+3,sy+6+bob,2,3);
-    ctx.fillStyle=wk.col; ctx.fillRect(sx+2,sy+2+bob,4,4);
-    ctx.fillStyle="#d9c9a8"; ctx.fillRect(sx+3,sy+bob,2,2);
+    blobShadow(sx+4,sy+9,7,0.30);
+    sprP(townArtOf(wk), townMap(wk.col, wk.sentinel? "#b9b2a8":undefined), sx, sy+bob);
     if (!game.ui.mode && !game.combat) hit((sx-4)*camZ,(sy-8)*camZ,(T+8)*camZ,(T+12)*camZ,()=>{
       if (game.state!=="base" || game.ui.mode) return;
       const dd=Math.abs(game.base.px-wk.x)+Math.abs(game.base.py-wk.y);
@@ -708,14 +706,16 @@ function drawStranger(camX,camY){
   const st=game.flags && game.flags.stranger;
   if (!st) return;
   const sx=(st.x-camX)*T, sy=(st.y-camY)*T;
-  if (sx<-8||sy<-8||sx>Wz+8||sy>Hz+8) return;
+  if (sx<-16||sy<-20||sx>Wz+16||sy>Hz+18) return;
   const gl=ctx.createRadialGradient(sx+4,sy+5,1,sx+4,sy+5,14);
   gl.addColorStop(0,"rgba(160,150,170,0.10)"); gl.addColorStop(1,"rgba(160,150,170,0)");
   ctx.fillStyle=gl; ctx.beginPath(); ctx.ellipse(sx+4,sy+5,14,14,0,0,6.283); ctx.fill();
-  blobShadow(sx+4,sy+9,5,0.35);
-  ctx.fillStyle="#35313e"; ctx.fillRect(sx+2,sy+2,4,4);
-  ctx.fillStyle="#232028"; ctx.fillRect(sx+3,sy+6,2,3);
-  ctx.fillStyle="#b9b2c2"; ctx.fillRect(sx+3,sy,2,2);
+  blobShadow(sx+4,sy+9,7,0.35);
+  const ST_HEAD=TOWN_WORKER.map((row,i)=> i<6 && row.indexOf("H")>=0
+    ? ("."+row.slice(0,11)) : row);
+  sprP(ST_HEAD, { H:"#b9b2c2", h:"#9a92a4", e:"#232028", f:"#57515f",
+    c:"#35313e", C:"#282430", l:"#464152", s:"#4a4552",
+    p:"#2c2833", b:"#232028" }, sx, sy);
   if (!game.ui.mode && !game.combat) hit((sx-4)*camZ,(sy-8)*camZ,(T+8)*camZ,(T+12)*camZ,()=>{
     if (game.state!=="base" || game.ui.mode) return;
     const dist=Math.abs(game.base.px-st.x)+Math.abs(game.base.py-st.y);
@@ -1139,6 +1139,7 @@ function tryBaseMove(dx,dy){
   const nx=b.px+dx, ny=b.py+dy;
   if (citySolid(nx,ny)) return;
   b.px=nx; b.py=ny;
+  heroFace = dy>0?"dn":dy<0?"up":dx>0?"rt":"lf";
 }
 /* other adventurers try to rob you when you look worth it */
 function maybeMugged(){
@@ -1901,6 +1902,7 @@ function tryHomeMove(dx,dy){
   const nx=hm.px+dx, ny=hm.py+dy;
   if (homeSolid(nx,ny)) return;
   hm.px=nx; hm.py=ny;
+  heroFace = dy>0?"dn":dy<0?"up":dx>0?"rt":"lf";
   if (homeTile(nx,ny)==="D") leaveHome();
 }
 function leaveHome(){
@@ -2020,6 +2022,7 @@ function updateCellar(){
       const st=walkPath.shift();
       if (cellarSolid(st[0],st[1])){ stopWalk(); }
       else {
+        heroFace = st[1]>cm.py?"dn":st[1]<cm.py?"up":st[0]>cm.px?"rt":"lf";
         cm.px=st[0]; cm.py=st[1];
         if (cellarTile(st[0],st[1])==="S"){ leaveCellar(); return; }
         if (!walkPath.length && walkCb){ const cb=walkCb; walkCb=null; cb(); }
@@ -2044,6 +2047,7 @@ function tryCellarMove(dx,dy){
   const nx=cm.px+dx, ny=cm.py+dy;
   if (cellarSolid(nx,ny)) return;
   cm.px=nx; cm.py=ny;
+  heroFace = dy>0?"dn":dy<0?"up":dx>0?"rt":"lf";
   if (cellarTile(nx,ny)==="S") leaveCellar();
 }
 function cellarWalkTo(tx,ty,cb){
@@ -2066,6 +2070,7 @@ function updateHome(){
       const st=walkPath.shift();
       if (homeSolid(st[0],st[1])){ stopWalk(); }
       else {
+        heroFace = st[1]>hm.py?"dn":st[1]<hm.py?"up":st[0]>hm.px?"rt":"lf";
         hm.px=st[0]; hm.py=st[1];
         if (homeTile(st[0],st[1])==="D"){ leaveHome(); return; }
         if (!walkPath.length && walkCb){ const cb=walkCb; walkCb=null; cb(); }
@@ -2501,6 +2506,7 @@ function tryMove(dx,dy){
   if (tileAt(nx,ny)==="#") return;
   d.lastDx=dx; d.lastDy=dy;
   d.px=nx; d.py=ny; d.steps++;
+  heroFace = dy>0?"dn":dy<0?"up":dx>0?"rt":"lf";
   markSeen();
   const p=game.player;
   drainStam(0.12);
@@ -4661,13 +4667,193 @@ function spr(art, map, x, y){
     ctx.fillRect(x+c, y+r, 1, 1);
   }
 }
-const HERO_DN=["..ffff..",".fHHHHf.",".fHkkHf.",".fHkkHf.","..cccc..","c.cccc.c","..c..c..","..b..b.."];
-const HERO_SD=["..ffff..",".fHHHH..",".fHkkH..",".fkHHH..","..cccc..","..cccc.c","..c.cc..","..b..b.."];
-const HERO_MAP={ f:PAL.cloth||"#3a4d5c", H:PAL.skin, k:PAL.ink, c:"#2c2530", b:PAL.rust };
-function drawHero(x,y,side){ blobShadow(x+4,y+7,7,0.34); spr(side? HERO_SD:HERO_DN, HERO_MAP, x, y); }
-function drawNPC(x,y,col){ blobShadow(x+4,y+7,6,0.30);
-  const art=["..ffff..",".fHHHHf.",".fHkkHf.",".fHkkHf.","..cccc..","..cccc..","..c..c..","..b..b.."];
-  spr(art, { f:col, H:PAL.skin, k:PAL.ink, c:"#2c2530", b:PAL.ink }, x, y);
+/* ----- CE1-style humanoid sprites: hand-authored string arts, dark outer
+   outline added by the renderer, big heads, few-tone garments, signature gear.
+   Feet anchor on the tile's bottom row; the outline spills one px around. ----- */
+function shadeHex(hex,f){
+  const n=parseInt(hex.slice(1),16);
+  const r=Math.min(255,Math.round(((n>>16)&255)*f)), g=Math.min(255,Math.round(((n>>8)&255)*f)), bl=Math.min(255,Math.round((n&255)*f));
+  return "#"+((r<<16)|(g<<8)|bl).toString(16).padStart(6,"0");
+}
+const SPRO_OUT="#15101b";
+function sprO(art, map, x, y, scale, flip){
+  const s=scale||1, w=art[0].length, h=art.length;
+  const filled=(r,c)=>{ if(r<0||r>=h||c<0||c>=w) return false; const ch=art[r][c]; return ch!=="."&&ch!==" "; };
+  for (let r=-1;r<=h;r++) for (let c=-1;c<=w;c++){
+    if (filled(r,c)) continue;
+    if (filled(r-1,c)||filled(r+1,c)||filled(r,c-1)||filled(r,c+1)){
+      ctx.fillStyle=SPRO_OUT; ctx.fillRect(x+c*s, y+r*s, s, s);
+    }
+  }
+  for (let r=0;r<h;r++) for (let c=0;c<w;c++){
+    const ch0=art[r][c];
+    if (ch0==="."||ch0===" ") continue;
+    const ch=flip? art[r][w-1-c] : ch0;
+    ctx.fillStyle=map[ch]||PAL.bone;
+    ctx.fillRect(x+c*s, y+r*s, s, s);
+  }
+}
+/* draw an anchored person: 12-wide art, feet on the tile bottom row */
+function sprP(art, map, x, y, scale, flip){ sprO(art, map, x-2, y+8-art.length, scale||1, flip); }
+
+const HERO_DN_A=[
+"....ffff....",
+"...fFFff....",
+"...ffff.....",
+"..ffffffff..",
+"...HHHHHH...",
+"...HeHHeH...",
+"...HHHHHH...",
+"....hkkh....",
+"..cccccccc..",
+"..cclccccc..",
+"..cCcccCk...",
+"..cCcCcCL...",
+"...pp..pp...",
+"...pp..pp...",
+"...bb..bb..."];
+const HERO_DN_B=HERO_DN_A.slice(0,12).concat(["..pp...pp...","..pp...pp...",".bb.....bb.."]);
+const HERO_UP_A=[
+"....ffff....",
+"...fFFff....",
+"...ffff.....",
+"..ffffffff..",
+"...ffffff...",
+"...ffffff...",
+"...hffffh...",
+"....hhhh....",
+"..cccccccc..",
+"..QPPPPPPQ..",
+"..QPPPPPPQ..",
+"..QpPPPPpQ..",
+"...pp..pp...",
+"...pp..pp...",
+"...bb..bb..."];
+const HERO_UP_B=HERO_UP_A.slice(0,12).concat(["..pp...pp...","..pp...pp...",".bb.....bb.."]);
+const HERO_SIDE_A=[
+"....ffff....",
+"...fFFff....",
+"...ffff.....",
+"..ffffffff..",
+"...ffffHH...",
+"...fffHeH...",
+"...hffHHH...",
+"....hffh....",
+"..Pcccccc...",
+"..Qcccccc...",
+"..QPcccCk...",
+"..QPccCcL...",
+"...pp.pp....",
+"...pp.pp....",
+"...bb.bb...."];
+const HERO_SIDE_B=HERO_SIDE_A.slice(0,12).concat(["..pp.pp.....",".pp...pp....",".bb...bb...."]);
+const HERO_SET={ dn:[HERO_DN_A,HERO_DN_B], up:[HERO_UP_A,HERO_UP_B], sd:[HERO_SIDE_A,HERO_SIDE_B] };
+const HERO_MAP={ H:"#b98a6f", h:"#96684f", e:"#1d141c", k:"#1d141c",
+  f:"#3d3028", F:"#57483a", c:"#6b4530", C:"#4d3222", l:"#835c40", s:"#8a6f4e",
+  p:"#463a52", b:"#241c22", P:"#5a4030", Q:"#7a5a38", g:"#9a948a", w:"#6b4a2a", L:"#e0b95a" };
+let heroFace="dn";
+function drawHero(x,y){
+  const moving=walkPath && walkPath.length>0;
+  const fr=moving && (worldTick%24<12)?1:0;
+  let art=HERO_SET.dn[fr], flip=false;
+  if (heroFace==="up") art=HERO_SET.up[fr];
+  else if (heroFace==="lf"){ art=HERO_SET.sd[fr]; flip=true; }
+  else if (heroFace==="rt") art=HERO_SET.sd[fr];
+  blobShadow(x+4,y+7,8,0.34);
+  sprP(art, HERO_MAP, x, y, 1, flip);
+}
+/* townfolk arts: worker (flat cap, rolled sleeves), shawl-woman (long dress),
+   elder (bald fringe, long coat, cane); keeper adds an apron */
+const TOWN_HABLE={ H:"#c29a7d", h:"#96684f", e:"#1a1218", k:"#1a1218",
+  p:"#3a3244", b:"#241c22", g:"#9a948a", w:"#6b4a2a", r:"#8a2f3d", L:"#e0b95a" };
+const TOWN_WORKER=[
+"....cccc....",
+"...ccccc....",
+"...HHHHHH...",
+"...HeHHeH...",
+"...HHHHHH...",
+"....hhhh....",
+"..cccccccc..",
+"..cccccccc..",
+"..HcCccCcH..",
+"..HcCccccH..",
+"...pp..pp...",
+"...pp..pp...",
+"...bb..bb..."];
+const TOWN_WOMAN=[
+"....ffff....",
+"...fffff....",
+"..ffffffff..",
+"..fHHHHHHf..",
+"...HeHHeH...",
+"...HHHHHH...",
+"....hhhh....",
+"..cccccccc..",
+"..cCccccCc..",
+"..cCccccCc..",
+"..cCccccCc..",
+"..cCCCCCC...",
+"..CCCCCCCC..",
+".CCC....CCC."];
+const TOWN_ELDER=[
+"....hhhh....",
+"...hFFFFh...",
+"...HHHHHH...",
+"...HeHHeH...",
+"...HHHHHH...",
+"....hhhh....",
+"..cccccccc..",
+"..cCccccCc..",
+"..cCccccCc..",
+"..cCccccCw..",
+"..cCccccCc..",
+"..cCcccc.w..",
+"...pp..pp...",
+"...bb..bb..."];
+const TOWN_KEEPER=[
+"....ffff....",
+"...fFFff....",
+"...HHHHHH...",
+"...HeHHeH...",
+"...HHHHHH...",
+"....hhhh....",
+"..cccccccc..",
+"..ccsssscc..",
+"..HcssssCH..",
+"..HcssssCH..",
+"..ccsssscc..",
+"...pp..pp...",
+"...bb..bb..."];
+const FOE_ART=[
+"....rrrr....",
+"...rrrrr....",
+"...rrrrrk...",
+"...HHHHHH...",
+"...HehHeh...",
+"...HHHHHH...",
+"....hhhh....",
+"..cccccccc..",
+"..cCccccCc..",
+"..cCccccCg..",
+"..hCcccc.w..",
+"..cccccc.w..",
+"...pp.pp....",
+"...bb.bb...."];
+function townMap(col,hair){
+  return Object.assign({}, TOWN_HABLE, {
+    c:col, C:shadeHex(col,0.74), l:shadeHex(col,1.28),
+    f:hair||shadeHex(col,0.78), F:hair||shadeHex(col,1.18), s:"#cfc0a2"
+  });
+}
+function townArtOf(wk){
+  if (wk.sentinel || wk.occ==="gate-sentinel") return TOWN_KEEPER;
+  let h=0; const nm=String(wk.name||"?");
+  for (let i=0;i<nm.length;i++) h=(h*31+nm.charCodeAt(i))>>>0;
+  return [TOWN_WORKER,TOWN_WOMAN,TOWN_ELDER][h%3];
+}
+function drawNPC(x,y,col){
+  blobShadow(x+4,y+7,7,0.30);
+  sprP(TOWN_KEEPER, townMap(col), x, y);
 }
 /* abomination generator - every horror looks different, seeded */
 function drawAbomination(cx,cy,seed,scale){
@@ -4717,9 +4903,13 @@ function drawAbomination(cx,cy,seed,scale){
     for (let i2=-3;i2<=3;i2++) ctx.fillRect(cx+i2*2, cy-2-(3-Math.abs(i2)), 1, 2);
   }
 }
-function drawHumanFoe(x,y){
-  const art=["..ffff..",".fHHHHf.",".fHrrHf.",".fHkkHf.","..cccc..","c.cccc..","..c..c..","..b..b.."];
-  spr(art, { f:"#3a3f4c", H:PAL.skin, k:PAL.ink, r:PAL.bloodHi, c:"#2c2530", b:PAL.ink }, x, y);
+const FOE_MAP={ H:PAL.skin, h:"#96684f", e:"#1d141c", k:"#1d141c",
+  r:"#a33b3b", c:"#5c4a38", C:"#443626", l:"#735c44",
+  p:"#3a3244", b:"#241c22", g:"#9a948a", w:"#6b4a2a" };
+function drawHumanFoe(x,yf,scale){
+  const k=scale||1;
+  blobShadow(x,yf,10*k,0.4);
+  sprP(FOE_ART, FOE_MAP, x, yf-8+k*8, k);
 }
 
 /* ----- base render ----- */
@@ -5694,7 +5884,7 @@ function renderCombat(){
   if (!game.dungeon) drawHeartVignette();
   if (c.intro>0){
     ctx.fillStyle="rgba(4,2,8,0.88)"; ctx.fillRect(0,0,W,H);
-    if (e.human){ blobShadow(124,35,10,0.4); drawHumanFoe(120,26); }
+    if (e.human){ drawHumanFoe(124,35,2); }
     else { blobShadow(160,59,42,0.45); drawAbomination(160,20,e.artSeed,2.1); }
     txt("- SOMETHING NEW -",112,100,"#c99df5");
     box(0,110,320,50,"rgba(8,6,10,0.88)");
@@ -5709,7 +5899,7 @@ function renderCombat(){
   }
   box(90,8,140,88,"rgba(6,4,9,0.9)",PAL.rust);
   ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
-  if (e.human){ blobShadow(160,45,10,0.4); drawHumanFoe(156,36); }
+  if (e.human){ drawHumanFoe(160,45,2); }
   else { blobShadow(160,52,36,0.42); drawAbomination(160,22,e.artSeed,1.7); }
   txtFit(e.n,95,80,PAL.bloodHi,132);
   const known=foeKnown(e.n);
@@ -5879,6 +6069,7 @@ function updateBase(){
       const st=walkPath.shift();
       if (citySolid(st[0],st[1])){ stopWalk(); }
       else {
+        heroFace = st[1]>game.base.py?"dn":st[1]<game.base.py?"up":st[0]>game.base.px?"rt":"lf";
         game.base.px=st[0]; game.base.py=st[1];
         if (!walkPath.length && walkCb){ const cb=walkCb; walkCb=null; cb(); }
       }
