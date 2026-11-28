@@ -3629,12 +3629,15 @@ let floats=[], shakeT=0, bannerMsg=null, bannerT=0, gDice=null, drips=[];
 let sparks=[], flashCol=null, flashT=0;
 let sndOn=true, AC=null;
 let critPulse=0, droneNodes=[], droneLPs=[], droneOpen=null, droneDepth=0, rainNodes=null;
-/* ----- tavern music: a thin fiddle somewhere behind the smoke, A-minor over a
-   descending lament bass; scheduled off frames while the Flayed Lamp holds you ----- */
+/* ----- tavern music: a slow shanty, a thin fiddle somewhere behind the smoke -
+   four breathing phrases in A minor with held notes and rests between them,
+   over the descending lament bass (A2-G2-F2-E2); scheduled off frames while
+   the Flayed Lamp holds you ----- */
 let tavMus={ wish:false, t:0, notes:0 };
-const TAV_MEL=[220,0,262,330, 294,0,262,220, 196,0,220,262, 220,0,0,0,
-               220,0,262,330, 392,0,330,294, 440,0,392,330, 294,0,262,0];
+const TAV_MEL=[330,0,0,294, 262,0,220,0,  262,0,0,294, 330,0,294,0,
+               262,0,0,220, 196,0,220,0,  294,0,330,0, 392,0,330,0];
 const TAV_BASS=[110,98,87.3,82.4];
+const TAV_STEP=15; /* frames per step: ~250ms - a slow shanty, not a jig */
 function ac(){
   if (!AC){ try { AC = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){ AC=null; } }
   if (AC && AC.state==="suspended"){ try { AC.resume(); } catch(e){} }
@@ -3902,11 +3905,11 @@ function updateAmbience(){
 }
 function updateTavernMusic(){
   tavMus.t++;
-  if (tavMus.t%9!==0) return;
-  const st=(tavMus.t/9|0)%TAV_MEL.length;
+  if (tavMus.t%TAV_STEP!==0) return;
+  const st=(tavMus.t/TAV_STEP|0)%TAV_MEL.length;
   const m=TAV_MEL[st];
-  if (m){ beep(m, 0.16, "triangle", 0.022); tavMus.notes++; }
-  if (st%8===0){ beep(TAV_BASS[st/8|0], 0.34, "triangle", 0.028); tavMus.notes++; }
+  if (m){ beep(m, 0.55, "triangle", 0.020); tavMus.notes++; }
+  if (st%8===0){ beep(TAV_BASS[st/8|0], 0.90, "triangle", 0.026); tavMus.notes++; }
 }
 function voiceSfx(who){
   if (!sndOn) return;

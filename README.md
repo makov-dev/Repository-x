@@ -843,8 +843,9 @@ carried for weeks suddenly keeps the reach it always promised.
   killed landlord is done.
 - **Torches in the delve rooms start dark**, one beside an exit of each
   room. Step on one to light it; light marks the room on your map.
-- The Flayed Lamp keeps **tavern music**: a thin A-minor fiddle loop over
-  a descending lament bass, quiet under the rain, on while you are in the
+- The Flayed Lamp keeps **tavern music**: a slow A-minor shanty - a thin
+  fiddle playing sparse, held notes in four breathing phrases over a
+  descending lament bass - quiet under the rain, on while you are in the
   room, off when you leave, delve, or mute.
 - Aging: no time limits, but years pass as you train, delve, and rest;
   max HP declines past 40. Jericho keeps the receipts.

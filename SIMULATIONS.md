@@ -1513,19 +1513,25 @@ Lamp holds you:
   leaves the base state (delve, combat); it survives the submenus (the
   room tonight, court, spouse scenes) because those stay inside the
   wish.
-- `updateTavernMusic` schedules off frames in `updateAmbience`: a 32-step
-  A-minor melody (with composed rests) on triangle at 0.022 over a
-  descending lament bass (A2-G2-F2-E2, one note every 8 steps at 0.028)
-  - quiet enough to sit under the rain and the room's own voice beeps.
-  The step counter persists across visits - the fiddle keeps playing
-  between your visits, it just wasn't audible.
+- `updateTavernMusic` schedules off frames in `updateAmbience`: a SLOW
+  SHANTY - 32 steps at 15 frames each (~250ms per step, 8s per loop), a
+  16-note A-minor melody in four breathing phrases (sparse rests between
+  held notes; notes sustain 0.55s so phrases swell like a bowed fiddle)
+  at 0.020 over the descending lament bass (A2-G2-F2-E2, one note every
+  8 steps, 0.90s at 0.026) - quiet enough to sit under the rain and the
+  room's own voice beeps. (First cut was a brisk 9-frame jig; the user
+  asked for "a bit more slower more like a slow shanty such as
+  NorthUmbria" and the loop was recomposed: same key and bass, half the
+  note density, tripled note lengths.) The step counter persists across
+  visits - the fiddle keeps playing between your visits, it just wasn't
+  audible.
 - Mute is honored by `updateAmbience`'s existing sndOn gate; the wish
   survives the mute so unmuming brings the fiddle back mid-visit.
 
-**Verification (musrig.js, 10/10).** Walking in starts the music; notes
-flow while inside; the step is EXACT - 90 frames from a known phase
-yield precisely the notes the composed table says (rests honored, bass
-every 8th step); the music keeps playing in the "Who is here tonight?"
+**Verification (musrig.js, 10/10, recomposed expectations).** Walking in
+starts the music; notes flow while inside; the step is EXACT - 90 frames
+from a known phase yield precisely the notes the composed table says
+(rests honored, bass only where the phrase puts it); the music keeps playing in the "Who is here tonight?"
 submenu; Leave closes the menu, stills the wish, and 60 frames spend no
 notes; a muted room spends no notes while the wish lives, and unmuting
 lets the fiddle back in; re-entering starts it again; and `launchDelve`
