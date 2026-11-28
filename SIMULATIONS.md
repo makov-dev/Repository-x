@@ -1144,3 +1144,27 @@ under-layer, flee mods, both Yes-Plate paths, old-save normGear) — one
 observed flake family: the 28% stagger roll is `Math.random()`-driven and
 the loop detector now reads the combat log, so it is deterministic; the
 resolver's randomness remains rig-side, as recorded in the buildings round.
+
+## 32 — No stain before the door (the ground-shadow removal)
+
+**The ask.** "Remove the shadow radius from before the buildings — it doesn't
+look good."
+
+**The change.** `drawBuilding` opened with a soft dark ellipse pooled on the
+ground in front of every house — `blobShadow(sx+w/2, sy+h+1.5, w*0.92, 0.30)`,
+a left-over of the pre-overhaul anatomy. With the new CE1 look the buildings
+already sit on dark coursed stone footings, so the ellipse read as a stain on
+the cobbles rather than depth. The call is removed; nothing else in the
+function moves. The small object-grounded shadows (lampposts, meal carts,
+people) stay — those read as contact shadows, not puddles.
+
+**Verification.** Seeded-RNG before/after diff (`Math.random` re-seeded with
+the same mulberry32 state in both engines, so townfolk, props and lit
+windows render identically): exactly 24,659 pixels changed across the whole
+960x540 frame, all inside the old ellipse's zone (canvas units x 43.8-132 —
+the tavern's center ± w*0.92 exactly), every one of them *lighter* after the
+removal (mean luminance +54). No other pixel in the frame differs — no
+side effects on footing, plaques, people, or props. (A first probe pass read
+inconclusive because wandering townfolk contaminated the sample band; the
+seeded diff replaces eyeballed samples.) Full battery re-run green: smoke
+16/0, facing 11/0, gear 17/0, plaque probes all pass.

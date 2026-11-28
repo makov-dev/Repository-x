@@ -5155,7 +5155,8 @@ function drawGatehouse(sx,sy,w,h){
 }
 function drawBuilding(bl, sx, sy){
   const w=bl.w*T, h=bl.h*T;
-  blobShadow(sx+w/2, sy+h+1.5, w*0.92, 0.30);
+  /* no painted ground shadow: the stone footing reads as the base; a soft
+     ellipse pooled in front of every house read as a stain */
   const rnd=mulberry(bl.x*131+bl.y*17);
   ctx.font="bold 9px 'Courier New',monospace"; ctx.textBaseline="top";
   const tw=ctx.measureText(bl.label).width;

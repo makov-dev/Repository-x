@@ -20,7 +20,8 @@ devices the game auto-enters fullscreen when you begin (the **FS** chip in the
 top-right corner toggles it manually). City buildings are drawn as pixel-art
 façades: lit windows, doors, striped awnings, guild banners, the tavern's
 swinging lantern, chimney smoke, and the arched Gate of Openings. It keeps its
-own **shadow and light**: every building drops a soft shadow, **lampposts**
+own **shadow and light**: buildings stand clean on their stone footings with
+no painted ground shadow, **lampposts**
 stand at the road's edge - dark iron posts with a small glass lantern hanging
 under a crossarm, its flame flickering — and their light pool visibly brightens
 the street tiles around them, pushing the dark back in a warm radius; windows
@@ -151,8 +152,10 @@ cold blue-black night and out again. Night is **deep** — the tint goes well
 past halfway — and the town answers it: **house windows light up one by one
 as the dark falls** (yellow panes with a soft glow, more of them lit the
 darker it gets, most going cold again by dawn). **There is no shadow over
-a light** — the drifting cloud-shadow pass is gone for good, the lamp
-posts are set where no building's cast shadow can reach them (and lamp
+a light** — the drifting cloud-shadow pass is gone for good, buildings cast
+no painted ground shadow at all (the soft ellipse that used to pool in front
+of every house read as a stain and was removed), the lamp
+posts were set where no building's cast shadow could reach them (and lamp
 light is painted over shade regardless), so nothing in this city dims
 a lamp it does not own. Lamp posts and cooking fires spread
 **wider pools of warm light** at night; your hero carries a small
@@ -192,8 +195,7 @@ touch off-true (his patches grey too). The abominations stay procedurally wrong 
 nothing in the deep should have a silhouette this honest.
 
 **The streets are inhabited.** Lamp posts stand **beside the roadways** —
-never on the cobbles, never in a building's cast shadow (checked against the
-exact painted geometry, not an eyeball) — and never on a cooking fire's or a
+never on the cobbles, never on a cooking fire's or a
 stall's tile. Braziers gather **idle folk**: shiftless regulars warm their
 hands at the fires, shuffling a step now and then, and they'll talk if you
 walk over. **Barrels, crates and stacked crates** lean against the walls
