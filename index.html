@@ -550,7 +550,8 @@ function fireIdlers(){
       age0:34+irnd(40), born:game.week, x:tgt[0], y:tgt[1], path:null, i:0,
       t:120+irnd(200), lastW:game.week, col:pick(WALK_COLS),
       homeId:null, workId:null, atId:null, toId:"fire", inside:0,
-      lingering:false, linger:0, fireIdle:true });
+      lingering:false, linger:0, fireIdle:true, face:"dn" });
+      faceFire(game.townfolk[game.townfolk.length-1]);
   }
 }
 function spawnTownfolk(){
@@ -578,7 +579,16 @@ function spawnTownfolk(){
     age0:17+irnd(48), born:game.week, x:from[0], y:from[1], path:path, i:0,
     t:26+irnd(20), lastW:game.week, col:pick(WALK_COLS),
     homeId:home?home.id:null, workId:work?work.id:null, atId:atB?atB.id:null, toId:toId, inside:0,
-    lingering:lingering, linger:0 });
+    lingering:lingering, linger:0, face:"dn" });
+}
+function tfFace(wk,ox,oy){ if (ox>0) wk.face="rt"; else if (ox<0) wk.face="lf"; else if (oy>0) wk.face="dn"; else if (oy<0) wk.face="up"; }
+/* a body stopped by a fire turns to face it (fires are door braziers; the
+   nearest one within two paces wins) */
+function faceFire(wk){
+  if (!FIRE_SPOTS || !FIRE_SPOTS.length) return;
+  let best=null, bd=1e9;
+  for (const fs of FIRE_SPOTS){ const d=Math.abs(fs[0]-wk.x)+Math.abs(fs[1]-wk.y); if (d<bd){ bd=d; best=fs; } }
+  if (best && bd<=2) tfFace(wk,best[0]-wk.x,best[1]-wk.y);
 }
 function townAge(wk){ return Math.floor(wk.age0+(game.week-wk.born)/52); }
 function updTownfolk(){
@@ -596,8 +606,8 @@ function updTownfolk(){
         wk.t=240+irnd(320);
         const near=[[wk.x+1,wk.y],[wk.x-1,wk.y],[wk.x,wk.y+1],[wk.x,wk.y-1]]
           .filter(cc=>cc[0]>=1&&cc[1]>=1&&cc[0]<CW-1&&cc[1]<CH-1&&!citySolid(cc[0],cc[1]));
-        if (near.length && Math.random()<0.8){ const cc=near[irnd(near.length)]; wk.x=cc[0]; wk.y=cc[1]; }
-        else if (Math.random()<0.5){ const tgt=fireSpotTarget(FIRE_SPOTS[irnd(FIRE_SPOTS.length)]); if (tgt){ wk.x=tgt[0]; wk.y=tgt[1]; } }
+        if (near.length && Math.random()<0.8){ const cc=near[irnd(near.length)]; tfFace(wk,cc[0]-wk.x,cc[1]-wk.y); wk.x=cc[0]; wk.y=cc[1]; }
+        else if (Math.random()<0.5){ const fs2=FIRE_SPOTS[irnd(FIRE_SPOTS.length)]; const tgt=fireSpotTarget(fs2); if (tgt){ tfFace(wk,tgt[0]-wk.x,tgt[1]-wk.y); wk.x=tgt[0]; wk.y=tgt[1]; tfFace(wk,fs2[0]-tgt[0],fs2[1]-tgt[1]); } }
       }
       continue;
     }
@@ -618,6 +628,7 @@ function updTownfolk(){
         if (!game.doorTiles || !game.doorTiles.length) game.doorTiles=computeDoorTiles();
         const at=BUILDINGS.find(bb=>bb.id===wk.atId);
         const fr=(at && bldDoor(at)) || game.doorTiles[irnd(game.doorTiles.length)];
+        tfFace(wk,fr[0]-wk.x,fr[1]-wk.y);
         wk.x=fr[0]; wk.y=fr[1];
         const nid= wk.atId===wk.homeId? wk.workId : wk.homeId;
         const nb=BUILDINGS.find(bb=>bb.id===nid);
@@ -657,11 +668,13 @@ function updTownfolk(){
     wk.t=26+irnd(20);
     if (wk.path && wk.i<wk.path.length){
       const st=wk.path[wk.i];
+      tfFace(wk,st[0]-wk.x,st[1]-wk.y);
       wk.x=st[0]; wk.y=st[1]; wk.i++;
     } else if (wk.lingering){
       wk.lingering=false;
       wk.linger=200+irnd(280);
       wk.path=null;
+      if (wk.toId==="fire") faceFire(wk);
     } else {
       game.flags.lastArrived=wk.name;
       if (wk.toId) wk.atId=wk.toId;
@@ -704,6 +717,7 @@ function drawTownfolk(camX,camY){
     else if (wk.linger>0 && !moving) glow(sx+4,sy+5,15,[255,150,60],0.09);
     blobShadow(sx+4,sy+9,7,0.30);
     sprP(townArtOf(wk), townMap(wk.col, wk.sentinel? "#b9b2a8":undefined), sx, sy+bob);
+    if (FIG_DRAWNS && FIG_DRAWNS.length) FIG_DRAWNS[FIG_DRAWNS.length-1].face=wk.face||"dn";
     if (!game.ui.mode && !game.combat) hit((sx-4)*camZ,(sy-8)*camZ,(T+8)*camZ,(T+12)*camZ,()=>{
       if (game.state!=="base" || game.ui.mode) return;
       const dd=Math.abs(game.base.px-wk.x)+Math.abs(game.base.py-wk.y);
@@ -729,6 +743,7 @@ function drawStranger(camX,camY){
   sprP(ST_HEAD, { H:"#b9b2c2", h:"#9a92a4", e:"#232028", f:"#57515f",
     c:"#35313e", C:"#282430", l:"#464152", s:"#4a4552", w:"#45404e",
     p:"#2c2833", b:"#232028" }, sx, sy);
+  if (FIG_DRAWNS && FIG_DRAWNS.length) FIG_DRAWNS[FIG_DRAWNS.length-1].face="dn";
   if (!game.ui.mode && !game.combat) hit((sx-4)*camZ,(sy-8)*camZ,(T+8)*camZ,(T+12)*camZ,()=>{
     if (game.state!=="base" || game.ui.mode) return;
     const dist=Math.abs(game.base.px-st.x)+Math.abs(game.base.py-st.y);
@@ -4753,8 +4768,20 @@ function sprO(art, map, x, y, scale, flip){
     ctx.fillRect(x+c*s, y+r*s, s, s);
   }
 }
-/* draw an anchored person: 12-wide art, feet on the tile bottom row */
-function sprP(art, map, x, y, scale, flip){ sprO(art, map, x-2, y+8-art.length, scale||1, flip); }
+/* draw an anchored person: feet on the tile bottom row. Default scale is
+   2/3 - a person stands one tile wide, in proportion with doors and objects;
+   explicit scales (combat figures) keep the old full-size anchor, which the
+   combat positions are hand-tuned against. Person-scale figures are recorded
+   so the firelight pass can find them. */
+let FIG_DRAWNS=null, CAMX=0, CAMY=0;
+function sprP(art, map, x, y, scale, flip){
+  if (scale!==undefined && scale!==null){ sprO(art, map, x-2, y+8-art.length, scale, flip); return; }
+  const s=2/3, w=art[0].length;
+  const x0=x+(8-w*s)/2, y0=y+8-art.length*s;
+  sprO(art, map, x0, y0, s, flip);
+  if (FIG_DRAWNS) FIG_DRAWNS.push({art:art, map:map, x0:x0, y0:y0, s:s, flip:!!flip,
+    tx:CAMX+Math.round((x0+w*s/2)/T-0.5), ty:CAMY+Math.round((y0+art.length*s)/T)-1 });
+}
 
 const HERO_DN_A=[
 "....mmmm....",
@@ -4823,7 +4850,8 @@ function drawHero(x,y){
   else if (heroFace==="lf"){ art=HERO_SET.sd[fr]; flip=true; }
   else if (heroFace==="rt") art=HERO_SET.sd[fr];
   blobShadow(x+4,y+7,8,0.34);
-  sprP(art, HERO_MAP, x, y, 1, flip);
+  sprP(art, HERO_MAP, x, y, undefined, flip);
+  if (FIG_DRAWNS && FIG_DRAWNS.length) FIG_DRAWNS[FIG_DRAWNS.length-1].face=heroFace;
 }
 /* townfolk arts: worker (flat cap, rolled sleeves), shawl-woman (long dress),
    elder (bald fringe, long coat, cane); keeper adds an apron */
@@ -5209,11 +5237,13 @@ function drawBuilding(bl, sx, sy){
     }
   }
   /* ---- windows: framed, cross-mullioned, sill; lit follows the dark ---- */
+  const dxc=sx+Math.floor(w/2)-2;
   const cols=Math.max(1,Math.floor((w-12)/14));
   const rows=Math.max(1,Math.floor((h-20)/15));
   for (let r=0;r<rows;r++) for (let c=0;c<cols;c++){
     const wx0=sx+7+c*14, wy0=sy+15+r*15;
     if (wx0+5>sx+w-5 || wy0+7>sy+h-9) continue;
+    if (wx0-1<dxc+9 && wx0+5>dxc-3 && wy0+8>sy+h-20) continue; /* the wall over the door belongs to the door and its plaque */
     const lit=rnd()<(0.30+0.52*dayDark());
     ctx.fillStyle="rgba(0,0,0,0.55)"; ctx.fillRect(wx0-1,wy0-1,6,8);
     ctx.fillStyle= lit? "#d8a93f" : "#120d15";
@@ -5225,15 +5255,15 @@ function drawBuilding(bl, sx, sy){
     ctx.fillStyle="rgba(255,255,255,0.09)"; ctx.fillRect(wx0-2,wy0+7,8,1);
   }
   glow(sx+w/2, sy+15, w*0.85, [255,172,64], 0.085);
-  /* ---- door: banded planks under a lintel beam on a step ---- */
-  const dxc=sx+Math.floor(w/2)-2;
-  ctx.fillStyle="rgba(0,0,0,0.45)"; ctx.fillRect(dxc-2,sy+h-10,11,2);
-  ctx.fillStyle="#100a10"; ctx.fillRect(dxc-1,sy+h-8,9,8);
+  /* ---- door: a proper doorway now, taller than the people at the door:
+     banded planks under a lintel beam on a step ---- */
+  ctx.fillStyle="rgba(0,0,0,0.45)"; ctx.fillRect(dxc-3,sy+h-13,13,2);
+  ctx.fillStyle="#100a10"; ctx.fillRect(dxc-2,sy+h-11,11,11);
   ctx.fillStyle= bl.home? "#4e3520" : "#2f221a";
-  ctx.fillRect(dxc,sy+h-7,7,7);
-  ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.fillRect(dxc+2,sy+h-7,1,7); ctx.fillRect(dxc+5,sy+h-7,1,7);
-  ctx.fillStyle="#3a3f48"; ctx.fillRect(dxc,sy+h-6,7,1); ctx.fillRect(dxc,sy+h-3,7,1);
-  ctx.fillStyle="#c9a24a"; ctx.fillRect(dxc+4,sy+h-4,1,1);
+  ctx.fillRect(dxc-1,sy+h-10,9,10);
+  ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.fillRect(dxc+2,sy+h-10,1,10); ctx.fillRect(dxc+5,sy+h-10,1,10);
+  ctx.fillStyle="#3a3f48"; ctx.fillRect(dxc-1,sy+h-9,9,1); ctx.fillRect(dxc-1,sy+h-4,9,1);
+  ctx.fillStyle="#c9a24a"; ctx.fillRect(dxc+6,sy+h-6,1,1);
   /* ---- hanging signs: every sign depicts the thing it names ---- */
   const signBoard=(bx,by,bw,bh)=>{
     ctx.fillStyle="#241c26"; ctx.fillRect(bx,by,bw,bh);
@@ -5275,14 +5305,14 @@ function drawBuilding(bl, sx, sy){
     ctx.fillStyle="#c9a24a"; ctx.fillRect(bx+1,by+1,1,1); ctx.fillRect(bx+bw-2,by+1,1,1);
   };
   if (bl.id==="tavern"){ /* the Flayed Lamp: its lamp, flayed of any shade, nailed over the door */
-    const bx=dxc-3, by=sy+h-18;
+    const bx=dxc-3, by=sy+h-20;
     wallPlaque(bx,by,12,7);
     ctx.fillStyle="#2e2628"; ctx.fillRect(bx+5,by+1,1,1);
     ctx.fillStyle=PAL.gold; ctx.fillRect(bx+4,by+2,3,3);
     ctx.fillStyle="#f7e08a"; ctx.fillRect(bx+5,by+3,1,1);
   }
   else if (bl.id==="market"){ /* the Grave-Market: the scales that weigh what you bring up */
-    const bx=dxc-3, by=sy+h-18;
+    const bx=dxc-3, by=sy+h-20;
     wallPlaque(bx,by,12,7);
     ctx.fillStyle="#c7bfae"; ctx.fillRect(bx+5,by+1,1,4); ctx.fillRect(bx+2,by+1,7,1);
     ctx.fillStyle=PAL.gold; ctx.fillRect(bx+1,by+3,3,1); ctx.fillRect(bx+7,by+3,3,1);
@@ -5423,6 +5453,7 @@ function drawBase(){
   if (!trashMap || !cityLight) computeCityProps();
   const b=game.base;
   const camX=clamp(b.px-Math.floor(VWz/2),0,CW-VWz), camY=clamp(b.py-Math.floor(VHz/2),0,CH-VHz);
+  CAMX=camX; CAMY=camY; FIG_DRAWNS=[];
   ctx.save(); ctx.scale(camZ,camZ);
   for (let y=0;y<VHz;y++){
     const wy=y+camY; if (wy>=CH) continue;
@@ -5916,6 +5947,69 @@ function grain(){
   for (let gx=ox; gx<W; gx+=97) for (let gy=oy; gy<H; gy+=59) ctx.drawImage(noiseTile,gx,gy);
   ctx.restore();
 }
+/* firelight is earned by attention: a figure wears a fire's light only if it
+   stands within a couple of paces AND faces the flames; turned away, the late
+   fire-glow is washed back off it (lamp-light is left untouched) */
+let FIRE_ERASE_OFF=false;
+function fireLight(px,py,face){
+  if (!FIRE_SPOTS || !FIRE_SPOTS.length) return null;
+  const fv= face==="up"? [0,-1] : face==="lf"? [-1,0] : face==="rt"? [1,0] : [0,1];
+  let best=null;
+  for (const fs of FIRE_SPOTS){
+    const dx=fs[0]-px, dy=fs[1]-py, d=Math.hypot(dx,dy);
+    if (d>3.5) continue;
+    const fdx= d<0.01? 0 : dx/d, fdy= d<0.01? 0 : dy/d;
+    const dot= d<0.01? 1 : (fv[0]*dx+fv[1]*dy)/d;
+    const cand={warmth:Math.max(0,1-d/2.5), facing:dot>0.25, fdx:fdx, fdy:fdy};
+    if (!best || cand.warmth>best.warmth) best=cand;
+  }
+  return best;
+}
+function fireRim(fig,fl){
+  const w=fig.art[0].length, h=fig.art.length, a0=0.08+0.22*fl.warmth;
+  for (let r=0;r<h;r++) for (let c=0;c<w;c++){
+    /* occupancy is the unflipped grid: sprO's flip remaps colours, not cells */
+    const ch=fig.art[r][c];
+    if (ch==="."||ch===" ") continue;
+    const ox=(c+0.5)*fig.s-w*fig.s/2, oy=(r+0.5)*fig.s-h*fig.s/2;
+    const od=Math.hypot(ox,oy)||1;
+    const a=a0*(0.55+0.45*Math.max(0,(ox*fl.fdx+oy*fl.fdy)/od));
+    ctx.fillStyle="rgba(255,150,60,"+a.toFixed(3)+")";
+    ctx.fillRect(Math.round((fig.x0+c*fig.s)*camZ), Math.round((fig.y0+r*fig.s)*camZ), Math.ceil(fig.s*camZ), Math.ceil(fig.s*camZ));
+  }
+}
+/* exact repair: subtract each late fire-glow's analytic contribution from the
+   figure's own pixels only (art cells + their ink outline); the ground's glow
+   and every lamp's wash stay exactly as painted */
+function eraseFireGlow(fig,glows){
+  const w=fig.art[0].length, h=fig.art.length, m=1;
+  const px0=Math.round((fig.x0-m*fig.s)*camZ*RES), py0=Math.round((fig.y0-m*fig.s)*camZ*RES);
+  const pw=Math.round((w+2*m)*fig.s*camZ*RES), ph2=Math.round((h+2*m)*fig.s*camZ*RES);
+  if (px0<0||py0<0||px0+pw>CVS.width||py0+ph2>CVS.height) return;
+  const filled=(r,c)=>{ if(r<0||r>=h||c<0||c>=w) return false; const ch=fig.art[r][c]; return ch!=="."&&ch!==" "; };
+  const img=ctx.getImageData(px0,py0,pw,ph2), d=img.data;
+  for (const g of glows){
+    const gcx=g.cx*RES, gcy=g.cy*RES, gr=g.r*RES;
+    if (gr<=RES) continue;
+    const a=g.base+0.035*Math.sin(worldTick/11+g.cx*0.7);
+    for (let yy=0;yy<ph2;yy++) for (let xx=0;xx<pw;xx++){
+      const rx=(px0+xx+0.5)/RES/camZ, ry=(py0+yy+0.5)/RES/camZ;
+      const cf=Math.floor((rx-fig.x0)/fig.s), rf=Math.floor((ry-fig.y0)/fig.s);
+      let on=filled(rf,cf);
+      if (!on && cf>=-1 && cf<=w && rf>=-1 && rf<=h)
+        on=!filled(rf,cf)&&(filled(rf-1,cf)||filled(rf+1,cf)||filled(rf,cf-1)||filled(rf,cf+1));
+      if (!on) continue;
+      const dist=Math.hypot(px0+xx+0.5-gcx, py0+yy+0.5-gcy);
+      if (dist>=gr) continue;
+      const f=a*Math.min(1,(gr-dist)/(gr-RES));
+      const i=(yy*pw+xx)*4;
+      d[i]=Math.max(0,d[i]-g.rgb[0]*f);
+      d[i+1]=Math.max(0,d[i+1]-g.rgb[1]*f);
+      d[i+2]=Math.max(0,d[i+2]-g.rgb[2]*f);
+    }
+  }
+  ctx.putImageData(img,px0,py0);
+}
 function drawAmbience(){
   const st=game && game.state;
   if (!st){ mainVignette(); grain(); return; }
@@ -5929,6 +6023,7 @@ function drawAmbience(){
     dark=clamp((o[3]-0.14)/(0.66-0.14),0,1);
   }
   const hp=steerHeroPx();
+  const fireGlows=[];
   /* lamps and fires cut back through the tint */
   if (st==="base" && dark>0.12){
     const cxx=clamp(game.base.px-Math.floor(VWz/2),0,CW-VWz), cyy=clamp(game.base.py-Math.floor(VHz/2),0,CH-VHz);
@@ -5940,11 +6035,23 @@ function drawAmbience(){
     if (FIRE_SPOTS) for (const fs of FIRE_SPOTS){
       const fx=(fs[0]-cxx)*T*camZ+4, fy=(fs[1]-cyy)*T*camZ+6;
       if (fx<-26||fy<-26||fx>W+26||fy>H+26) continue;
-      glow(fx,fy,20*Math.sqrt(dark)+6,[255,150,60],0.16*dark+0.05);
+      const fr=20*Math.sqrt(dark)+6;
+      glow(fx,fy,fr,[255,150,60],0.16*dark+0.05);
+      fireGlows.push({cx:fx,cy:fy,r:fr,rgb:[255,150,60],base:0.16*dark+0.05});
     }
   }
   /* the lantern is the small circle of world you own */
   if (hp && dark>0.05) glow(hp[0],hp[1],34+8*Math.sin(worldTick/13),[255,196,116],0.12+0.10*dark);
+  /* firelight finds its faces: rims on those turned toward the flames,
+     the late fire-glow washed back off those turned away */
+  if (st==="base" && FIG_DRAWNS){
+    for (const fig of FIG_DRAWNS){
+      const fl=fireLight(fig.tx,fig.ty,fig.face||"dn");
+      if (!fl) continue;
+      if (fl.warmth>0 && fl.facing) fireRim(fig,fl);
+      else if (dark>0.12 && !FIRE_ERASE_OFF && fireGlows.length) eraseFireGlow(fig,fireGlows);
+    }
+  }
   mainVignette(); grain();
 }
 

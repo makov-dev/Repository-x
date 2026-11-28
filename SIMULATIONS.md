@@ -1168,3 +1168,71 @@ side effects on footing, plaques, people, or props. (A first probe pass read
 inconclusive because wandering townfolk contaminated the sample band; the
 seeded diff replaces eyeballed samples.) Full battery re-run green: smoke
 16/0, facing 11/0, gear 17/0, plaque probes all pass.
+
+## 33 — People-sized people, doors taller than their users, firelight earned by attention
+
+**The ask.** "Characters are still too big compared to doors and objects. I
+like that fires get reflected on characters, but it must only work if the
+character is turned towards the fire and at a certain distance from it."
+
+**The size analysis.** People were 12x13-16 art cells at scale 1 — 1.5-2
+tiles tall — against a 7x7 door leaf and ~5px barrels: everyone in Jericho
+dwarfed every doorway. The fix renders every person-scale figure at **2/3
+tile scale**: a 12-wide art becomes exactly 8 units (one tile), 13-16 rows
+become 8.7-10.7 units (~1.1-1.3 tiles). The anchor re-centers
+(`x0 = x + (8 - w*s)/2`, top `y0 = y + 8 - h*s`), feet stay on the tile's
+bottom row. **The crispness law that chose 2/3:** a 2/3-unit cell at the
+scaled pass's 4.5 backing multiplier is exactly 3.0 backing pixels, and the
+anchor arithmetic (`y0*4.5 = 4.5y + 36 - 3*rows`) keeps every cell on
+integer backing pixels — no blur, same crispness as full scale. Explicit
+scales (combat's hand-tuned `drawHumanFoe(x, yf, 2)`) keep the old anchor
+untouched.
+
+**The doors.** A person a tile tall needs a door taller than them: the leaf
+widens 7->9 (same center `dxc+3`), raises to 10 rows under a 2-row lintel
+(`sy+h-13`), with reveal, plank seams, iron bands and handle all rescaled to
+the leaf. Where a window's frame would hang over the new doorway *and* reach
+down to the plaque's top (`wy0+8 > sy+h-20` with x-overlap of
+`[dxc-3, dxc+9]`), the wall stays bare — exactly one over-door window goes
+from the tavern, none from the market (its single window row ends above the
+plaque). The plaques ride one row up (`by=sy+h-20`), 1px clear of the new
+lintel. Door *tiles* and hit logic never moved — only the paint.
+
+**The fire gating.** The reflection the user liked is `drawAmbience`'s late
+fire-glow pass (`dark > 0.12`, radial "lighter" wash) — it tinted every
+figure near a fire, any facing. Now: `sprP`'s default branch records each
+figure drawn (`FIG_DRAWNS`, with camera-pinned tile anchor and facing —
+townfolk got a `face` updated at all four movement sites plus
+`faceFire()` for idlers keeping coals; the hero carries `heroFace`). After
+the glows, per figure: **facing** the nearest fire (unit dot > 0.25) within
+2.5 tiles -> a warm **rim** (per-cell `rgba(255,150,60)`, alpha
+`0.08+0.22*warmth`, biased 0.55-1.0 toward the fire's side); within ~3.5
+tiles but **turned away** -> the late fire-glow is **washed back off** by
+exact subtraction: each fire glow's analytic contribution
+`a*(gr-dist)/(gr-RES)` per channel, removed only from the figure's own
+pixels (art cells + ink outline), lamp and lantern washes untouched, the
+ground's glow untouched.
+
+**Verification (new rig: firerig, 15 asserts x8 runs, random fire-spot
+draws):** away+erase-on vs erase-off at every art cell — the removed light
+is *fire-colored* (dR:dG:dB = 255:150:60 within +-5), bounded by the glow's
+own alpha, radially falling off (near cell loses more than far); rim
+isolated with a boosted-rim twin engine (same seed, same position — the rim
+alpha constant string-patched +0.50 in a rig-only copy): delta lands on art
+cells only, biased toward the fire's side, background in the sprite's bbox
+untouched; facing figures keep the fire's own glow (erase provably never
+touches them); beyond the cutoff erase-on/off frames are pixel-identical;
+fire idlers stand facing their fire; day frames show the rim too (rim is
+independent of darkness). scalerig (14 asserts): hero figure at s=2/3,
+12-wide art, integer backing rows, feet on the tile bottom row, cell
+interiors uniform at 3px pitch, sharp cell boundaries, street resuming 13
+cells out (the old full-scale sprite would reach 17). Full battery green:
+smoke 16/0, facing 11/0, gear 17/0, plaque probes all pass (updated for the
+raised plaques, new doorway anatomy, and the window skip), raggedy strip
+unchanged. Two rig bugs caught on the way (fixed face labels: standing at
+fire+[1,0] means facing "lf", not "rt"; and a real engine bug the
+twin-engine delta exposed: `fireRim` mirrored its occupancy mask for
+left-facing figures, but `sprO`'s flip remaps *colors*, not cells — the rim
+now samples the unflipped grid, matching `sprO` exactly). VLM gestalt at 4x:
+person clearly shorter than the tavern door, plaque reading clean, rim on
+the facing figure, cool/dark figure when turned away, no artifacts.

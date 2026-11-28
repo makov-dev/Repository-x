@@ -194,6 +194,18 @@ loiter, and the stranger is the same figure greying out with its head a
 touch off-true (his patches grey too). The abominations stay procedurally wrong on purpose —
 nothing in the deep should have a silhouette this honest.
 
+**People are people-sized now.** Every human figure renders at two-thirds
+tile scale — one tile wide, a little over a tile tall — so a person stands
+*shorter than a doorway* and in honest proportion with barrels, stalls and
+lampposts, the way CE1's own travelers do against its doors. The cells
+still land on exact 3-backing-pixel pitch, so the smaller sprites are as
+crisp as the large ones ever were (combat figures keep their hand-tuned
+full-size anchors). And **firelight is earned by attention**: a figure wears
+a fire's warm rim only if it stands within a couple of paces *and* faces the
+flames — fire idlers turn to the coals they keep — while anyone turned away
+has the late fire-glow washed back off them, pixel-exactly, leaving every
+lamp's light untouched.
+
 **The streets are inhabited.** Lamp posts stand **beside the roadways** —
 never on the cobbles, never on a cooking fire's or a
 stall's tile. Braziers gather **idle folk**: shiftless regulars warm their
@@ -223,7 +235,10 @@ Out of the roof rises a **brick chimney** — dark brick body with a shaded
 face, brick stipple, a broad cap — and hearth smoke climbs from its top in
 slow puffs. Doors are **banded oak**: lintel beam, recessed
 reveal, plank-seamed leaf, two iron bands and a gold handle, in the same
-tile position as always. Windows gained **cross mullions and pale sills**.
+tile position as always — and doorways are **proper doorways now**, taller
+than the people who use them (the lintel and leaf widened and raised;
+where a window would have hung over the door, the wall stays bare for the
+plaque). Windows gained **cross mullions and pale sills**.
 Every trade hangs an **honest sign**: the tavern a bracket with a swinging
 lantern that glows at night, the guild a purple heraldic banner from the
 eave, the clinic a bone-white cross on a hanging board, the office a paper
