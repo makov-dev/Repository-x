@@ -277,6 +277,15 @@ good). A twin-engine pixel diff (HEAD vs patched, seeded from boot, same
 camera stops) proves the only pixels that changed in the whole frame are
 exactly those three regions and nothing else.
 
+**The fight opens with its whole mouth.** The combat intro no longer clips
+the opening text to four rows of five-plus — its box now grows upward to
+fit every wrapped row of the lore and the never-seen line (squeezing to a
+tighter 9px pitch when the text runs long), so nothing ever starts
+mid-sentence. And the opening lore has moved out of the running fight log
+entirely: it lives on the intro screen where it belongs, and the log box
+below the foe starts holding only the one-line entrance — fight events
+displace it as they happen, never the opening's own first words.
+
 **The ironmonger sells opinions, not just edges.** Every weapon and armor
 in the rack now carries a named special, stated on the price board and in
 the item's own description:

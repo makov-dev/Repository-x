@@ -1331,3 +1331,65 @@ file (`game_vis.js`), never in bare `game.js` — the rebuild recipe is:
 read the suffix out of the previous derived copy, append to the new source.
 A rebuild attempt that searches for it in `game.js` asserts out harmlessly
 (and did).
+
+## 35 — The fight opens with its whole mouth (combat text no longer clips)
+
+**Ask.** A screenshot of the in-fight screen against the Marrow Auditor,
+circled: "this is problem the full text is not visible" — the log box read
+"…always balances, and humans are animals that file themselves badly. /
+You have never seen its like up close. Survive it, and you will know it."
+— starting mid-sentence, the lore's first rows gone.
+
+**Diagnosis.** The fight-opening text (entrance line + bestiary lore + the
+never-seen line) was stuffed into `combat.log` and then hard-clipped twice:
+
+1. the **combat intro screen** wrapped the lore at 52 chars plus the
+   never-seen line and drew at most 4 rows in a fixed 50px box
+   (`li<4`) — the Marrow Auditor needs 5, so the tail was always eaten;
+2. the **in-fight log box** wrapped the last 3 log entries at 58 chars and
+   kept only the LAST 4 rows (`slice(-4)`) — the lore's first rows vanished
+   the moment the intro was dismissed, which is exactly the mid-sentence
+   fragment the screenshot shows.
+
+**Fix.** Two moves:
+
+- **The opening text leaves the log.** `startCombat` now carries the lore
+  and the never-seen line as `combat.lore` / `combat.seen` (read only by
+  the intro screen, with a `log[1]` fallback for old-shape mid-combat
+  saves); the running log starts holding only the one-line entrance
+  ("<Name> comes out of the dark.") — which fits its 4-row box whole — and
+  fight events displace it as they happen. A log is for events; the
+  opening belongs to the intro.
+- **The intro box grows to fit.** `boxTop=160-bh` with
+  `bh=rows*pitch+8`, pitch 10 for <=5 rows and 9 above that, all rows
+  drawn (capped at 8 as a hard bound), the "- SOMETHING NEW -" title
+  riding just above the box (`max(2, boxTop-12)`), and the
+  "tap or Z to steel yourself" hint untouched at y 166.
+
+**Verification (combattrig.js, 13/13).** Against the Marrow Auditor (121-
+char lore, unknown foe, so lore 3 rows + never-seen 2 rows = 5 > the old
+cap):
+
+- combat starts with the intro up and `lore` on the combat object, log
+  exactly 1 entry; the expected wrap really is >4 rows (the old cap would
+  clip);
+- the box top sits where the formula says (dark fill probed);
+- **every one of the 5 rows has glyphs on its own line** — probed
+  per-row (band-scan merged adjacent 9px rows, so each row's y-band is
+  scanned for lit pixels independently);
+- the never-seen line's last row — the one the old cap always ate — is
+  drawn;
+- after dismissing the intro: the log box holds **exactly one row** (the
+  entrance line) sitting at the box top (y≈79);
+- after a Strike action: frame renders, game consistent, log box still
+  <=4 rows;
+- **old-shape combat** (lore/seen deleted, entries pushed into log,
+  intro=46, as a mid-combat save from a previous build would load):
+  intro renders via the fallback with all rows present.
+
+**Battery.** smoke 16/0, scalerig 14/0, facerig 11/0, gearrig 17/0,
+ragstrip OK, firerig 15/0, plaque probes pass, bumprig 6/6 + 4/4, decross
+35/35. VLM could not read the stub's font-fallback glyphs at all (the
+node-canvas Fontconfig-less Courier substitute is illegible at any zoom) —
+noted as the known VLM limit; the per-row pixel probes are the authority
+here, per the transforms-are-the-authority law.

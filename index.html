@@ -3221,8 +3221,9 @@ function startCombat(enemy){
   const lore=BESTIARY_DESC[enemy.n] || (enemy.human? "A delver with a knife and an argument. Jericho breeds them faster than grief does." : "Something the city never bothered to name twice.");
   const origin= game.state==="base"? "base":"dungeon";
   if (game.dungeon){ const cf=curFloor(); if (cf && cf.lurker) cf.lurker=null; }
-  game.combat={ e:enemy, log:[(String(enemy.n).indexOf("The ")===0? enemy.n : "The "+enemy.n)+" comes out of the dark.", lore], turn:"player", choice:0, guard:false, won:false, critKill:false, riposte:false, origin:origin };
-  if (!foeKnown(enemy.n)) game.combat.log.push("You have never seen its like up close. Survive it, and you will know it.");
+  game.combat={ e:enemy, log:[(String(enemy.n).indexOf("The ")===0? enemy.n : "The "+enemy.n)+" comes out of the dark."],
+    lore:lore, seen:(!foeKnown(enemy.n)? "You have never seen its like up close. Survive it, and you will know it." : null),
+    turn:"player", choice:0, guard:false, won:false, critKill:false, riposte:false, origin:origin };
   game.combat.intro = foeKnown(enemy.n)? 0 : 46;
   sfx("growl");
   game.state="combat";
@@ -6135,12 +6136,16 @@ function renderCombat(){
     ctx.fillStyle="rgba(4,2,8,0.88)"; ctx.fillRect(0,0,W,H);
     if (e.human){ drawHumanFoe(124,35,2); }
     else { blobShadow(160,59,42,0.45); drawAbomination(160,20,e.artSeed,2.1); }
-    txt("- SOMETHING NEW -",112,100,"#c99df5");
-    box(0,110,320,50,"rgba(8,6,10,0.88)");
-    let lore=String(c.log[1]||e.n);
-    const lw=wrap(lore,52).concat(c.log[2]? wrap("*"+c.log[2],52) : []);
-    let iy=114;
-    for (let li=0; li<lw.length && li<4; li++){ txt(lw[li].replace(/^\*/,""),8,iy, lw[li].charAt(0)==="*"? "#8c8494":"#a89d90"); iy+=10; }
+    /* the opening text is shown in full: the box grows upward to fit every
+       row, so no lore ever starts mid-sentence (old cap: 4 rows of 5+) */
+    let lore=String(c.lore||c.log[1]||e.n);
+    const lw=wrap(lore,52).concat(c.seen? wrap("*"+c.seen,52) : []).slice(0,8);
+    const pitch= lw.length>5? 9:10;
+    const bh=lw.length*pitch+8, boxTop=160-bh;
+    txt("- SOMETHING NEW -",112,Math.max(2,boxTop-12),"#c99df5");
+    box(0,boxTop,320,bh,"rgba(8,6,10,0.88)");
+    let iy=boxTop+5;
+    for (let li=0; li<lw.length; li++){ txt(lw[li].replace(/^\*/,""),8,iy, lw[li].charAt(0)==="*"? "#8c8494":"#a89d90"); iy+=pitch; }
     txt("tap or Z to steel yourself",96,166,"#8c8494");
     hit(0,0,W,H,()=>{ c.intro=0; });
     cornerChips();
