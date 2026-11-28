@@ -1546,6 +1546,7 @@ function train(stat, label){
 
 function openTavern(){
   const p=game.player;
+  tavMus.wish=true;
   const intro=["The Flayed Lamp: tallow light, soup with opinions, and every second patron counting someone absent."];
   if ((game.flags.mercy||0)>0 && !game.flags.mercyTold){
     game.flags.mercyTold=1;
@@ -1566,7 +1567,7 @@ function openTavern(){
     if (p.partner) opts.push({ t:"Court "+p.partner.name.split(" ")[0], fn:courtWith });
     if (p.spouse) opts.push({ t:"Sit with "+p.spouse.name.split(" ")[0], fn:spouseScene });
     if (!p.partner && !p.spouse) opts.push({ t:"Court - meet someone", fn:courtMeet });
-    opts.push({ t:"Leave", fn:()=>{} });
+    opts.push({ t:"Leave", fn:()=>{ tavMus.wish=false; } });
     showMenu("THE FLAYED LAMP", opts);
   });
 }
@@ -2494,22 +2495,24 @@ function genFloor(d){
   }
   /* ----- the floor's one landlord ----- */
   if (rooms.length>2){
-    let bt=null;
+    let bt=null, btR=null;
     for (let i=freeTiles.length-2;i>=fi && !bt;i--){
       const t=freeTiles[i];
       const inR=rooms.find(r=>t[0]>=r.x&&t[0]<r.x+r.w&&t[1]>=r.y&&t[1]<r.y+r.h);
-      if (inR && inR!==start && inR!==far) bt=t;
+      if (inR && inR!==start && inR!==far){ bt=t; btR=inR; }
     }
     if (bt){
       const bpool=FLOOR_BOSSES.filter(b=>b.minTier<=tierNow);
       const bw=irnd(100);
       const sents=bpool.filter(b=>b.kind==="sentient"), beasts=bpool.filter(b=>b.kind==="beast");
       const B= (sents.length && (bw<55 || !beasts.length))? pick(sents) : (beasts.length? pick(beasts) : pick(bpool));
-      const bev={ x:bt[0], y:bt[1], type:"boss", boss:B.id, kind:B.kind };
+      const bev={ x:bt[0], y:bt[1], type:"boss", boss:B.id, kind:B.kind,
+        bx:bt[0], by:bt[1], bface:"lf", rx:btR.x, ry:btR.y, rw:btR.w, rh:btR.h };
       evs.push(bev);
       floor.bossEv=bev;
     }
   }
+  floor.torches=floor.rooms.map(r=>torchSpot(floor,r)).filter(Boolean);
   const lt=freeTiles.length? freeTiles[freeTiles.length-1] : null;
   if (lt) floor.lurker={ x:lt[0], y:lt[1] };
   d.floors.push(floor);
@@ -2546,6 +2549,9 @@ function tryMove(dx,dy){
   const d=game.dungeon;
   const nx=d.px+dx, ny=d.py+dy;
   if (tileAt(nx,ny)==="#") return;
+  const f0=curFloor();
+  const preB=f0.events.find(e=>e.type==="boss"&&!e.done);
+  const meetPre= !!(preB && Math.abs(bossLive(preB,f0).bx-d.px)+Math.abs(bossLive(preB,f0).by-d.py)<=1);
   d.lastDx=dx; d.lastDy=dy;
   d.px=nx; d.py=ny; d.steps++;
   heroFace = dy>0?"dn":dy<0?"up":dx>0?"rt":"lf";
@@ -2571,9 +2577,33 @@ function tryMove(dx,dy){
       else if (roll<0.55) startCombat(tierEnemy());
       else if (roll<0.80) meetAdventurer();
     }
+    if (!game.flags.torchHinted){
+      const ut=(f.torches||[]).find(t=>t.rx===room.x&&t.ry===room.y);
+      if (ut && !room.torchLit){
+        game.flags.torchHinted=true;
+        showHint("Unlit torches wait beside exits. Step on one to light it - lit rooms stay marked on your map.");
+      }
+    }
   }
-  const ev=f.events.find(e=>e.x===nx&&e.y===ny);
+  const ev=f.events.find(e=>e.x===nx&&e.y===ny&&e.type!=="boss");
   if (ev && !ev.done) triggerEvent(ev);
+  const bev=f.events.find(e=>e.type==="boss"&&!e.done);
+  if (bev && !meetPre){
+    const bp=bossLive(bev,f);
+    if (Math.abs(bp.bx-nx)+Math.abs(bp.by-ny)<=1) bossEvent(bev);
+  }
+  const tor=(f.torches||[]).find(t=>t.x===nx&&t.y===ny);
+  if (tor && !f.torchDeclined && !game.ui.mode){
+    const torR=f.rooms.find(r=>r.x===tor.rx&&r.y===tor.ry);
+    if (torR && !torR.torchLit){
+      showMenu("AN UNLIT TORCH", [
+        { t:"Light it", d:"The room keeps a small sun. The map keeps the room.",
+          fn:()=>{ torR.torchLit=true; sfx("torch"); saveGame(); } },
+        { t:"Leave it dark (the floor stops asking)", d:"You keep your light to yourself.",
+          fn:()=>{ f.torchDeclined=true; } }
+      ]);
+    }
+  }
 }
 function stepBack(){
   const d=game.dungeon;
@@ -3027,7 +3057,7 @@ function bossErrandState(B){
 function bossOptions(ev,B){
   const p=game.player, opts=[];
   if (B.kind==="beast"){
-    opts.push({ t:"Attack it", d:"It would rather not be spoken to.", fn:()=>{ ev.done=true; startCombat(miniFoe(B,game.dungeon.tierNow)); } });
+    opts.push({ t:"Attack it", d:"It would rather not be spoken to.", fn:()=>{ startCombat(bossFoe(B,ev)); } });
     opts.push({ t:"Back out of its room slowly", fn:()=>{ ev.done=false; stepBack(); } });
     return opts;
   }
@@ -3039,7 +3069,7 @@ function bossOptions(ev,B){
       ev.talked=true;
       if (!reqOk0){
         if (Math.random()<0.70){
-          say(B.reqDeny, ()=>{ ev.done=true; startCombat(miniFoe(B,game.dungeon.tierNow)); });
+          say(B.reqDeny, ()=>{ startCombat(bossFoe(B,ev)); });
         } else {
           say(["It looks through you, unhurried, the way weather does, and decides you are tomorrow's problem, not today's."],
               ()=>showMenu(B.name.toUpperCase(), bossOptions(ev,B)));
@@ -3057,7 +3087,7 @@ function bossOptions(ev,B){
         say(back, ()=>showMenu(B.name.toUpperCase(), bossOptions(ev,B)));
       });
       } else if (B.harsh){
-      say(B.talkFail, ()=>{ ev.done=true; startCombat(miniFoe(B,game.dungeon.tierNow)); });
+      say(B.talkFail, ()=>{ startCombat(bossFoe(B,ev)); });
     } else {
       say(B.talkFail, ()=>{ showHint("It dims, wounded, and keeps its own counsel."); showMenu(B.name.toUpperCase(), bossOptions(ev,B)); });
     }
@@ -3081,7 +3111,7 @@ function bossOptions(ev,B){
                                 : ["Its want does not change while it isn't counting you. Bring the "+B.errand.item+". It has already budgeted for this."],
         ()=>showMenu(B.name.toUpperCase(), bossOptions(ev,B))); } });
   }
-  opts.push({ t:"Attack it", d:"Whatever world it lives in, your knife lives in this one.", fn:()=>{ ev.done=true; startCombat(miniFoe(B,game.dungeon.tierNow)); } });
+  opts.push({ t:"Attack it", d:"Whatever world it lives in, your knife lives in this one.", fn:()=>{ startCombat(bossFoe(B,ev)); } });
   opts.push({ t:"Leave it to its own little world", fn:()=>{ ev.done=false; stepBack(); } });
   return opts;
 }
@@ -3113,6 +3143,80 @@ function bossFriendly(ev,B){
   showText(B.pact, ()=>showMenu(B.name.toUpperCase(), opts));
 }
 function bossFriendlyOpts(ev,B){ return [ { t:"Leave it be", fn:()=>saveGame() } ]; }
+
+/* ----- room torches: dark until you light them; a lit torch marks the room ----- */
+function torchSpot(f,r){
+  const cands=[];
+  for (const dd of (f.doors||[])){
+    const ins= dd.s===0? [dd.x,r.y] : dd.s===1? [dd.x,r.y+r.h-1] : dd.s===2? [r.x,dd.y] : dd.s===3? [r.x+r.w-1,dd.y] : null;
+    if (!ins) continue;
+    const x=ins[0], y=ins[1];
+    if (x<r.x||x>=r.x+r.w||y<r.y||y>=r.y+r.h) continue;
+    if (!f.grid[y] || f.grid[y][x]!==".") continue;
+    if (f.events.some(e=>e.x===x&&e.y===y)) continue;
+    if (!cands.some(c=>c[0]===x&&c[1]===y)) cands.push([x,y]);
+  }
+  if (!cands.length) return null;
+  const c=cands[(((r.x*73856093)^(r.y*19349663))>>>0)%cands.length];
+  return { x:c[0], y:c[1], rx:r.x, ry:r.y };
+}
+function ensureTorches(f){
+  if (!f.torches) f.torches=(f.rooms||[]).map(r=>torchSpot(f,r)).filter(Boolean);
+  return f.torches;
+}
+
+/* ----- the landlords walk their rooms ----- */
+function bossLive(ev,f){
+  if (ev.bx==null){
+    ev.bx=ev.x; ev.by=ev.y;
+    if (!ev.bface) ev.bface="lf";
+    const r=((f&&f.rooms)||[]).find(r=>ev.x>=r.x&&ev.x<r.x+r.w&&ev.y>=r.y&&ev.y<r.y+r.h);
+    if (r){ ev.rx=r.x; ev.ry=r.y; ev.rw=r.w; ev.rh=r.h; }
+    else { ev.rx=ev.x-2; ev.ry=ev.y-2; ev.rw=5; ev.rh=5; }
+  }
+  return ev;
+}
+function bossFoe(B,ev){ const e=miniFoe(B,game.dungeon.tierNow); e.bossRef=1; return e; }
+function bossStepEvery(B){ return B.kind==="beast"? 52 : 38; }
+function updateBosses(f,d){
+  for (const ev of f.events){
+    if (ev.type!=="boss" || ev.done) continue;
+    const B=BOSS_BY_ID[ev.boss]; if (!B) continue;
+    bossLive(ev,f);
+    if ((worldTick+ev.bx*7+ev.by*11)%bossStepEvery(B)!==0) continue;
+    if (irnd(100)<16) continue;            /* it pauses. it is in no hurry. */
+    bossStep(ev,f,d,B);
+  }
+}
+function bossStep(ev,f,d,B){
+  const cands=[];
+  for (const dd of [[1,0],[-1,0],[0,1],[0,-1]]){
+    const nx=ev.bx+dd[0], ny=ev.by+dd[1];
+    if (nx<ev.rx||ny<ev.ry||nx>=ev.rx+ev.rw||ny>=ev.ry+ev.rh) continue;
+    if (!f.grid[ny] || f.grid[ny][nx]==="#") continue;
+    if (nx===d.px && ny===d.py) continue;
+    if (f.events.some(e=>e!==ev && !e.done && e.x===nx && e.y===ny)) continue;
+    if (f.torches && f.torches.some(t=>t.x===nx&&t.y===ny)) continue;
+    cands.push(dd);
+  }
+  if (!cands.length) return;
+  let mv=null;
+  const pdx=d.px-ev.bx, pdy=d.py-ev.by, pd=Math.abs(pdx)+Math.abs(pdy);
+  if (pd<=4){
+    if (pdx!==0) ev.bface= pdx>0? "rt":"lf";
+    if (irnd(100)<65){
+      const st= pdx!==0? [Math.sign(pdx),0] : [0,Math.sign(pdy)];
+      mv=cands.find(c=>c[0]===st[0]&&c[1]===st[1])||null;
+      if (mv && irnd(100)<35) mv=null;     /* it drifts. it does not charge. */
+    }
+  }
+  if (!mv) mv=cands[irnd(cands.length)];
+  if (mv[0]!==0) ev.bface= mv[0]>0? "rt":"lf";
+  ev.bx+=mv[0]; ev.by+=mv[1];
+  const nd=Math.abs(ev.bx-d.px)+Math.abs(ev.by-d.py);
+  if (nd<=1 && !game.ui.mode && game.state==="dungeon" && !game.combat){ sfx("creak"); bossEvent(ev); return; }
+  if (nd<=8 && Math.random()<0.30) sfx("creak");
+}
 function bossEvent(ev){
   const d=game.dungeon, p=game.player;
   const B=BOSS_BY_ID[ev.boss]; if (!B) return;
@@ -3513,8 +3617,10 @@ function winCombat(){
 function endCombat(){
   const og=game.combat && game.combat.origin;
   const gateFall= game.combat && game.combat.e && game.combat.e.afterGate && game.combat.won;
+  const bossWon= !!(game.combat && game.combat.won && game.combat.e && game.combat.e.bossRef);
   game.combat=null;
   game.state= og==="base"? "base":"dungeon";
+  if (bossWon && game.dungeon && curFloor() && curFloor().bossEv) curFloor().bossEv.done=true;
   if (gateFall){ game.flags.keeperFought=1; openTheGate(true); }
 }
 
@@ -3523,6 +3629,12 @@ let floats=[], shakeT=0, bannerMsg=null, bannerT=0, gDice=null, drips=[];
 let sparks=[], flashCol=null, flashT=0;
 let sndOn=true, AC=null;
 let critPulse=0, droneNodes=[], droneLPs=[], droneOpen=null, droneDepth=0, rainNodes=null;
+/* ----- tavern music: a thin fiddle somewhere behind the smoke, A-minor over a
+   descending lament bass; scheduled off frames while the Flayed Lamp holds you ----- */
+let tavMus={ wish:false, t:0, notes:0 };
+const TAV_MEL=[220,0,262,330, 294,0,262,220, 196,0,220,262, 220,0,0,0,
+               220,0,262,330, 392,0,330,294, 440,0,392,330, 294,0,262,0];
+const TAV_BASS=[110,98,87.3,82.4];
 function ac(){
   if (!AC){ try { AC = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){ AC=null; } }
   if (AC && AC.state==="suspended"){ try { AC.resume(); } catch(e){} }
@@ -3562,6 +3674,7 @@ function sfx(name){
     case "bell":   beep(196, 1.0, "sine", 0.07); break;
     case "kill":   beep(150, 0.5, "sawtooth", 0.07, 38); beep(64, 0.9, "sine", 0.06, 22); setTimeout(()=>beep(310, 0.14, "square", 0.03, 100), 60); break;
     case "creak":  beep(96+irnd(50), 0.55, "sawtooth", 0.028, 60+irnd(36)); break;
+    case "torch":  beep(210, 0.10, "triangle", 0.05, 480); setTimeout(()=>beep(440, 0.09, "triangle", 0.04, 260), 80); break;
   }
 }
 function toggleSnd(){ sndOn=!sndOn; if (sndOn) sfx("click"); }
@@ -3755,6 +3868,7 @@ function updateTreasureEcho(){
 }
 function updateAmbience(){
   if (!game || !sndOn){ stopDrone(); stopRain(); return; }
+  if (tavMus.wish && game.state!=="base") tavMus.wish=false;
   if (game.state==="dungeon" || (game.state==="combat" && game.dungeon)){
     stopRain();
     const nm=game.dungeon.opening.name;
@@ -3780,9 +3894,19 @@ function updateAmbience(){
     }
   } else if (game.state==="base" || game.state==="home"){
     stopDrone(); startRain();
+    if (tavMus.wish && !game.ui.mode) tavMus.wish=false;
+    if (tavMus.wish && game.state==="base") updateTavernMusic();
   } else {
     stopDrone(); stopRain();
   }
+}
+function updateTavernMusic(){
+  tavMus.t++;
+  if (tavMus.t%9!==0) return;
+  const st=(tavMus.t/9|0)%TAV_MEL.length;
+  const m=TAV_MEL[st];
+  if (m){ beep(m, 0.16, "triangle", 0.022); tavMus.notes++; }
+  if (st%8===0){ beep(TAV_BASS[st/8|0], 0.34, "triangle", 0.028); tavMus.notes++; }
 }
 function voiceSfx(who){
   if (!sndOn) return;
@@ -5012,6 +5136,159 @@ function drawHumanFoe(x,yf,scale){
   sprP(FOE_ART, FOE_MAP, x, yf-8+k*8, k);
 }
 
+
+/* ----- the floor landlords, as bodies ----- */
+const BOSS_SPR={
+  gnaw:{ s:1,
+    a:["..............",
+       "..bBBBBBBBBb..",
+       ".bBBBBBBBBBBb.",
+       ".bBeBBBBeBBBb.",
+       ".bBBBBBBBBBBb.",
+       ".TTTTTTTTTTTT.",
+       ".DDDDDDDDDDDD.",
+       ".TTTtTTTTtTTT.",
+       ".bBBBBBBBBBBb.",
+       "..kKk..kKk.k..",
+       ".kk.kk.kk..kk."],
+    m:{ B:"#cfc4ae", b:"#9a8f7c", T:"#efe7d4", t:"#b8ab92", D:"#1a1016",
+        k:"#8a7060", K:"#6a544a", e:"#1d141c" },
+    acc:[ {x:3,y:3,c1:"#e0b95a",c2:"#3a2f22",per:23,ph:0},
+          {x:8,y:3,c1:"#3a2f22",c2:"#e0b95a",per:23,ph:0},
+          {x:4,y:7,c1:"#efe7d4",c2:"#7c6f5e",per:11,ph:0},
+          {x:9,y:7,c1:"#7c6f5e",c2:"#efe7d4",per:11,ph:0}] },
+  sow:{ s:1,
+    a:["..............",
+       "....mMMMMMm...",
+       "..mMMMMMMMMm..",
+       ".mMeMMMMMMem..",
+       ".mMMMMMMMMMMm.",
+       ".mMvMMvMMvMMm.",
+       ".mMvMMvMMvMMm.",
+       ".sm.v..v..ms..",
+       "..ll..ll..ll..",
+       ".nn.n..n..nn.."],
+    m:{ M:"#8a7570", m:"#5f4c4a", s:"#4a3a3c", v:"#7a5a68", l:"#3a2e30",
+        e:"#1d141c", n:"#efe7d4" },
+    acc:[ {x:3,y:3,c1:"#e0b95a",c2:"#8a7570",per:29,ph:0},
+          {x:10,y:3,c1:"#8a7570",c2:"#e0b95a",per:29,ph:0}] },
+  clock:{ s:1,
+    a:["....mMMMMm...",
+       "..mMMMMMMMm..",
+       ".mMMMMMMMMMm.",
+       ".mMMGGGMMMMm.",
+       ".mMMGDGMMMMm.",
+       ".mMMGGGMMMMm.",
+       ".mMMMMMMMMMm.",
+       "mDMMMMMMMMDm.",
+       "mMMMMMMMMMMm.",
+       ".mMMMMMMMMm..",
+       "..mm...mm...."],
+    m:{ M:"#6e2f38", m:"#4a2028", G:"#e0b95a", D:"#1a1016" },
+    hand:{x:5,y:4},
+    acc:[ {x:2,y:7,c1:"#8a3a44",c2:"#6e2f38",per:17,ph:0},
+          {x:10,y:7,c1:"#6e2f38",c2:"#8a3a44",per:17,ph:0}] },
+  auditor:{ s:1,
+    a:["...HHHHH...",
+       "..HBBBBBH..",
+       "..HBeBeBH..",
+       "..HBBBBBH..",
+       ".HBbBBBbBH.",
+       ".HBbBBBbBH.",
+       ".HBbBBBbBH.",
+       ".HBbBBBbBH.",
+       ".HBbBBBbBH.",
+       ".HBbBBBbBH.",
+       ".HBbBBBbBH.",
+       "..HBBBBBH..",
+       "..HBBBBBH..",
+       "...HBBBH...",
+       "...h...h..."],
+    m:{ H:"#e8e0cf", B:"#cfc4ae", b:"#8f8672", e:"#1d141c", h:"#9a8f7c" },
+    acc:[ {x:5,y:6,c1:"#c99df5",c2:"#cfc4ae",per:31,ph:0}] },
+  veins:{ s:1,
+    a:[".w.........w.",
+       ".wVVVVVVVVVw.",
+       ".wVVrVVVVVVw.",
+       ".wVVVVVVrVVw.",
+       ".wVVVVVVVVVw.",
+       ".wVrVVVVVVVw.",
+       "..wVVVVVVVVw.",
+       ".wVVVVVVrVVw.",
+       ".wVVVVVVVVVw.",
+       "..wVVVVVVVw..",
+       "...wVVVVVw...",
+       "....wrwrw....",
+       "....w...w...."],
+    m:{ w:"#2a2230", V:"#d8cdb4", r:"#a33b3b" },
+    acc:[ {x:4,y:2,c1:"#a33b3b",c2:"#d8cdb4",per:19,ph:0},
+          {x:8,y:7,c1:"#d8cdb4",c2:"#a33b3b",per:19,ph:0}] },
+  drowse:{ s:1,
+    a:["....hhhhhh....",
+       "..hhhhhhhhhh..",
+       ".hhhHkkkkHhhh.",
+       ".hhHHkeekHHhh.",
+       ".hhhHkkkkHhhh.",
+       "hHhHHHHHHHHhHh",
+       "hHhHhHhHhHhHhH",
+       "HhHhHhHhHhHhHh",
+       "hHhHhHhHhHhHhH",
+       ".hH.hH.hH.hH.."],
+    m:{ h:"#a8988a", H:"#6a5a50", k:"#c8b8a0", e:"#1d141c" },
+    acc:[ {x:6,y:4,c1:"#e0b95a",c2:"#a8988a",per:37,ph:0}] },
+  lamp:{ s:1,
+    a:["...ssss..",
+       "..ssssss.",
+       "..sseSss.",
+       "..ssssss.",
+       "...ssss..",
+       "...ssss..",
+       "..sssss..",
+       "..ssss...",
+       "..ssss...",
+       "..ssss...",
+       "..ssss...",
+       "..ssss...",
+       "..ssss...",
+       "..ssss...",
+       ".ssssss..",
+       ".ss..ss.."],
+    m:{ s:"#4a4152", S:"#2c2534", e:"#e0b95a" },
+    acc:[ {x:3,y:2,c1:"#e0b95a",c2:"#4a4152",per:13,ph:0},
+          {x:5,y:2,c1:"#4a4152",c2:"#e0b95a",per:13,ph:1}] }
+};
+function drawBosses(f,camX,camY){
+  const d=game.dungeon;
+  for (const ev of f.events){
+    if (ev.type!=="boss" || ev.done) continue;
+    const B=BOSS_BY_ID[ev.boss]; if (!B) continue;
+    bossLive(ev,f);
+    if (ev.bx<camX-2 || ev.bx>camX+VWz+1 || ev.by<camY-2 || ev.by>camY+VHz+1) continue;
+    if (!f.seen.has(ev.bx+","+ev.by)) continue;
+    const spr=BOSS_SPR[ev.boss]||BOSS_SPR.gnaw;
+    const dim=clamp(1-(Math.hypot(ev.bx-d.px,ev.by-d.py)-1.5)/7.4,0.24,1);
+    const x=(ev.bx-camX)*T, y=(ev.by-camY)*T, s=spr.s;
+    const w=spr.a[0].length, h=spr.a.length;
+    const ox=x+(8-w*s)/2, oy=y+8-h*s;
+    ctx.globalAlpha=dim;
+    blobShadow(x+4,y+6.6,w*s*0.62,0.36);
+    if (game.flags.pacts && game.flags.pacts[ev.boss]) glow(x+4,y+3,16,[150,190,230],0.10);
+    sprO(spr.a,spr.m,ox,oy,s,ev.bface==="lf");
+    for (const ac of (spr.acc||[])){
+      const dx= ev.bface==="lf"? w-1-ac.x : ac.x;
+      const ph=(Math.floor(worldTick/ac.per)+ac.ph)%2;
+      ctx.fillStyle= ph? ac.c2 : ac.c1;
+      ctx.fillRect(ox+dx*s, oy+ac.y*s, s, s);
+    }
+    if (spr.hand){
+      const hh=Math.floor(worldTick/27)%4, hd=[[0,-1],[1,0],[0,1],[-1,0]][hh];
+      ctx.fillStyle="#1a1016";
+      ctx.fillRect(ox+(spr.hand.x+hd[0])*s, oy+(spr.hand.y+hd[1])*s, s, s);
+    }
+    ctx.globalAlpha=1;
+  }
+}
+
 /* ----- base render ----- */
 function blobShadow(sx,sy,wd,al){
   ctx.fillStyle="rgba(0,0,0,"+(al===undefined?0.30:al)+")";
@@ -5709,17 +5986,7 @@ function drawDungeon(){
             }
           }
         }
-        else if (ev.type==="boss"){
-          const pacted=game.flags.pacts && game.flags.pacts[ev.boss];
-          const pul=(0.12+0.08*Math.sin(worldTick/11+wx*2.1)).toFixed(3);
-          glow(x*T+4,y*T+3,22,pacted? [160,200,235]:[190,120,235],0.14);
-          ctx.fillStyle="rgba("+(pacted? "150,190,230":"180,110,225")+","+pul+")";
-          ctx.fillRect(x*T-1,y*T-1,T+2,T+2);
-          ctx.fillStyle="#14101c"; ctx.fillRect(x*T+2,y*T+1,4,6);
-          ctx.fillStyle=pacted? "#9fc0dd":"#b9a2d8"; ctx.fillRect(x*T+3,y*T+2,2,1);
-          ctx.fillStyle=(worldTick%14<7)? "#e0b1f5":"#a06fd0";
-          ctx.fillRect(x*T+2,y*T,4,1);
-        }
+        else if (ev.type==="boss"){ /* the landlord is a body now - drawn among the shadows below */ }
         else if (ev.type==="obstacle"){
           if (ev.done && ev.kind!=="chasm") { /* defused: cleared rubble, sunk spikes, levered plate, spent air */ }
           else if (ev.kind==="rubble"){ ctx.fillStyle="#4b4349"; ctx.fillRect(x*T+1,y*T+2,3,3); ctx.fillRect(x*T+4,y*T+4,3,2); }
@@ -5736,11 +6003,22 @@ function drawDungeon(){
   for (const r of f.rooms){
     if (r.x+r.w<=camX || r.x>camX+VWz || r.y+r.h<=camY || r.y>camY+VHz) continue;
     ctx.strokeRect((r.x-camX)*T+0.5,(r.y-camY)*T+0.5,r.w*T-1,r.h*T-1);
-    const tx=(r.cx-camX)*T+4, ty=(r.cy-camY)*T+4;
-    ctx.fillStyle="#3a2f22"; ctx.fillRect(tx,ty,1,3);
-    ctx.fillStyle= (Math.floor(worldTick/6)%2)? "#f2c14e":"#e0913a";
-    ctx.fillRect(tx,ty-2,1,2);
-    glow(tx,ty-1, 24, [255,172,64], 0.13);
+  }
+  ensureTorches(f);
+  for (const tor of f.torches){
+    if (tor.x<camX || tor.x>camX+VWz || tor.y<camY || tor.y>camY+VHz) continue;
+    if (!f.seen.has(tor.x+","+tor.y)) continue;
+    const rr=f.rooms.find(r=>r.x===tor.rx&&r.y===tor.ry);
+    const tx=(tor.x-camX)*T, ty=(tor.y-camY)*T;
+    ctx.fillStyle="#3a2f22"; ctx.fillRect(tx+4,ty+3,1,3);
+    ctx.fillStyle="#2a242c"; ctx.fillRect(tx+3,ty+6,3,1);
+    if (rr && rr.torchLit){
+      ctx.fillStyle=(Math.floor(worldTick/6)%2)? "#f2c14e":"#e0913a";
+      ctx.fillRect(tx+4,ty+1,1,2);
+      glow(tx+4,ty+2, 24, [255,172,64], 0.13);
+    } else {
+      ctx.fillStyle="#4a4550"; ctx.fillRect(tx+4,ty+2,1,1);
+    }
   }
   ctx.fillStyle="rgba(150,178,208,0.78)";
   for (const dobj of (f.doors||[])){
@@ -5751,6 +6029,7 @@ function drawDungeon(){
     else if (dobj.s===2) ctx.fillRect((dobj.x+1-camX)*T-1,(dobj.y-camY)*T,1,T);
     else ctx.fillRect((dobj.x-camX)*T,(dobj.y-camY)*T,1,T);
   }
+  drawBosses(f,camX,camY);
   glow((d.px-camX)*T+4,(d.py-camY)*T+3,30,[255,190,110],0.09);
   drawHero((d.px-camX)*T,(d.py-camY)*T,false);
   ctx.restore();
@@ -5825,6 +6104,12 @@ function drawMinimap(){
   }
   ctx.fillStyle="#efe7d4";
   ctx.fillRect(ox+d.px*s-1,oy+d.py*s-1,s+2,s+2);
+  const mb=f.events.find(e=>e.type==="boss"&&!e.done);
+  if (mb){ bossLive(mb,f); if (f.seen.has(mb.bx+","+mb.by)){ ctx.fillStyle="#b06fd0"; ctx.fillRect(ox+mb.bx*s,oy+mb.by*s,s,s); } }
+  for (const tor of (f.torches||[])){
+    const tr=f.rooms.find(r=>r.x===tor.rx&&r.y===tor.ry);
+    if (tr && tr.torchLit && f.seen.has(tor.x+","+tor.y)){ ctx.fillStyle="#f2c14e"; ctx.fillRect(ox+tor.x*s,oy+tor.y*s,s,s); }
+  }
   txt("tap to close",26,152,"#8c8494");
   hit(20,14,280,152,()=>pressZ("m"));
 }
@@ -6384,6 +6669,8 @@ function updateDungeon(){
   if (mapOpen){ if (tap("m")||noTap()||yesTap()) mapOpen=false; return; }
   if (uiBlocked()){ updateUI(); return; }
   const d=game.dungeon, f=curFloor();
+  ensureTorches(f);
+  updateBosses(f,d);
   const mv=dirTap();
   if (mv){ stopWalk(); tryMove(mv[0],mv[1]); return; }
   if (walkPath && walkPath.length){
@@ -6605,6 +6892,7 @@ window.__openings={
   MANEUVERS, BUILDINGS, OPENINGS, LAMPS, sfx, toggleSnd, txtFit, wrapPx,
   get gDice(){ return gDice; }, get bannerMsg(){ return bannerMsg; },
   get droneOpen(){ return droneOpen; },
+  get tavMus(){ return tavMus; },
   get droneDepth(){ return droneDepth; },
   get heart(){ return hbM; },
   get echo(){ return heartEcho; },
@@ -6619,7 +6907,7 @@ window.__openings={
   get loan(){ return game && game.flags? (game.flags.loan||null) : null; },
   ngPlusTier, ngHp, ngHpMul, ngAtkBump, ngLootMul, coupCheck, fireCoup, placeStranger, kindCatalog, bestiaryPct, gateClose, strangerMeet, strangerPressure, sellOut, startDream, passTheLamp, startKeeperLine, priorKeeperFoe, priorKeeperGate, winCombat, BESTIARY_DESC, openDoss, gateReckoning, keepTheWatch, sentinelTalk, gateCosmos, steerHold, steerSet, steerClear, tickHeld, useStair,
   get droneLP(){ return droneLPs.length && droneLPs[0]._d? Math.round(droneLPs[0].frequency.value) : null; },
-  FLOOR_BOSSES, BOSS_BY_ID, bossEvent, miniFoe, bossErrandState, flagsPacts, flagsErrands, grantBossLore, repOf, bossReqOk,
+  FLOOR_BOSSES, BOSS_BY_ID, bossEvent, bossFoe, bossLive, updateBosses, bossStep, launchDelve, BOSS_SPR, torchSpot, ensureTorches, miniFoe, bossErrandState, flagsPacts, flagsErrands, grantBossLore, repOf, bossReqOk,
   get bossRep(){ return game && game.flags? (game.flags.bossRep||{}) : {}; },
   get pacts(){ return game && game.flags? (game.flags.pacts||{}) : {}; },
   get errands(){ return game && game.flags? (game.flags.errands||{}) : {}; }

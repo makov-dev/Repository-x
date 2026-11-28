@@ -257,6 +257,25 @@ layer's artifacts — a floating smoke box over every roof corner, plank
 seams running through stone walls, purple bars hanging in mid-air, a black
 plaque nailed to nothing, a cross without a sign — are purged.
 
+**The delves wear the same law.** The seven landlords are **bodies now**,
+not glyphs nailed to a tile: each of the seven lineages has its own
+sprite (the Gnawing Chancel a mass of bone and jaws, the Sow of Small
+Deaths a wide grey-rose hide trailing veil ribbons, the Hunger With a
+Clock in It red meat around a gold dial whose hand really turns, the
+Marrow Auditor tall white ribs over black eyes, the Cartographer of Veins
+vellum gridded with red veins, the Drowsing Host a mound of folded
+checking hands, the Lamp-Bearer a tall bowed sooty figure with faint gold
+eyes), it **walks its own room** while you are on the floor - caged to
+the room, off the walls, off you - and it **comes to meet you**, closing
+the last pace to open the conversation itself. A fight you flee leaves
+the landlord standing where it stood; only a landlord killed stays dead.
+And the rooms keep **torches that start dark**: one beside an exit of
+every room (never the middle of the floor), unlit and cold until you
+step on one and choose to light it - decline once and the floor stops
+asking. A lit torch burns with a small flicker and a warm glow by its
+door, and marks the room **gold on your map**: a way of keeping track of
+where you have already been, paid for in matches rather than in fog.
+
 **Touching a building is using it.** Walk into a door and the door
 answers: bumping any wall of a building with keyboard, controller d-pad or
 finger-steer opens the same facility a tap would — the hero turns to face
@@ -819,6 +838,14 @@ carried for weeks suddenly keeps the reach it always promised.
   alien persons). Landlords can grant truth fragments, trade, assign
   errands, and become permanent non-hostile **pacts** once an errand is
   honored. Their stats scale with the floor's danger tier.
+- The landlords are **bodies**: bespoke sprites that walk their rooms,
+  come to meet you at arm's reach, and survive a fight you flee; only a
+  killed landlord is done.
+- **Torches in the delve rooms start dark**, one beside an exit of each
+  room. Step on one to light it; light marks the room on your map.
+- The Flayed Lamp keeps **tavern music**: a thin A-minor fiddle loop over
+  a descending lament bass, quiet under the rain, on while you are in the
+  room, off when you leave, delve, or mute.
 - Aging: no time limits, but years pass as you train, delve, and rest;
   max HP declines past 40. Jericho keeps the receipts.
 - Inventory is slot-capped; the Deep Cellar upgrade adds 8 slots and lets

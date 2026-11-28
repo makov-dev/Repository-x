@@ -1393,3 +1393,146 @@ ragstrip OK, firerig 15/0, plaque probes pass, bumprig 6/6 + 4/4, decross
 node-canvas Fontconfig-less Courier substitute is illegible at any zoom) —
 noted as the known VLM limit; the per-row pixel probes are the authority
 here, per the transforms-are-the-authority law.
+
+## 36 - The landlords walk (bosses as sprites)
+
+**Ask.** "can we make the floor bosses actual sprites moving about the
+room?" - the seven landlords were a static 4x6 purple glyph pinned to a
+tile until a menu opened over it.
+
+**Fix.** The boss becomes a body with a live position:
+
+- **genFloor** carries live fields on the boss event (`bx, by, bface` and
+  the room cage `rx, ry, rw, rh` - the cage captured alongside the
+  placement tile, which also fixed an `inR` scope bug caught before it
+  shipped).
+- **bossLive** lazily derives position + cage from `f.rooms` for old
+  saves (migration), **updateBosses** steps each boss on a per-lineage
+  cadence (beasts every 52 ticks, sentients every 38, 16% pauses),
+  **bossStep** walks within the cage on open floor, never onto the hero,
+  other events, or (after the torch round) a torch tile; it turns to face
+  the player within 4 tiles, drifts closer with a 65%/35% hesitation, and
+  creaks softly at 30% when within 8 tiles.
+- **Meeting.** The old static-tile event find in `tryMove` now excludes
+  type "boss"; instead the boss meet is positional - Manhattan distance
+  <=1 checked after the player moves (with a `meetPre` guard so a boss
+  already adjacent when you move does not re-fire) and after each boss
+  step (guarded by no-menu / dungeon / no-combat). The landlord now
+  walks up and opens the conversation itself.
+- **Fights.** All four fight sites spawn `bossFoe(B,ev)` tagging
+  `e.bossRef`; `endCombat` marks `curFloor().bossEv.done=true` ONLY on a
+  won boss fight - a fled fight leaves the landlord alive (it re-meets
+  you; the fight can be re-entered).
+- **Art.** `BOSS_SPR`: bespoke hand-authored grids for all 7 lineages
+  drawn through the sprO engine (outer ink outline, feet-anchored,
+  flip-mirrored accent pixels, phase colors, the Clock's dial hand really
+  rotating, pacted landlords glowing blue), distance-dimmed like tiles,
+  blob shadow, culled off-view. The old glyph branch is gone (a comment
+  marks the grave). The minimap drops a purple blip at the boss's LIVE
+  position when seen - the map tracks where it is now, not where it
+  spawned.
+
+**Verification (bossrig.js: walk 14/14, meet 8/8, fight 17/17, migrate
+5/5, shot 15/15).**
+
+- walk: live pos + cage derived, movement over 1400 frames, never on a
+  wall / out of the room / on the hero, old glyph gone from its tile,
+  and - the point of the round - **"the landlord came and met the idle
+  hero"** (boss-initiated meeting through real frames).
+- meet: step-adjacency opens the intro through the real `tryMove` path,
+  the z-loop reaches the menu, leaving closes it, fresh adjacency
+  re-meets, and the landlord holds still while the menu is open.
+- fight: Attack produces a `bossRef` foe; `done` NOT consumed by
+  starting; flee works through the real choice + z path; the fled fight
+  leaves the landlord in the room and it re-meets; a kill (hp=1 + strike
+  loop + kill-cinematic z-loop) sets `bev.done===true`; the save carries
+  `bx/by`.
+- migrate: an old save without live fields loads and `bossLive`
+  re-derives position + cage.
+- shot: per-lineage sprite pixel-probes over the hidden-boss baseline.
+- VLM review on zoomed crops read all seven as coherent bodies after one
+  art pass (drowse re-authored as articulated finger-checker rows, lamp
+  lightened from near-invisible soot) - pixel probes the authority, VLM
+  for gestalt only, per standing law.
+
+## 37 - Torches wait dark (the delve rooms keep a match)
+
+**Ask.** "torches in the delve rooms, let's make them not on, player can
+turn them on as to keep track where they were already, let's put it next
+to a random exit to each room instead of middle of room."
+
+**Fix.**
+
+- **Placement is deterministic, not random.** `torchSpot(f, r)` builds
+  candidates from each room's doors (one tile inside the room beside each
+  doorway, open floor only, excluding every event tile - done or not, so
+  the spot is stable across gen and lazy re-derivation) and picks one by
+  a pure hash of the room's coordinates
+  (`((r.x*73856093)^(r.y*19349663))>>>0 % cands.length`) - no RNG, no
+  `f.seed`, so the same floor always has the same torches (and old saves
+  re-derive the identical set through `ensureTorches`).
+- **The interaction is the step.** Stepping ON an unlit torch tile opens
+  "AN UNLIT TORCH": *Light it* (torchLit, a scratch-and-crackle sfx, a
+  save) or *Leave it dark* - and declining once sets `torchDeclined` so
+  the floor never asks again. A once-only hint marks the first unlit
+  torch room entered.
+- **Draw.** The old room-center flame is gone (that was the "middle of
+  the room" the ask named). A torch is a post and bracket beside the
+  door: lit = worldTick-flickered flame + warm glow; unlit = a cold dark
+  head you can read at a glance. The minimap drops a gold blip at every
+  LIT torch (seen rooms only).
+- `torchLit` lives on room objects, `torchDeclined` + `torches` on the
+  floor - all serialize with the ordinary save, no new containers.
+
+**Verification (torchrig.js, 20/20).** Torches exist (>= rooms-2), one
+per room, on open floor on the room's perimeter beside an exit, never at
+the room center, dark by default; deleting and re-deriving reproduces
+the identical set; stepping on offers the menu; lighting marks the room,
+closes the menu, and the flame **burns on screen** (21 flame pixels
+probed around the head); the save carries `torchLit`; the minimap blip
+is gold at the right pixel; a fresh floor starts dark, a second torch
+offers again, decline closes the offer, is remembered, and stops the
+asking; and the walking landlord never stands on a torch. (One rig bug
+fixed on the way: the minimap draws in the base 3x pass, not the 4.5x
+scaled dungeon pass - the blip probe was reading canvas units as backing
+pixels.) VLM reads both states clean: unlit = "small wooden post with a
+dark, unlit head" beside the door; lit (hero one step off, so the torch
+isn't under the hero) = "small gold/orange flickering flame on a wooden
+post with a soft warm glow", no glitches.
+
+## 38 - The Lamp keeps a fiddle (tavern music)
+
+**Ask.** "when in tavern let's add tavern music."
+
+**Fix.** A thin triangle-wave folk loop that plays only while the Flayed
+Lamp holds you:
+
+- a `tavMus` wish-flag set the moment `openTavern` runs (so the fiddle
+  starts under the intro text, as it would when you walk in), cleared by
+  the room's own **Leave**, by the menu closing, and by anything that
+  leaves the base state (delve, combat); it survives the submenus (the
+  room tonight, court, spouse scenes) because those stay inside the
+  wish.
+- `updateTavernMusic` schedules off frames in `updateAmbience`: a 32-step
+  A-minor melody (with composed rests) on triangle at 0.022 over a
+  descending lament bass (A2-G2-F2-E2, one note every 8 steps at 0.028)
+  - quiet enough to sit under the rain and the room's own voice beeps.
+  The step counter persists across visits - the fiddle keeps playing
+  between your visits, it just wasn't audible.
+- Mute is honored by `updateAmbience`'s existing sndOn gate; the wish
+  survives the mute so unmuming brings the fiddle back mid-visit.
+
+**Verification (musrig.js, 10/10).** Walking in starts the music; notes
+flow while inside; the step is EXACT - 90 frames from a known phase
+yield precisely the notes the composed table says (rests honored, bass
+every 8th step); the music keeps playing in the "Who is here tonight?"
+submenu; Leave closes the menu, stills the wish, and 60 frames spend no
+notes; a muted room spends no notes while the wish lives, and unmuting
+lets the fiddle back in; re-entering starts it again; and `launchDelve`
+kills the wish.
+
+**Battery (all three rounds on one build).** smoke 16/0, bumprig 6/6,
+decross 35/35, combattrig 13/13, plaque probes ALL PASS, ragstrip OK,
+facerig 11/0, scalerig 14/0, firerig 15/0, gearrig 17/0, bossrig
+walk 14 + meet 8 + fight 17 + migrate 5 + shot 15 (all /0), torchrig
+20/0, musrig 10/0.
