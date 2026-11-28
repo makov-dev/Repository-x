@@ -1168,9 +1168,17 @@ function citySolid(x,y){
 function tryBaseMove(dx,dy){
   const b=game.base;
   const nx=b.px+dx, ny=b.py+dy;
-  if (citySolid(nx,ny)) return;
-  b.px=nx; b.py=ny;
   heroFace = dy>0?"dn":dy<0?"up":dx>0?"rt":"lf";
+  if (citySolid(nx,ny)){
+    /* touching a building is using it - bump the wall and the door answers,
+       the same stand-beside-and-use law the tap already keeps (home answers
+       only within a stride of its own door) */
+    const bl=BUILDINGS.find(bb=>!(bb.home && !(game.player&&game.player.house)) &&
+      nx>=bb.x && nx<bb.x+bb.w && ny>=bb.y && ny<bb.y+bb.h);
+    if (bl && nearBuilding(bl, b.px, b.py)){ stopWalk(); enterBuilding(bl); }
+    return;
+  }
+  b.px=nx; b.py=ny;
 }
 /* other adventurers try to rob you when you look worth it */
 function maybeMugged(){
@@ -5250,8 +5258,7 @@ function drawBuilding(bl, sx, sy){
     ctx.fillRect(wx0,wy0,4,6);
     if (lit){ ctx.fillStyle= dayDark()>0.35? "#f7d25e" : "#d8a93f"; ctx.fillRect(wx0+1,wy0+1,1,1);
       if (dayDark()>0.35) glow(wx0+2,wy0+2,9,[255,180,80],0.11); }
-    ctx.fillStyle="rgba(0,0,0,0.45)"; ctx.fillRect(wx0-1,wy0+3,6,1);
-    ctx.fillStyle="rgba(0,0,0,0.45)"; ctx.fillRect(wx0+2,wy0,1,6);
+    ctx.fillStyle="rgba(0,0,0,0.45)"; ctx.fillRect(wx0+2,wy0,1,6); /* a mullion, not a cross: one upright, no bar through it */
     ctx.fillStyle="rgba(255,255,255,0.09)"; ctx.fillRect(wx0-2,wy0+7,8,1);
   }
   glow(sx+w/2, sy+15, w*0.85, [255,172,64], 0.085);
@@ -5287,10 +5294,12 @@ function drawBuilding(bl, sx, sy){
     ctx.fillStyle="#6e5c7a"; ctx.fillRect(bx,by,8,1);
     ctx.fillStyle=PAL.gold; ctx.fillRect(bx+3,by+2,2,1); ctx.fillRect(bx+2,by+3,4,1); ctx.fillRect(bx+3,by+4,2,2);
   }
-  else if (bl.id==="clinic"){ /* flesh-setter: the bound cross on a board */
+  else if (bl.id==="clinic"){ /* flesh-setter: the bleeding bowl catching the drop */
     const bx=sx+Math.floor(w/2)-5, by=sy+13;
     signBoard(bx,by,10,9);
-    ctx.fillStyle="#c7bfae"; ctx.fillRect(bx+4,by+1,2,7); ctx.fillRect(bx+2,by+3,6,3);
+    ctx.fillStyle="#7d3038"; ctx.fillRect(bx+4,by+1,2,2);
+    ctx.fillStyle="#2e2c36"; ctx.fillRect(bx+2,by+4,6,1);
+    ctx.fillStyle="#4a4854"; ctx.fillRect(bx+2,by+5,6,2);
   }
   else if (bl.id==="office"){ /* housing office: a paper notice on the board */
     const bx=sx+Math.floor(w/2)-5, by=sy+13;
@@ -5340,10 +5349,16 @@ function drawBuilding(bl, sx, sy){
     ctx.fillStyle="rgba(224,185,90,"+(0.22+0.14*Math.sin(worldTick/25)).toFixed(3)+")";
     ctx.fillRect(cxp-6,cyp-3,13,16);
     ctx.fillStyle="#0f0a10"; ctx.fillRect(cxp-5,cyp-2,11,14);
-    ctx.fillStyle="#c7bfae";
-    ctx.fillRect(cxp,cyp,2,11);
-    ctx.fillRect(cxp-3,cyp+3,8,2);
     ctx.strokeStyle="#8b8291"; ctx.strokeRect(cxp-5.5,cyp-2.5,12,15);
+    /* the Choir of Seven Lights: a center light and six about it, none of
+       them arranged into anything anyone was ever executed on */
+    ctx.fillStyle=PAL.gold; ctx.fillRect(cxp-1,cyp+4,2,2);
+    ctx.fillStyle="#f7e08a"; ctx.fillRect(cxp-1,cyp+4,1,1);
+    const six=[[cxp-4,cyp+3],[cxp+3,cyp+3],[cxp-2,cyp+1],[cxp+1,cyp+1],[cxp-2,cyp+8],[cxp+1,cyp+8]];
+    for (let i=0;i<6;i++){
+      ctx.fillStyle= (i+Math.floor(worldTick/18))%3? PAL.gold : "#8a6f2e";
+      ctx.fillRect(six[i][0], six[i][1], 1, 1);
+    }
   }
 }
 /* ----- street freight: barrels and crates leaned against walls (the city hauls things, all day) ----- */

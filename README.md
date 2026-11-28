@@ -238,10 +238,12 @@ reveal, plank-seamed leaf, two iron bands and a gold handle, in the same
 tile position as always — and doorways are **proper doorways now**, taller
 than the people who use them (the lintel and leaf widened and raised;
 where a window would have hung over the door, the wall stays bare for the
-plaque). Windows gained **cross mullions and pale sills**.
+plaque). Windows gained **pale sills and a single upright mullion** — two
+narrow panes, no bar crossing them.
 Every trade hangs an **honest sign**: the tavern a bracket with a swinging
 lantern that glows at night, the guild a purple heraldic banner from the
-eave, the clinic a bone-white cross on a hanging board, the office a paper
+eave, the clinic a bleeding bowl catching a red drop on a hanging board, the
+office a paper
 notice, the work-shops painted boards showing the trade itself — washtub,
 bone-and-knife, candle, stacked coins. The Flayed Lamp and the
 Grave-Market no longer keep a doorman loitering outside — the doorways read
@@ -254,6 +256,26 @@ drawn on a building that does not depict a real object.** The old draw
 layer's artifacts — a floating smoke box over every roof corner, plank
 seams running through stone walls, purple bars hanging in mid-air, a black
 plaque nailed to nothing, a cross without a sign — are purged.
+
+**Touching a building is using it.** Walk into a door and the door
+answers: bumping any wall of a building with keyboard, controller d-pad or
+finger-steer opens the same facility a tap would — the hero turns to face
+the door as they touch it, stands where they stood, and the menu comes up.
+The home keeps its door law (it answers only within a stride of its own
+doorstep; the far wall stays a wall), the Gate of Openings opens to the
+bump, and a held key against an open menu never double-fires.
+
+**There is no Jesus here, and now the walls know it.** Every cross in the
+city's draw layer is gone: the little bar-through-upright in every window
+is now a single upright mullion between two narrow panes; the flesh-setter's
+bound cross is a **bleeding bowl catching a red drop**; and the Church of
+the Holy Gate's rose window no longer carries a pale cross — it holds the
+**Choir of Seven Lights**: a center light and six about it, shimmering
+gold on dark glass, which is at least a doctrine Jericho's own (the
+vanished rose bodily to the Choir of Seven Lights, and the lights are
+good). A twin-engine pixel diff (HEAD vs patched, seeded from boot, same
+camera stops) proves the only pixels that changed in the whole frame are
+exactly those three regions and nothing else.
 
 **The ironmonger sells opinions, not just edges.** Every weapon and armor
 in the rack now carries a named special, stated on the price board and in

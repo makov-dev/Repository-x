@@ -1236,3 +1236,98 @@ left-facing figures, but `sprO`'s flip remaps *colors*, not cells — the rim
 now samples the unflipped grid, matching `sprO` exactly). VLM gestalt at 4x:
 person clearly shorter than the tavern door, plaque reading clean, rim on
 the facing figure, cool/dark figure when turned away, no artifacts.
+
+## 34 — The door answers the touch, and the crosses come down
+
+**Ask.** "Now we need to work out the character touching doors is interacting
+with the building, also weird fascination with crosses, there is no Jesus
+here." Two laws: (1) touching a building with your character must use the
+building; (2) no crosses anywhere in the draw layer — the cosmology is the
+lost gods and the Choir of Seven Lights, not ours.
+
+**The door answers the touch.** The tap already kept the law *you stand
+beside a building to use it* — but `tryBaseMove` swallowed a blocked step
+silently: keyboard, d-pad and finger-steer players walked into doors that
+did nothing, and a blocked move did not even turn the hero's face. Now a
+step into a solid tile finds the building under it (`BUILDINGS.find`,
+skipping an un-owned home, whose tiles are not solid anyway), and if
+`nearBuilding` holds — the same predicate the tap uses — it stops any walk,
+turns the hero to face the wall they touched, and calls the very same
+`enterBuilding`. The home keeps its stricter door law (`nearBuilding` for a
+home is a stride from the door, so its far wall stays a wall); the Gate of
+Openings opens to the bump like any door. Because the bump flows through
+`dirTap()`, all four input paths get it in one place: arrows/WASD, held-key
+repeat, gamepad, and finger-steer. The pressure checks that run after a
+move (`maybeMugged`, `crownPressure`, `strangerPressure`) all guard on
+`ui.mode`, which `say`/`showMenu` set synchronously, so a bump-opened menu
+is never double-fired. The doorstep behavior falls out of the existing
+grid: the home's door tile is walkable ("D"), so the first bump steps onto
+the doorstep and the second — touching the house itself — opens it.
+
+**The cross census.** A grep-and-read audit of every draw call found three
+crosses, and one of them was everywhere:
+
+1. **Every window on every building.** The "cross mullions" of the
+   buildings round drew a 1px upright at `wx0+2` *and* a 1px horizontal bar
+   at `wy0+3` across the 4x6 glass — a little cross in every window in
+   Jericho. The horizontal bar is deleted; the upright mullion stays (two
+   narrow panes, no bar crossing them).
+2. **The flesh-setter's sign.** "The bound cross on a board" — 2x7 pale
+   vertical crossed by 6x3 — is now **the bleeding bowl catching the
+   drop**: a deep-red 2x2 drop falling toward a dark iron bowl (rim
+   `#2e2c36`, body `#4a4854`), which is a more honest picture of what the
+   flesh-setter does.
+3. **The church's rose window.** A pale 2x11 shaft crossed by an 8x2 bar.
+   Now it holds the **Choir of Seven Lights** — a 2x2 gold center light
+   with a bright core pixel, and six 1px lights about it in hexonal
+   arrangement (no upright-and-bar anywhere), each shimmering between gold
+   and dim gold on a `worldTick/18` rotation — which is the city's own
+   doctrine ("the vanished rose bodily to the Choir of Seven Lights, and
+   the lights are good"). The dungeon's Corner Shrine was audited and is
+   clean: two standing stones and a gold light between them.
+
+**Verification (decross.js, 35/35).** Twin engines — HEAD extracted from
+the committed `index.html` vs the patched build — booted identically
+(`mulberry32(31337)` seeded *before* `newGame`, so townfolk and every boot
+draw match), same `worldTick` (200 + one frame = 201 in both, asserted via
+`D.wt()`), four camera stops chosen so tavern+guild, market+office,
+clinic, and church+gate are all in view. Full-frame 960x540 pixel diff
+with tolerance 8:
+
+- every stop: **zero stray diff pixels** — every changed pixel falls inside
+  the union of the removed window-bar rows (all in-view buildings, computed
+  in `drawBuilding`'s own unit space, `w=bl.w*8` — the rig's first draft
+  wrongly assumed tile space and misclassified ~1000 real diffs as strays),
+  the clinic sign board rect, and the rose window rect;
+- the stub's Fontconfig-less `measureText` shifts one subpixel of the FS
+  chip glyph between loads — confined to the top-right chip band
+  (y<48, x>=840 backing), size-capped (<=200/stop, <=400 sweep);
+- lit windows on the market (two found, probed): no dark bar across glass
+  row 3, upright mullion contrast intact (mull at least 40 below pane);
+- isolated exact-color draws (transform 4.5, no tint, no people): clinic
+  drop `#7d3038`, rim `#2e2c36`, bowl `#4a4854`, board `#241c26` in the
+  gap between drop and bowl and where the cross's shaft and arms used to
+  run; rose glass `#0f0a10` where the cross shaft top/bottom and bar
+  left/right used to be, center light gold, >=4 of the six ring lights
+  gold-ish, stone frame intact.
+
+**Verification (bumprig.js, 18/18 over 7 cases).** Through the real
+`keydown` listener path: tavern bump up opens (6/6: solid wall, no menu
+before, opens, hero does not pass through, face turns "up", a second key on
+the open menu changes nothing); tavern flank bump opens (the stand-beside
+law); home: doorstep walkable, first bump steps on, second opens, still on
+doorstep (4/4); home far wall: no open, still solid, face turns anyway
+(3/3); gate bump opens (1/1); un-owned home: ground open, hero walks on, no
+menu (2/2); clinic bump opens (1/1).
+
+**Battery.** smoke 16/0, scalerig 14/0, facerig 11/0, gearrig 17/0,
+ragstrip OK (arts untouched), firerig 15/0, plaque probes all pass. VLM
+gestalt on the isolated rose: "a set of separate golden lights... no cross
+shape" (it counted eight — the center's bright core reads as its own light
+at 3x zoom; the grid says 1+6).
+
+**Derived-copy law, re-learned.** The `__dbg` suffix lives in the *derived*
+file (`game_vis.js`), never in bare `game.js` — the rebuild recipe is:
+read the suffix out of the previous derived copy, append to the new source.
+A rebuild attempt that searches for it in `game.js` asserts out harmlessly
+(and did).
