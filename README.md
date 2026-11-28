@@ -181,11 +181,14 @@ wears a **full steel helm** (rounded dome, dark visor slit, two pale
 eye-glints — no hat, the deep took that fashion), an umber coat, a pack and
 a hanging lantern; the
 worker has a flat cap and rolled sleeves; the women wear shawls over long
-dresses; the elder paces with a white fringe and a cane; door-keepers stand
-in aprons; the bandit adventurers come bandana'd with hatchets. The hero
+dresses; the elder paces with a white fringe and a cane; the gate sentinels
+stand in aprons; the bandit adventurers come bandana'd with hatchets. And
+nobody in Jericho dresses well: every coat and dress carries **sewn-on
+patch squares in a contrasting cloth**, and every hem is **tattered** — gaps
+in the last row of cloth that the poured outline reads as rags. The hero
 turns as you move (four facings, two-frame walk), townfolk bob as they
 loiter, and the stranger is the same figure greying out with its head a
-touch off-true. The abominations stay procedurally wrong on purpose —
+touch off-true (his patches grey too). The abominations stay procedurally wrong on purpose —
 nothing in the deep should have a silhouette this honest.
 
 **The streets are inhabited.** Lamp posts stand **beside the roadways** —
@@ -223,7 +226,13 @@ Every trade hangs an **honest sign**: the tavern a bracket with a swinging
 lantern that glows at night, the guild a purple heraldic banner from the
 eave, the clinic a bone-white cross on a hanging board, the office a paper
 notice, the work-shops painted boards showing the trade itself — washtub,
-bone-and-knife, candle, stacked coins. The **law of the round: nothing is
+bone-and-knife, candle, stacked coins. The Flayed Lamp and the
+Grave-Market no longer keep a doorman loitering outside — the doorways read
+cleaner for it — and in the doormen's places, **nailed to the wall over the
+door, a small dark plaque with a gold frame and two gold nails** bears the
+trade in miniature: the tavern's lamp (flayed of any shade) for the Flayed
+Lamp, the weighing scales for the Grave-Market, where everything you bring
+up gets weighed anyway. The **law of the round: nothing is
 drawn on a building that does not depict a real object.** The old draw
 layer's artifacts — a floating smoke box over every roof corner, plank
 seams running through stone walls, purple bars hanging in mid-air, a black

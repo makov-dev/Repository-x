@@ -1069,3 +1069,78 @@ logic rig 9/9, dice rig, dressing 10/10 + fuzz, solid-ground flood
 0 crashes, facing rig 12/12. Kill-coin economy, streaks, and loot rolls
 are untouched (weapons still come only from the rack; the duelist's blade
 prop-less, as before).
+
+## 31 — Ragged people, and the doors that speak for themselves (the plaques round)
+
+**The ask.** "Make the characters more raggedy" — and at the Flayed Lamp and
+the Grave-Market, "remove those character sprites from the houses, it's
+ugly, give them a nice plaque instead with a symbol relevant to it."
+
+**The raggedy pass.** All seven string-art figures (hero dn/up/side, worker,
+shawl-woman, elder, apron keeper) gain two kinds of wear, both done inside
+the existing art grids so row counts and widths never move (16/16/16/13/14/
+14/13 rows, 12 wide — `sprP` anchors feet by `art.length`, so nothing
+re-anchors):
+
+- **Tattered hems.** Gaps punched in the last garment row (the coat's bottom
+  row for the hero and worker, the dress above the flare for the woman, the
+  apron hem for the keeper). The `sprO` outer-outline pass fills around any
+  empty cell that touches filled neighbours, so each gap arrives outlined in
+  the poured ink and reads as a rent in the cloth, not a hole in the sprite.
+  The hero's hem gaps dodge the hanging lantern (`L`) and the belt (`k`).
+- **Patch squares.** Two-tone contrast patches sewn onto the coats and
+  dresses: pale grey (`g`, the pack-cloth tone) on the hero's coat in all
+  three facings; brown `w` on the townfolk, one on the chest and one at the
+  hem side. The stranger — the worker's art recoloured all-grey — would
+  otherwise wear *bone-white* patches (unmapped chars fall to `PAL.bone`),
+  so his map gained `w:"#45404e"` and his patches grey out with the rest of
+  him.
+
+**The plaques.** The base draw loop had been pasting a standing
+`TOWN_KEEPER` figure at the tavern's and market's doors — a person loitering
+in the doorway of their own workplace, reading as clutter. That draw block
+is deleted outright (the keeper art itself stays: the gate sentinels and the
+home spouse still wear it). In its place, `drawBuilding` gained
+`wallPlaque(bx,by,bw,bh)` — a 12x7 ink board (`#241c26`) with a gold stroke
+frame (`#7d6f4c`) and two gold nail dots at the top corners — nailed over
+each door at `dxc-3, sy+h-18` (one tile wide, 2px clear of the lintel beam,
+clear of both window rows by geometry: the tavern's second-row sills end at
+`sy+37`, the plaque starts at `sy+38`; the market's single window row ends
+at `sy+23`). On the boards, the trades in miniature:
+
+- **The Flayed Lamp:** the lamp itself — hook pixel, 3x3 gold body,
+  flame-pale core pixel — the tavern's own hanging sign, flayed of any shade.
+- **The Grave-Market:** the weighing scales — a pale (`#c7bfae`) post and
+  beam with two gold pans — because everything you carry up out of the
+  openings gets weighed before it pays.
+
+**A real bug caught by the rebuild.** Re-deriving the rig battery from
+scratch (all rigs were lost to a sandbox wipe) re-tested Yes-Plate's
+environmental path — and failed it. In `hurt()`, the last-stand branch was
+followed by a *separate* `if (p.echo ...)`/`else { die() }` chain, so the
+plate held you at 1 HP and then the un-taken `else` killed you anyway; the
+plate "has never said no" and then the floor said otherwise. The chain is
+now `else if` end to end (matching the combat path in `afterEnemyTurn`,
+which was already correct): the plate refuses the death and the refusal
+sticks. Honest-repair law, again: the check exists because the fix was
+needed, not the other way around.
+
+**Verification.** New plaque probes on the live engine: board ink, gold
+frame, nail gold, and the lamp/scales symbol pixels all at expected
+positions in-scene (backing = unit x 4.5 in the scaled pass — the probe rig
+initially read plaster because it sampled at x3, the unscaled mapping; the
+transforms, again, are the authority). Old-keeper probe: the spot where the
+door sprite's torso stood now reads wall plaster, not apron or skin. Raggedy
+strip: all seven arts parsed straight from the source, rendered with the
+outline pass on plaster — row counts asserted, widths asserted, VLM confirms
+no disfigurement; in-scene hero probes confirm patch (`g` tone), hem-gap
+(outline ink), and coat control pixels. Zoomed VLM crops of both plaques:
+board, frame, nails, symbol, no overlap with door, windows, or awning.
+Rebuilt battery, all green: functional smoke 16/0 (boot, full solidity sweep
+over every building tile, stall tiles, fire-spot doors, tavern/market menus,
+delve, combat, hurt, save/load round-trip, townfolk tick), facing rig 11/0,
+gear rig 17/0 x5 (first strike, bleed, stagger roll + skip, precise, mail
+under-layer, flee mods, both Yes-Plate paths, old-save normGear) — one
+observed flake family: the 28% stagger roll is `Math.random()`-driven and
+the loop detector now reads the combat log, so it is deterministic; the
+resolver's randomness remains rig-side, as recorded in the buildings round.

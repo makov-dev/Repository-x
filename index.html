@@ -727,7 +727,7 @@ function drawStranger(camX,camY){
   const ST_HEAD=TOWN_WORKER.map((row,i)=> i<6 && row.indexOf("H")>=0
     ? ("."+row.slice(0,11)) : row);
   sprP(ST_HEAD, { H:"#b9b2c2", h:"#9a92a4", e:"#232028", f:"#57515f",
-    c:"#35313e", C:"#282430", l:"#464152", s:"#4a4552",
+    c:"#35313e", C:"#282430", l:"#464152", s:"#4a4552", w:"#45404e",
     p:"#2c2833", b:"#232028" }, sx, sy);
   if (!game.ui.mode && !game.combat) hit((sx-4)*camZ,(sy-8)*camZ,(T+8)*camZ,(T+12)*camZ,()=>{
     if (game.state!=="base" || game.ui.mode) return;
@@ -3115,7 +3115,7 @@ function hurt(n, msg){
   lines.push("(-"+n+" HP. "+p.hp+"/"+p.maxhp+")");
   if (p.hp<=0){
     if (p.armor && p.armor.lastStand && !game.flags.plateUsed){ game.flags.plateUsed=true; p.hp=1; say(["Yes-Plate has never said no. It does not start today.","(held at 1 HP)"]); }
-    if (p.echo && !p.echoUsed){ p.echoUsed=true; p.hp=1; say(["The dream catches you. You died once already, and refused the second time.","(the Gate-Touched holds you at 1 HP)"]); }
+    else if (p.echo && !p.echoUsed){ p.echoUsed=true; p.hp=1; say(["The dream catches you. You died once already, and refused the second time.","(the Gate-Touched holds you at 1 HP)"]); }
     else if (p.gatekeeper){ p.hp=1; say(["The Gate refuses. Whatever finished you, it was not enough.","(+held at 1 HP)"]); }
     else { die("Something in "+(game.dungeon? game.dungeon.opening.name : "Jericho")+" finished you."); return; }
   }
@@ -4767,9 +4767,9 @@ const HERO_DN_A=[
 "...HHHHHH...",
 "....hkkh....",
 "..cccccccc..",
-"..cclccccc..",
+"..cclggccc..",
 "..cCcccCk...",
-"..cCcCcCL...",
+"..cCcc.cL...",
 "...pp..pp...",
 "...pp..pp...",
 "...bb..bb..."];
@@ -4784,7 +4784,7 @@ const HERO_UP_A=[
 "..mmSSSSmm..",
 "...hffffh...",
 "....hhhh....",
-"..cccccccc..",
+"..cccggccc..",
 "..QPPPPPPQ..",
 "..QPPPPPPQ..",
 "..QpPPPPpQ..",
@@ -4803,9 +4803,9 @@ const HERO_SIDE_A=[
 "...hffHHH...",
 "....hffh....",
 "..Pcccccc...",
-"..Qcccccc...",
+"..Qcggccc...",
 "..QPcccCk...",
-"..QPccCcL...",
+"..QPcc.cL...",
 "...pp.pp....",
 "...pp.pp....",
 "...bb.bb...."];
@@ -4836,10 +4836,10 @@ const TOWN_WORKER=[
 "...HeHHeH...",
 "...HHHHHH...",
 "....hhhh....",
+"..ccwwcccc..",
 "..cccccccc..",
-"..cccccccc..",
-"..HcCccCcH..",
-"..HcCccccH..",
+"..HcCwwCcH..",
+"..HcCcc.cH..",
 "...pp..pp...",
 "...pp..pp...",
 "...bb..bb..."];
@@ -4852,11 +4852,11 @@ const TOWN_WOMAN=[
 "...HHHHHH...",
 "....hhhh....",
 "..cccccccc..",
-"..cCccccCc..",
+"..cCwwccCc..",
 "..cCccccCc..",
 "..cCccccCc..",
 "..cCCCCCC...",
-"..CCCCCCCC..",
+"..CCC.CCCC..",
 ".CCC....CCC."];
 const TOWN_ELDER=[
 "....hhhh....",
@@ -4865,7 +4865,7 @@ const TOWN_ELDER=[
 "...HeHHeH...",
 "...HHHHHH...",
 "....hhhh....",
-"..cccccccc..",
+"..cCwwcccc..",
 "..cCccccCc..",
 "..cCccccCc..",
 "..cCccccCw..",
@@ -4880,11 +4880,11 @@ const TOWN_KEEPER=[
 "...HeHHeH...",
 "...HHHHHH...",
 "....hhhh....",
-"..cccccccc..",
+"..cwwccccc..",
 "..ccsssscc..",
 "..HcssssCH..",
 "..HcssssCH..",
-"..ccsssscc..",
+"..cc.ss.cc..",
 "...pp..pp...",
 "...bb..bb..."];
 const FOE_ART=[
@@ -5267,6 +5267,25 @@ function drawBuilding(bl, sx, sy){
     ctx.fillStyle="#d8cba8"; ctx.fillRect(bx+2,by+2,6,6);
     ctx.fillStyle="#685f76"; ctx.fillRect(bx+3,by+3,4,1); ctx.fillRect(bx+3,by+5,4,1);
   }
+  /* ---- door plaques: nailed to the wall over the door, a symbol for the trade ---- */
+  const wallPlaque=(bx,by,bw,bh)=>{
+    ctx.fillStyle="#241c26"; ctx.fillRect(bx,by,bw,bh);
+    ctx.strokeStyle="#7d6f4c"; ctx.strokeRect(bx+0.5,by+0.5,bw-1,bh-1);
+    ctx.fillStyle="#c9a24a"; ctx.fillRect(bx+1,by+1,1,1); ctx.fillRect(bx+bw-2,by+1,1,1);
+  };
+  if (bl.id==="tavern"){ /* the Flayed Lamp: its lamp, flayed of any shade, nailed over the door */
+    const bx=dxc-3, by=sy+h-18;
+    wallPlaque(bx,by,12,7);
+    ctx.fillStyle="#2e2628"; ctx.fillRect(bx+5,by+1,1,1);
+    ctx.fillStyle=PAL.gold; ctx.fillRect(bx+4,by+2,3,3);
+    ctx.fillStyle="#f7e08a"; ctx.fillRect(bx+5,by+3,1,1);
+  }
+  else if (bl.id==="market"){ /* the Grave-Market: the scales that weigh what you bring up */
+    const bx=dxc-3, by=sy+h-18;
+    wallPlaque(bx,by,12,7);
+    ctx.fillStyle="#c7bfae"; ctx.fillRect(bx+5,by+1,1,4); ctx.fillRect(bx+2,by+1,7,1);
+    ctx.fillStyle=PAL.gold; ctx.fillRect(bx+1,by+3,3,1); ctx.fillRect(bx+7,by+3,3,1);
+  }
   else if (bl.work){ /* trade signs: washtub, bone, candle, pledged coin */
     const bx=sx+Math.floor(w/2)-5, by=sy+13;
     signBoard(bx,by,10,9);
@@ -5448,10 +5467,6 @@ function drawBase(){
     const sx=(bl.x-camX)*T, sy=(bl.y-camY)*T;
     if (sx>Wz||sy>Hz||sx<-200||sy<-80) continue;
     drawBuilding(bl, sx, sy);
-    if (bl.id==="tavern"||bl.id==="market"){
-      const dxp=(bl.x+Math.floor(bl.w/2)-camX)*T, dyp=(bl.y+bl.h-1-camY)*T;
-      drawNPC(dxp, dyp-8, bl.id==="tavern"? PAL.bloodHi : PAL.green);
-    }
   }
   drawFires(camX,camY);
   drawStreetProps(camX,camY);
